@@ -245,7 +245,7 @@ if _proxy_ssl_header:
 
 
 
-LOCAL_DEVELOPMENT = not HEROKU_DYNO
+LOCAL_DEVELOPMENT = DEBUG or RUNSERVER
 if LOCAL_DEVELOPMENT:
     # Mantem desenvolvimento local em HTTP para evitar redirects 301/HTTPS no runserver.
     SECURE_SSL_REDIRECT = False

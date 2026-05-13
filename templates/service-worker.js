@@ -20,11 +20,11 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", () => {});
 {% else %}
-const CACHE_NAME = "nexo-v1";
+const CACHE_NAME = "nexo-v2";
 const STATIC_ASSETS = [
     "/manifest.json",
-    "/static/css/app.css",
-    "/static/js/app.js",
+    "/static/css/app.css?v=20260512a",
+    "/static/js/app.js?v=20260512a",
     "/static/icons/favicon.png?v=20260323d",
     "/static/icons/icon-192.png?v=20260323d",
     "/static/icons/icon-512.png?v=20260323d",

@@ -15,7 +15,7 @@
     {% if not app_debug %}
     <link rel="manifest" href="{% url 'manifest' %}">
     {% endif %}
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260323e">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260512a">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -140,7 +140,7 @@
         </div>
     </div>
 
-    <script src="{% static 'js/app.js' %}?v=20260323e"></script>
+    <script src="{% static 'js/app.js' %}?v=20260512a"></script>
 <script>
     (function () {
         if (!("serviceWorker" in navigator)) {
@@ -170,7 +170,7 @@
             }
 
             navigator.serviceWorker
-                .register("{% url 'service-worker' %}?v=5")
+                .register("{% url 'service-worker' %}?v=6")
                 .then(function (registration) {
                     registration.update();
                 })

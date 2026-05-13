@@ -166,3 +166,40 @@ class ShoppingViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Data da lista")
         self.assertContains(response, 'type="date"', html=False)
+
+    def test_create_list_assigns_logged_in_user(self):
+        self.client.login(username="shopping-user", password="pass-12345")
+
+        response = self.client.post(
+            reverse("shopping:create"),
+            {
+                "name": "Feira",
+                "list_date": "2026-04-02",
+                "notes": "Hortifruti",
+            },
+        )
+
+        self.assertRedirects(response, reverse("shopping:list"))
+        shopping_list = ShoppingList.objects.get(name="Feira")
+        self.assertEqual(shopping_list.user, self.user)
+        self.assertIsNotNone(shopping_list.tenant)
+
+    def test_create_item_assigns_logged_in_user(self):
+        self.client.login(username="shopping-user", password="pass-12345")
+
+        response = self.client.post(
+            reverse("shopping:item-create"),
+            {
+                "shopping_list": str(self.shopping_list.pk),
+                "title": "Leite",
+                "quantity": "3",
+                "unit_price": "4.50",
+                "notes": "",
+                "is_purchased": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("shopping:detail", args=[self.shopping_list.pk]))
+        item = ShoppingItem.objects.get(title="Leite")
+        self.assertEqual(item.user, self.user)
+        self.assertEqual(item.tenant, self.shopping_list.tenant)

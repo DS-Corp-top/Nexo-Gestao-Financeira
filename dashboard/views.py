@@ -7,6 +7,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.views.generic import TemplateView
 
+from accounts.models import Account
 from common.balance import calculate_user_balance
 from goals.models import SavingGoal
 from transactions.models import Transaction
@@ -264,6 +265,15 @@ class DashboardContextMixin(LoginRequiredMixin):
         )["total"]
         pending_expense_count = pending_expenses.count()
 
+        credit_card_expenses = current_month_transactions.filter(
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account__account_type=Account.AccountType.CARD,
+        )
+        credit_card_expense_total = credit_card_expenses.aggregate(
+            total=Coalesce(Sum("amount"), Decimal("0.00"))
+        )["total"]
+        credit_card_expense_count = credit_card_expenses.count()
+
         category_source = current_month_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
         )
@@ -311,6 +321,8 @@ class DashboardContextMixin(LoginRequiredMixin):
             "today": today,
             "pending_expense_total": pending_expense_total,
             "pending_expense_count": pending_expense_count,
+            "credit_card_expense_total": credit_card_expense_total,
+            "credit_card_expense_count": credit_card_expense_count,
             "due_notifications": due_notifications,
             "due_notifications_count": due_notifications_count,
             "due_overdue_count": due_overdue_count,

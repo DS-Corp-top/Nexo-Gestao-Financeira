@@ -297,6 +297,19 @@ class TransactionScopeAndMonthLockTests(TestCase):
             ).exists()
         )
 
+    def test_create_transaction_assigns_logged_in_user(self):
+        response = self.client.post(
+            reverse("transactions:create"),
+            data=self._build_create_payload(
+                description="Bonus",
+                recurrence_type=Transaction.RecurrenceType.ONCE,
+            ),
+        )
+
+        self.assertRedirects(response, reverse("transactions:statement"))
+        transaction = Transaction.objects.get(description="Bonus")
+        self.assertEqual(transaction.user, self.user)
+        self.assertEqual(transaction.tenant, self.account.tenant)
 
     def test_pending_expense_uses_cleared_style_only_when_baixada(self):
         expense_category = Category.objects.create(

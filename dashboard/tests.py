@@ -163,6 +163,64 @@ class DashboardChartsMonthScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["total_balance"], Decimal("600.00"))
 
+    def test_home_shows_selected_month_credit_card_expense_total(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao Controle",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            include_in_balance=False,
+        )
+        bank_category = Category.objects.create(
+            user=self.user,
+            name="Mercado",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("120.00"),
+            date=date(2026, 3, 8),
+            account=card_account,
+            category=bank_category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("80.50"),
+            date=date(2026, 3, 12),
+            account=card_account,
+            category=bank_category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("999.00"),
+            date=date(2026, 2, 12),
+            account=card_account,
+            category=bank_category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("40.00"),
+            date=date(2026, 3, 14),
+            account=self.account,
+            category=bank_category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+
+        response = self.client.get(reverse("dashboard:home"), {"month": "2026-03"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["credit_card_expense_total"], Decimal("200.50"))
+        self.assertEqual(response.context["credit_card_expense_count"], 2)
+        self.assertContains(response, "Despesas no cartao")
+        self.assertContains(response, "R$ 200,50")
+
 class DashboardPostLoginLoaderTests(TestCase):
     def setUp(self):
         user_model = get_user_model()

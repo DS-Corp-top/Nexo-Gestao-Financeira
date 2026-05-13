@@ -74,3 +74,20 @@ class AccountBalanceTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Considerar no saldo")
+
+    def test_create_account_assigns_logged_in_user(self):
+        response = self.client.post(
+            reverse("accounts:create"),
+            {
+                "name": "Reserva",
+                "account_type": Account.AccountType.CASH,
+                "initial_balance": "250.00",
+                "include_in_balance": "on",
+                "is_active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:list"))
+        account = Account.objects.get(name="Reserva")
+        self.assertEqual(account.user, self.user)
+        self.assertIsNotNone(account.tenant)

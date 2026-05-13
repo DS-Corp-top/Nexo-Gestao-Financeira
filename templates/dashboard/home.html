@@ -240,17 +240,32 @@
 
     <section class="dash-section">
         <h2 class="dash-section-title">Pendencias e alertas</h2>
-        <article class="dash-alert-card">
-            <div class="dash-alert-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 4v13"></path>
-                    <path d="M6.5 12.5L12 18l5.5-5.5"></path>
-                </svg>
-            </div>
-            <span class="dash-alert-badge">{{ pending_expense_count }}</span>
-            <p class="dash-alert-title">Despesas pendentes</p>
-            <p class="dash-alert-amount" data-sensitive-value data-mask="R$ ****">{{ pending_expense_total|brl }}</p>
-        </article>
+        <div class="dash-alert-grid">
+            <article class="dash-alert-card">
+                <div class="dash-alert-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 4v13"></path>
+                        <path d="M6.5 12.5L12 18l5.5-5.5"></path>
+                    </svg>
+                </div>
+                <span class="dash-alert-badge">{{ pending_expense_count }}</span>
+                <p class="dash-alert-title">Despesas pendentes</p>
+                <p class="dash-alert-amount" data-sensitive-value data-mask="R$ ****">{{ pending_expense_total|brl }}</p>
+            </article>
+
+            <article class="dash-alert-card dash-alert-card-credit">
+                <div class="dash-alert-icon dash-alert-icon-credit" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                        <path d="M3 9h18"></path>
+                        <path d="M7 15h4"></path>
+                    </svg>
+                </div>
+                <span class="dash-alert-badge dash-alert-badge-credit">{{ credit_card_expense_count }}</span>
+                <p class="dash-alert-title">Despesas no cartao</p>
+                <p class="dash-alert-amount dash-alert-amount-credit" data-sensitive-value data-mask="R$ ****">{{ credit_card_expense_total|brl }}</p>
+            </article>
+        </div>
     </section>
 
     <section class="dash-section">
