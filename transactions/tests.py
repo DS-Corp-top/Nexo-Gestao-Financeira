@@ -853,6 +853,33 @@ class TransactionScopeAndMonthLockTests(TestCase):
         self.assertIn("HX-Redirect", response.headers)
         self.assertEqual(response.headers["HX-Redirect"], "/transactions/?month=2026-02")
 
+    def test_toggle_ignored_rejects_external_next_redirect(self):
+        expense_category = Category.objects.create(
+            user=self.user,
+            name="Streaming externo",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        expense = Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("99.00"),
+            date=date(2026, 2, 20),
+            account=self.account,
+            category=expense_category,
+            description="Servico externo",
+            is_cleared=False,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+
+        response = self.client.post(
+            reverse("transactions:toggle-ignored", args=[expense.pk]),
+            data={"next": "//evil.example/phish"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.headers["HX-Redirect"], reverse("transactions:statement"))
+
     def test_toggle_cleared_removes_ignored_flag_and_sets_baixada(self):
         expense_category = Category.objects.create(
             user=self.user,

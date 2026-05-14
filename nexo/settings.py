@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -31,10 +32,18 @@ if _debug_env is None:
 else:
     DEBUG = env_bool("DJANGO_DEBUG", default=False)
 
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "control-prod-default-key-change-in-env-2026-02-13-9f2c7b6e4d1a",
+_secret_key_env = os.getenv("DJANGO_SECRET_KEY")
+_secret_key_required = (
+    HEROKU_DYNO
+    or bool(os.getenv("DATABASE_URL", "").strip())
+    or env_bool("DJANGO_REQUIRE_SECRET_KEY", default=False)
 )
+if _secret_key_env:
+    SECRET_KEY = _secret_key_env
+elif TESTING or RUNSERVER or not _secret_key_required:
+    SECRET_KEY = "control-local-default-key-change-in-env-2026-02-13-9f2c7b6e4d1a"
+else:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set for deployed environments.")
 
 _allowed_hosts_default = "127.0.0.1,localhost"
 if HEROKU_DYNO:

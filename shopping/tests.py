@@ -145,6 +145,21 @@ class ShoppingViewsTests(TestCase):
             reverse("shopping:detail", args=[self.shopping_list.pk]),
         )
 
+    def test_toggle_purchased_rejects_external_next_redirect(self):
+        self.client.login(username="shopping-user", password="pass-12345")
+
+        response = self.client.post(
+            reverse("shopping:toggle-purchased", args=[self.item.pk]),
+            data={"next": "//evil.example/phish"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(
+            response.headers.get("HX-Redirect"),
+            reverse("shopping:detail", args=[self.shopping_list.pk]),
+        )
+
     def test_item_form_limits_lists_to_current_user(self):
         self.client.login(username="shopping-user", password="pass-12345")
 

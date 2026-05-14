@@ -9,12 +9,19 @@ from django.contrib.auth.forms import (
     UserCreationForm,
     UsernameField,
 )
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 
 from common.forms import style_form_fields
 
 
 User = get_user_model()
+
+LOGIN_FAILURE_LIMIT = 5
+LOGIN_FAILURE_WINDOW_SECONDS = 15 * 60
+LOGIN_THROTTLE_MESSAGE = (
+    "Muitas tentativas de acesso. Aguarde alguns minutos e tente novamente."
+)
 
 
 def email_in_use(email, *, exclude_user_id=None):
@@ -105,6 +112,7 @@ class StyledAuthenticationForm(AuthenticationForm):
     error_messages = {
         **AuthenticationForm.error_messages,
         "inactive": "Seu cadastro foi recebido e aguarda validacao do administrador.",
+        "throttled": LOGIN_THROTTLE_MESSAGE,
     }
 
     username = forms.EmailField(
@@ -139,6 +147,37 @@ class StyledAuthenticationForm(AuthenticationForm):
         super().__init__(*args, **kwargs)
         style_form_fields(self)
 
+    def _client_ip(self):
+        forwarded_for = (
+            self.request.META.get("HTTP_X_FORWARDED_FOR") or ""
+        ).split(",")[0].strip()
+        return forwarded_for or self.request.META.get("REMOTE_ADDR") or "unknown"
+
+    def _login_failure_cache_keys(self, username):
+        normalized_username = (username or "").strip().lower() or "unknown"
+        client_ip = self._client_ip()
+        return (
+            f"login-failures:ip:{client_ip}",
+            f"login-failures:user:{normalized_username}:ip:{client_ip}",
+        )
+
+    def _is_login_throttled(self, username):
+        return any(
+            (cache.get(key) or 0) >= LOGIN_FAILURE_LIMIT
+            for key in self._login_failure_cache_keys(username)
+        )
+
+    def _record_failed_login(self, username):
+        for key in self._login_failure_cache_keys(username):
+            try:
+                cache.add(key, 0, LOGIN_FAILURE_WINDOW_SECONDS)
+                cache.incr(key)
+            except ValueError:
+                cache.set(key, 1, LOGIN_FAILURE_WINDOW_SECONDS)
+
+    def _clear_failed_logins(self, username):
+        cache.delete_many(self._login_failure_cache_keys(username))
+
     def clean(self):
         username = User._default_manager.normalize_email(
             (self.cleaned_data.get("username") or "").strip()
@@ -146,6 +185,12 @@ class StyledAuthenticationForm(AuthenticationForm):
         password = self.cleaned_data.get("password")
 
         if username is not None and password:
+            if self._is_login_throttled(username):
+                raise ValidationError(
+                    self.error_messages["throttled"],
+                    code="throttled",
+                )
+
             self.user_cache = authenticate(
                 self.request,
                 username=username,
@@ -158,8 +203,10 @@ class StyledAuthenticationForm(AuthenticationForm):
                         self.error_messages["inactive"],
                         code="inactive",
                     )
+                self._record_failed_login(username)
                 raise self.get_invalid_login_error()
             self.confirm_login_allowed(self.user_cache)
+            self._clear_failed_logins(username)
 
         return self.cleaned_data
 

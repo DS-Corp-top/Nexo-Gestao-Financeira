@@ -10,6 +10,7 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from common.mixins import UserAssignMixin, UserQuerySetMixin
+from common.security import resolve_safe_redirect_url
 from shopping.forms import ShoppingItemForm, ShoppingListForm
 from shopping.models import ShoppingItem, ShoppingList
 
@@ -40,10 +41,8 @@ class ShoppingRedirectMixin:
             self.request.POST.get("next")
             or self.request.GET.get("next")
             or ""
-        ).strip()
-        if next_url.startswith("/"):
-            return next_url
-        return fallback_url
+        )
+        return resolve_safe_redirect_url(self.request, next_url, fallback_url)
 
 
 class ShoppingListView(UserQuerySetMixin, ListView):
@@ -180,8 +179,11 @@ class ShoppingItemTogglePurchasedView(LoginRequiredMixin, View):
 
         fallback_url = reverse("shopping:detail", args=[item.shopping_list_id])
         next_url = (request.POST.get("next") or "").strip()
-        if not next_url.startswith("/"):
-            next_url = fallback_url or str(self.success_url)
+        next_url = resolve_safe_redirect_url(
+            request,
+            next_url,
+            fallback_url or str(self.success_url),
+        )
 
         if request.headers.get("HX-Request") == "true":
             response = HttpResponse(status=204)

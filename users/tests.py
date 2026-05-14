@@ -1,6 +1,7 @@
 from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
@@ -10,6 +11,7 @@ from users.forms import StyledAuthenticationForm
 
 class UserAuthFlowTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.user = get_user_model().objects.create_user(
             username="auth-user",
             email="auth-user@example.com",
@@ -78,6 +80,47 @@ class UserAuthFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFormError(response.context["form"], "username", "Informe um endereço de email válido.")
         self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_login_throttles_repeated_failed_attempts(self):
+        login_url = reverse("users:login")
+
+        for _ in range(5):
+            response = self.client.post(
+                login_url,
+                {"username": "auth-user@example.com", "password": "wrong-pass"},
+            )
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(
+            login_url,
+            {"username": "auth-user@example.com", "password": "strong-pass-123"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Muitas tentativas de acesso.")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_successful_login_clears_previous_failed_attempts(self):
+        login_url = reverse("users:login")
+
+        self.client.post(
+            login_url,
+            {"username": "auth-user@example.com", "password": "wrong-pass"},
+        )
+        response = self.client.post(
+            login_url,
+            {"username": "auth-user@example.com", "password": "strong-pass-123"},
+        )
+
+        self.assertRedirects(response, reverse("dashboard:home"))
+        self.client.logout()
+
+        response = self.client.post(
+            login_url,
+            {"username": "auth-user@example.com", "password": "strong-pass-123"},
+        )
+
+        self.assertRedirects(response, reverse("dashboard:home"))
 
     def test_auth_form_preserves_mobile_friendly_login_attributes(self):
         form = StyledAuthenticationForm()

@@ -17,6 +17,7 @@ from django.views.generic import CreateView, DeleteView, TemplateView, UpdateVie
 from accounts.models import Account
 from common.balance import calculate_monthly_balance, calculate_user_balance
 from common.mixins import UserAssignMixin, UserQuerySetMixin
+from common.security import resolve_safe_redirect_url
 from transactions.forms import QuickTransactionForm, StatementFilterForm, TransactionForm
 from transactions.models import ClosedMonth, Transaction
 
@@ -175,12 +176,13 @@ class TransactionUpdateView(
             self.request.POST.get("next")
             or self.request.GET.get("next")
             or ""
-        ).strip()
-        if next_url.startswith("/transactions/partial/"):
-            next_url = next_url.replace("/transactions/partial/", "/transactions/", 1)
-        if next_url.startswith("/"):
-            return next_url
-        return str(self.success_url)
+        )
+        return resolve_safe_redirect_url(
+            self.request,
+            next_url,
+            self.success_url,
+            replacements=(("/transactions/partial/", "/transactions/"),),
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -233,12 +235,13 @@ class TransactionDeleteView(
             self.request.POST.get("next")
             or self.request.GET.get("next")
             or ""
-        ).strip()
-        if next_url.startswith("/transactions/partial/"):
-            next_url = next_url.replace("/transactions/partial/", "/transactions/", 1)
-        if next_url.startswith("/"):
-            return next_url
-        return str(self.success_url)
+        )
+        return resolve_safe_redirect_url(
+            self.request,
+            next_url,
+            self.success_url,
+            replacements=(("/transactions/partial/", "/transactions/"),),
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -474,12 +477,13 @@ class TransactionToggleClearedView(LoginRequiredMixin, View):
     modal_template_name = "transactions/partials/clear_transaction_modal.html"
 
     def _resolve_next_url(self, request):
-        next_url = (request.POST.get("next") or "").strip()
-        if next_url.startswith("/transactions/partial/"):
-            next_url = next_url.replace("/transactions/partial/", "/transactions/", 1)
-        if not next_url.startswith("/"):
-            next_url = str(self.success_url)
-        return next_url
+        next_url = request.POST.get("next") or request.GET.get("next") or ""
+        return resolve_safe_redirect_url(
+            request,
+            next_url,
+            self.success_url,
+            replacements=(("/transactions/partial/", "/transactions/"),),
+        )
 
     def get(self, request, *args, **kwargs):
         tx = get_object_or_404(Transaction, pk=kwargs.get("pk"), tenant=request.tenant)
@@ -539,12 +543,13 @@ class TransactionToggleIgnoredView(LoginRequiredMixin, View):
     success_url = reverse_lazy("transactions:statement")
 
     def _resolve_next_url(self, request):
-        next_url = (request.POST.get("next") or "").strip()
-        if next_url.startswith("/transactions/partial/"):
-            next_url = next_url.replace("/transactions/partial/", "/transactions/", 1)
-        if not next_url.startswith("/"):
-            next_url = str(self.success_url)
-        return next_url
+        next_url = request.POST.get("next") or request.GET.get("next") or ""
+        return resolve_safe_redirect_url(
+            request,
+            next_url,
+            self.success_url,
+            replacements=(("/transactions/partial/", "/transactions/"),),
+        )
 
     def post(self, request, *args, **kwargs):
         tx = get_object_or_404(Transaction, pk=kwargs.get("pk"), tenant=request.tenant)
