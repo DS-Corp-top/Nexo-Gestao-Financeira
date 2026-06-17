@@ -8,7 +8,7 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from accounts.forms import AccountForm, CreditLimitForm
-from accounts.models import Account
+from accounts.models import Account, CardMonthlyLimit
 from common.mixins import UserAssignMixin, UserQuerySetMixin
 
 
@@ -23,8 +23,14 @@ class CreditLimitUpdateView(LoginRequiredMixin, View):
         form = CreditLimitForm(request.POST, tenant=request.tenant)
         if form.is_valid():
             account = form.cleaned_data["account"]
-            account.credit_limit = form.cleaned_data["credit_limit"]
-            account.save(update_fields=["credit_limit", "updated_at"])
+            year, month = form.cleaned_data["month"]
+            amount = form.cleaned_data["amount"]
+            CardMonthlyLimit.objects.update_or_create(
+                account=account,
+                year=year,
+                month=month,
+                defaults={"amount": amount, "tenant": request.tenant},
+            )
             response = HttpResponse(status=204)
             response["HX-Trigger"] = json.dumps({"closeModal": True})
             return response

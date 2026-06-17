@@ -80,3 +80,35 @@ class Account(models.Model):
     def save(self, *args, **kwargs):
         assign_tenant(self)
         return super().save(*args, **kwargs)
+
+
+class CardMonthlyLimit(models.Model):
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        related_name="card_monthly_limits",
+        null=True,
+        blank=True,
+    )
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="monthly_limits",
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField()
+    amount = models.DecimalField("Limite", max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (("account", "year", "month"),)
+        verbose_name = "Limite mensal do cartão"
+        verbose_name_plural = "Limites mensais do cartão"
+
+    def __str__(self):
+        return f"{self.account.name} — {self.month:02d}/{self.year}"
+
+    def save(self, *args, **kwargs):
+        assign_tenant(self)
+        return super().save(*args, **kwargs)
