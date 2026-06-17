@@ -330,7 +330,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
     def apply_filters(self, queryset, form, selected_month):
         account = None
         category = None
-        order_by = 'recent'
+        order_by = 'oldest'
 
         queryset = queryset.filter(
             date__year=selected_month.year,
