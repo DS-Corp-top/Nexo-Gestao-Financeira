@@ -85,15 +85,46 @@
         };
 
         const accountField = form.querySelector('[name="account"]');
+        const categoryField = form.querySelector('[name="category"]');
+        const categoryTypes = {{ form.get_category_types_json|safe }};
+
+        if (categoryField) {
+            Array.from(categoryField.options).forEach(function (opt) {
+                if (opt.value && categoryTypes[opt.value]) {
+                    opt.setAttribute("data-category-type", categoryTypes[opt.value]);
+                }
+            });
+        }
+
+        const filterCategories = function () {
+            if (!txTypeField || !categoryField) return;
+            const txType = txTypeField.value;
+            const expectedType = txType === "income" ? "income" : txType === "expense" ? "expense" : null;
+            Array.from(categoryField.options).forEach(function (opt) {
+                if (!opt.value) return;
+                const catType = opt.getAttribute("data-category-type");
+                const hide = expectedType && catType && catType !== expectedType;
+                opt.hidden = hide;
+                opt.disabled = hide;
+                if (hide && categoryField.value === opt.value) {
+                    categoryField.value = "";
+                }
+            });
+        };
+
         recurrenceField.addEventListener('change', toggleFieldsMain);
         if (txTypeField) {
-            txTypeField.addEventListener('change', toggleTransfer);
+            txTypeField.addEventListener('change', function () {
+                toggleTransfer();
+                filterCategories();
+            });
         }
         if (accountField) {
             accountField.addEventListener('change', syncDestinationOptions);
         }
         toggleFieldsMain();
         toggleTransfer();
+        filterCategories();
     })();
 </script>
 {% endblock %}

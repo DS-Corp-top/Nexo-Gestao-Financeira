@@ -118,6 +118,11 @@ class TransactionForm(forms.ModelForm):
 
         style_form_fields(self)
 
+    def get_category_types_json(self):
+        if "category" not in self.fields:
+            return "{}"
+        return json.dumps({str(cat.pk): cat.category_type for cat in self.fields["category"].queryset})
+
     def clean_amount(self):
         raw_value = (self.cleaned_data.get("amount") or "").strip()
         if not raw_value:
@@ -217,10 +222,6 @@ class QuickTransactionForm(TransactionForm):
         ]
         if not self.instance.pk and not self.is_bound:
             self.fields["recurrence_type"].initial = Transaction.RecurrenceType.ONCE
-
-    def get_category_types_json(self):
-        qs = self.fields["category"].queryset
-        return json.dumps({str(cat.pk): cat.category_type for cat in qs})
 
     def clean(self):
         cleaned_data = super().clean()
