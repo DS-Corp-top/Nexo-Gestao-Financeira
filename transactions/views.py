@@ -472,14 +472,21 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         consolidated_balance = monthly_balance + credit_card_limit
         context["consolidated_balance"] = consolidated_balance
 
-        pending_expense_total = Transaction.objects.filter(
+        pending_base = Transaction.objects.filter(
             tenant=self.request.tenant,
             transaction_type=Transaction.TransactionType.EXPENSE,
             is_cleared=False,
             is_ignored=False,
             date__year=selected_month.year,
             date__month=selected_month.month,
+        )
+        pending_expense_total = pending_base.aggregate(
+            total=Coalesce(Sum("amount"), Decimal("0.00"))
+        )["total"]
+        pending_bank_total = pending_base.exclude(
+            account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+        context["pending_bank_total"] = pending_bank_total
         context["balance_after_pending"] = consolidated_balance - pending_expense_total
         context["statement_return_url"] = (
             f"{reverse('transactions:statement')}?{query_params.urlencode()}"
