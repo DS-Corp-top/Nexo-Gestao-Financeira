@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal, InvalidOperation
+import json
 import re
 
 from django import forms
@@ -10,28 +11,6 @@ from common.forms import style_form_fields
 from common.tenancy import resolve_tenant
 from transactions.models import Transaction
 
-
-class CategorySelect(forms.Select):
-    def optgroups(self, name, value, attrs=None):
-        try:
-            self._cat_type_map = {
-                cat.pk: cat.category_type
-                for cat in self.choices.queryset
-            }
-        except Exception:
-            self._cat_type_map = {}
-        return super().optgroups(name, value, attrs)
-
-    def create_option(self, name, value, label, selected, index, **kwargs):
-        option = super().create_option(name, value, label, selected, index, **kwargs)
-        if value:
-            try:
-                cat_type = self._cat_type_map.get(int(value))
-                if cat_type:
-                    option["attrs"]["data-category-type"] = cat_type
-            except Exception:
-                pass
-        return option
 
 
 class TransactionForm(forms.ModelForm):
@@ -130,7 +109,6 @@ class TransactionForm(forms.ModelForm):
                 "category_type", "name"
             )
             self.fields["category"].required = False
-            self.fields["category"].widget = CategorySelect()
 
         if "installment_count" in self.fields:
             self.fields["installment_count"].required = False
@@ -239,6 +217,10 @@ class QuickTransactionForm(TransactionForm):
         ]
         if not self.instance.pk and not self.is_bound:
             self.fields["recurrence_type"].initial = Transaction.RecurrenceType.ONCE
+
+    def get_category_types_json(self):
+        qs = self.fields["category"].queryset
+        return json.dumps({str(cat.pk): cat.category_type for cat in qs})
 
     def clean(self):
         cleaned_data = super().clean()

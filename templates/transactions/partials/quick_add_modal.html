@@ -73,6 +73,15 @@
 
         const accountField = form.querySelector('[name="account"]');
         const categoryField = form.querySelector('[name="category"]');
+        const categoryTypes = {{ form.get_category_types_json|safe }};
+
+        if (categoryField) {
+            Array.from(categoryField.options).forEach(function (opt) {
+                if (opt.value && categoryTypes[opt.value]) {
+                    opt.setAttribute("data-category-type", categoryTypes[opt.value]);
+                }
+            });
+        }
 
         const filterCategories = function () {
             if (!txTypeField || !categoryField) return;

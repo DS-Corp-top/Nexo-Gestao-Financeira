@@ -105,9 +105,11 @@
                     <button
                         class="txn-center-fab"
                         id="fab-main-btn"
-                        onclick="toggleFabDial()"
-                        aria-label="Menu de acoes"
-                        aria-expanded="false"
+                        hx-get="{% url 'transactions:quick-add' %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        hx-on::after-request="window.financeApp && window.financeApp.openModal()"
+                        aria-label="Nova transacao"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="txn-center-fab-icon" aria-hidden="true">
                             <path d="M12 5v14"></path>
