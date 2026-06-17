@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.apps import apps
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -80,10 +80,7 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
     total_expense = _sum_amount(
         posted_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
-        ).filter(
-            Q(account__include_in_balance=True)
-            | Q(account__account_type="card")
-        )
+        ).filter(account__include_in_balance=True)
     )
     total_outgoing_transfers = _sum_amount(
         posted_transactions.filter(
