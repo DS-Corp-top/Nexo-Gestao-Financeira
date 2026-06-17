@@ -531,6 +531,96 @@ class TransactionScopeAndMonthLockTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["current_balance"], Decimal("600.00"))
 
+    def test_statement_current_balance_applies_cleared_card_expense(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao saldo",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            is_active=True,
+            include_in_balance=False,
+        )
+        expense_category = Category.objects.create(
+            user=self.user,
+            name="Despesa cartao saldo",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        self.account.initial_balance = Decimal("1000.00")
+        self.account.save(update_fields=["initial_balance"])
+
+        card_expense = Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+            date=date(2026, 2, 16),
+            account=card_account,
+            category=expense_category,
+            description="Compra no cartao",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        cleared_response = self.client.get(
+            reverse("transactions:statement"),
+            {"month": "2026-02"},
+        )
+        self.assertEqual(cleared_response.status_code, 200)
+        self.assertEqual(cleared_response.context["current_balance"], Decimal("918.32"))
+
+        card_expense.is_cleared = False
+        card_expense.save(update_fields=["is_cleared"])
+
+        pending_response = self.client.get(
+            reverse("transactions:statement"),
+            {"month": "2026-02"},
+        )
+        self.assertEqual(pending_response.status_code, 200)
+        self.assertEqual(pending_response.context["current_balance"], Decimal("1000.00"))
+
+    def test_statement_card_limit_uses_card_account_balance(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao limite",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            credit_limit=Decimal("281.68"),
+            is_active=True,
+            include_in_balance=False,
+        )
+        expense_category = Category.objects.create(
+            user=self.user,
+            name="Despesa cartao limite",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        card_expense = Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+            date=date(2026, 2, 16),
+            account=card_account,
+            category=expense_category,
+            description="Compra no cartao",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        cleared_response = self.client.get(
+            reverse("transactions:statement"),
+            {"month": "2026-02"},
+        )
+        self.assertEqual(cleared_response.status_code, 200)
+        self.assertEqual(cleared_response.context["credit_card_limit"], Decimal("200.00"))
+
+        card_expense.is_cleared = False
+        card_expense.save(update_fields=["is_cleared"])
+
+        pending_response = self.client.get(
+            reverse("transactions:statement"),
+            {"month": "2026-02"},
+        )
+        self.assertEqual(pending_response.status_code, 200)
+        self.assertEqual(pending_response.context["credit_card_limit"], Decimal("281.68"))
+
     def test_statement_shows_ignore_action_for_income(self):
         response = self.client.get(reverse("transactions:statement"), {"month": "2026-02"})
 
@@ -716,6 +806,7 @@ class TransactionScopeAndMonthLockTests(TestCase):
             name="Cartao extrato",
             account_type=Account.AccountType.CARD,
             initial_balance=Decimal("0.00"),
+            credit_limit=Decimal("1000.05"),
             is_active=True,
             include_in_balance=False,
         )
@@ -772,10 +863,17 @@ class TransactionScopeAndMonthLockTests(TestCase):
         self.assertEqual(response.context["credit_card_expense_total"], Decimal("750.05"))
         self.assertEqual(response.context["credit_card_open_total"], Decimal("750.05"))
         self.assertEqual(response.context["credit_card_month_total"], Decimal("870.05"))
+        self.assertEqual(response.context["credit_card_limit"], Decimal("880.05"))
+        self.assertEqual(
+            response.context["consolidated_balance"],
+            response.context["monthly_balance"] + Decimal("880.05"),
+        )
         self.assertContains(response, "Cartão aberto")
         self.assertContains(response, "Total cartão")
+        self.assertContains(response, "Balanço consolidado")
         self.assertContains(response, "R$ 750,05")
         self.assertContains(response, "R$ 870,05")
+        self.assertContains(response, "R$ 880,05")
 
     def test_toggle_cleared_with_htmx_returns_redirect_header(self):
         response = self.client.post(

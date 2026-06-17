@@ -1404,6 +1404,10 @@ body {
     color: #60a5fa;
 }
 
+.txn-balance-value-consolidated {
+    color: #6ee7b7;
+}
+
 .txn-balance-value.txn-balance-value-negative {
     color: #fb4b5f;
 }
@@ -2252,6 +2256,18 @@ body {
 
 .dash-alert-amount-credit {
     color: #93c5fd;
+}
+
+.dash-alert-amount-card-limit {
+    color: #34d399;
+}
+
+.dash-alert-amount-consolidated {
+    color: #22d3ee;
+}
+
+.dash-alert-amount-negative {
+    color: #fb4b5f;
 }
 
 .dash-category-card {
@@ -3985,6 +4001,74 @@ input[type="radio"] {
     background: rgba(255, 255, 255, 0.86) !important;
     border-color: rgba(255, 255, 255, 0.86) !important;
     color: #000000 !important;
+}
+
+/* FAB speed-dial */
+.fab-speed-dial {
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+    display: grid;
+    place-items: center;
+}
+
+.fab-speed-dial-menu {
+    position: fixed;
+    bottom: 5.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(0.5rem);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 46;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.6rem;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.fab-speed-dial-menu.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.fab-speed-dial-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: inherit;
+}
+
+.fab-speed-dial-label {
+    background: rgba(30, 41, 59, 0.45);
+    color: #e2e8f0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(100, 116, 139, 0.45);
+    white-space: nowrap;
+}
+
+.fab-speed-dial-mini {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(100, 116, 139, 0.45);
+    color: #e2e8f0;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.fab-speed-dial-mini svg {
+    width: 1.2rem;
+    height: 1.2rem;
 }
 
 

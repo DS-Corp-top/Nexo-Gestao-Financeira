@@ -53,6 +53,59 @@ class AccountBalanceTests(TestCase):
         self.assertEqual(self.bank_account.balance, Decimal("1000.00"))
         self.assertEqual(self.card_account.balance, Decimal("0.00"))
 
+    def test_card_account_balance_updates_with_cleared_status(self):
+        real_card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao real",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            include_in_balance=False,
+        )
+        card_expense = Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+            date=date(2026, 3, 10),
+            account=real_card_account,
+            category=self.expense_category,
+            description="Compra no cartao",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        self.assertEqual(real_card_account.balance, Decimal("-81.68"))
+
+        card_expense.is_cleared = False
+        card_expense.save(update_fields=["is_cleared"])
+
+        self.assertEqual(real_card_account.balance, Decimal("0.00"))
+
+    def test_account_list_shows_card_account_balance(self):
+        real_card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao real",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            include_in_balance=False,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+            date=date(2026, 3, 10),
+            account=real_card_account,
+            category=self.expense_category,
+            description="Compra no cartao",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        response = self.client.get(reverse("accounts:list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cartao real")
+        self.assertContains(response, "Saldo: -R$ 81,68")
+
     def test_transfer_to_card_reduces_only_source_account_balance(self):
         Transaction.objects.create(
             user=self.user,

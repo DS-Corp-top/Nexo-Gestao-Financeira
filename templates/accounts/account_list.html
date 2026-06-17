@@ -34,7 +34,7 @@
                             <span class="badge badge-expense">Inativa</span>
                         {% endif %}
                     </div>
-                    {% if account.include_in_balance %}
+                    {% if account.include_in_balance or account.account_type == "card" %}
                         <p class="app-item-value mt-3">Saldo: {{ account.balance|brl }}</p>
                     {% else %}
                         <p class="app-item-value mt-3">Saldo desconsiderado</p>

@@ -32,18 +32,20 @@
         <span>Transacoes</span>
     </a>
 
-    <button
-        hx-get="{% url 'transactions:quick-add' %}"
-        hx-target="#modal-content"
-        hx-swap="innerHTML"
-        class="dash-center-fab"
-        aria-label="Adicionar transacao"
-    >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dash-center-fab-icon" aria-hidden="true">
-            <path d="M12 5v14"></path>
-            <path d="M5 12h14"></path>
-        </svg>
-    </button>
+    <div class="fab-speed-dial" id="fab-speed-dial">
+        <button
+            class="dash-center-fab"
+            id="fab-main-btn"
+            onclick="toggleFabDial()"
+            aria-label="Menu de acoes"
+            aria-expanded="false"
+        >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dash-center-fab-icon" aria-hidden="true">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+            </svg>
+        </button>
+    </div>
 
     <a href="{% url 'accounts:list' %}" class="dash-tab-link">
         <span class="dash-tab-icon">
@@ -77,6 +79,7 @@
         <span>Compras</span>
     </a>
 </nav>
+{% include "partials/fab_speed_dial.html" %}
 {% endif %}
 {% endblock %}
 
@@ -278,6 +281,30 @@
                 <span class="dash-alert-badge dash-alert-badge-credit">{{ credit_card_month_count }}</span>
                 <p class="dash-alert-title">Total cartão</p>
                 <p class="dash-alert-amount dash-alert-amount-credit-total" data-sensitive-value data-mask="R$ ****">{{ credit_card_month_total|brl }}</p>
+            </article>
+
+            <article class="dash-alert-card dash-alert-card-credit">
+                <div class="dash-alert-icon dash-alert-icon-credit" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                        <path d="M3 9h18"></path>
+                        <path d="M8 15h8"></path>
+                    </svg>
+                </div>
+                <p class="dash-alert-title">Limite do cartão</p>
+                <p class="dash-alert-amount dash-alert-amount-card-limit" data-sensitive-value data-mask="R$ ****">{{ credit_card_limit|brl }}</p>
+            </article>
+
+            <article class="dash-alert-card dash-alert-card-credit">
+                <div class="dash-alert-icon dash-alert-icon-credit" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19V5"></path>
+                        <path d="M4 19h16"></path>
+                        <path d="M8 15l3-3 3 2 5-7"></path>
+                    </svg>
+                </div>
+                <p class="dash-alert-title">Balanço consolidado</p>
+                <p class="dash-alert-amount dash-alert-amount-consolidated{% if consolidated_balance < 0 %} dash-alert-amount-negative{% endif %}" data-sensitive-value data-mask="R$ ****">{{ consolidated_balance|brl }}</p>
             </article>
         </div>
     </section>

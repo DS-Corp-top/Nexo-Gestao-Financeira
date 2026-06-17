@@ -38,6 +38,14 @@ class Account(models.Model):
         decimal_places=2,
         default=Decimal("0.00"),
     )
+    credit_limit = models.DecimalField(
+        "Limite do cartão",
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Informe o limite de crédito (apenas para contas do tipo Cartão).",
+    )
     include_in_balance = models.BooleanField(
         "Considerar no saldo",
         default=True,

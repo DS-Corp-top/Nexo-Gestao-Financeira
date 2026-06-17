@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.apps import apps
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -21,7 +21,7 @@ def tracked_accounts(queryset):
 
 
 def calculate_account_balance(account, cutoff_date=None):
-    if not account.include_in_balance:
+    if not account.include_in_balance and account.account_type != "card":
         return ZERO
 
     cutoff_date = cutoff_date or timezone.localdate()
@@ -80,7 +80,10 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
     total_expense = _sum_amount(
         posted_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
-        ).filter(account__include_in_balance=True)
+        ).filter(
+            Q(account__include_in_balance=True)
+            | Q(account__account_type="card")
+        )
     )
     total_outgoing_transfers = _sum_amount(
         posted_transactions.filter(
@@ -100,6 +103,32 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
         - total_expense
         - total_outgoing_transfers
     )
+
+
+def calculate_credit_card_available_limit(tenant, selected_month):
+    account_model = apps.get_model("accounts", "Account")
+    card_accounts = account_model.objects.filter(
+        tenant=tenant,
+        account_type="card",
+        is_active=True,
+    )
+
+    total_limit = card_accounts.aggregate(
+        total=Coalesce(Sum("credit_limit"), ZERO)
+    )["total"]
+
+    monthly_expenses = Transaction.objects.filter(
+        tenant=tenant,
+        transaction_type=Transaction.TransactionType.EXPENSE,
+        account__account_type="card",
+        account__is_active=True,
+        is_cleared=True,
+        is_ignored=False,
+        date__year=selected_month.year,
+        date__month=selected_month.month,
+    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+
+    return total_limit - monthly_expenses
 
 
 def calculate_monthly_balance(user, selected_month, account=None, category=None, tenant=None):

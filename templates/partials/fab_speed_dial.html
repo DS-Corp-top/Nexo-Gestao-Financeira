@@ -1,0 +1,74 @@
+<div class="fab-speed-dial-menu" id="fab-speed-dial-menu" aria-hidden="true">
+    <button
+        class="fab-speed-dial-item"
+        hx-get="{% url 'accounts:credit-limit' %}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        hx-on::before-request="closeFabDial()"
+        aria-label="Lançar limite do cartão"
+    >
+        <span class="fab-speed-dial-label">Limite cartão</span>
+        <span class="fab-speed-dial-mini">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="2" y="6" width="20" height="13" rx="2"/>
+                <path d="M2 10h20"/>
+            </svg>
+        </span>
+    </button>
+    <button
+        class="fab-speed-dial-item"
+        hx-get="{% url 'transactions:quick-add' %}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        hx-on::before-request="closeFabDial()"
+        aria-label="Adicionar transacao"
+    >
+        <span class="fab-speed-dial-label">Transação</span>
+        <span class="fab-speed-dial-mini">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <path d="M12 5v14"/>
+                <path d="M5 12h14"/>
+            </svg>
+        </span>
+    </button>
+</div>
+
+<script>
+    if (!window._fabDialInit) {
+        window._fabDialInit = true;
+
+        window.toggleFabDial = function () {
+            var menu = document.getElementById('fab-speed-dial-menu');
+            var btn = document.getElementById('fab-main-btn');
+            if (!menu) return;
+            var isOpen = menu.classList.contains('is-open');
+            if (isOpen) {
+                window.closeFabDial();
+            } else {
+                menu.classList.add('is-open');
+                menu.setAttribute('aria-hidden', 'false');
+                if (btn) btn.setAttribute('aria-expanded', 'true');
+            }
+        };
+
+        window.closeFabDial = function () {
+            var menu = document.getElementById('fab-speed-dial-menu');
+            var btn = document.getElementById('fab-main-btn');
+            if (menu) {
+                menu.classList.remove('is-open');
+                menu.setAttribute('aria-hidden', 'true');
+            }
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        };
+
+        document.addEventListener('click', function (e) {
+            var dial = document.getElementById('fab-speed-dial');
+            var menu = document.getElementById('fab-speed-dial-menu');
+            if (menu && menu.classList.contains('is-open')) {
+                if ((!dial || !dial.contains(e.target)) && !menu.contains(e.target)) {
+                    window.closeFabDial();
+                }
+            }
+        });
+    }
+</script>

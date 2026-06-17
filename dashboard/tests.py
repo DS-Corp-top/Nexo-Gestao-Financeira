@@ -163,12 +163,77 @@ class DashboardChartsMonthScopeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["total_balance"], Decimal("600.00"))
 
+    def test_home_total_balance_applies_cleared_card_expense(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao saldo",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            include_in_balance=False,
+        )
+        self.account.initial_balance = Decimal("1000.00")
+        self.account.save(update_fields=["initial_balance"])
+
+        card_expense = Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+            date=date(2026, 3, 16),
+            account=card_account,
+            category=self.category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        cleared_response = self.client.get(reverse("dashboard:home"), {"month": "2026-03"})
+        self.assertEqual(cleared_response.status_code, 200)
+        self.assertEqual(cleared_response.context["total_balance"], Decimal("918.32"))
+
+        card_expense.is_cleared = False
+        card_expense.save(update_fields=["is_cleared"])
+
+        pending_response = self.client.get(reverse("dashboard:home"), {"month": "2026-03"})
+        self.assertEqual(pending_response.status_code, 200)
+        self.assertEqual(pending_response.context["total_balance"], Decimal("1000.00"))
+
+    def test_home_card_limit_uses_card_account_balance(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            name="Cartao limite",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            credit_limit=Decimal("281.68"),
+            include_in_balance=False,
+        )
+        card_expense = Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+            date=date(2026, 3, 16),
+            account=card_account,
+            category=self.category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        cleared_response = self.client.get(reverse("dashboard:home"), {"month": "2026-03"})
+        self.assertEqual(cleared_response.status_code, 200)
+        self.assertEqual(cleared_response.context["credit_card_limit"], Decimal("200.00"))
+
+        card_expense.is_cleared = False
+        card_expense.save(update_fields=["is_cleared"])
+
+        pending_response = self.client.get(reverse("dashboard:home"), {"month": "2026-03"})
+        self.assertEqual(pending_response.status_code, 200)
+        self.assertEqual(pending_response.context["credit_card_limit"], Decimal("281.68"))
+
     def test_home_shows_selected_month_credit_card_expense_total(self):
         card_account = Account.objects.create(
             user=self.user,
             name="Cartao Controle",
             account_type=Account.AccountType.CARD,
             initial_balance=Decimal("0.00"),
+            credit_limit=Decimal("500.50"),
             include_in_balance=False,
         )
         bank_category = Category.objects.create(
@@ -231,10 +296,18 @@ class DashboardChartsMonthScopeTests(TestCase):
         self.assertEqual(response.context["credit_card_month_total"], Decimal("270.50"))
         self.assertEqual(response.context["credit_card_expense_count"], 2)
         self.assertEqual(response.context["credit_card_month_count"], 3)
+        self.assertEqual(response.context["credit_card_limit"], Decimal("430.50"))
+        self.assertEqual(
+            response.context["consolidated_balance"],
+            response.context["monthly_balance"] + Decimal("430.50"),
+        )
         self.assertContains(response, "Cartão aberto")
         self.assertContains(response, "Total cartão")
+        self.assertContains(response, "Limite do cartão")
+        self.assertContains(response, "Balanço consolidado")
         self.assertContains(response, "R$ 200,50")
         self.assertContains(response, "R$ 270,50")
+        self.assertContains(response, "R$ 430,50")
 
 class DashboardPostLoginLoaderTests(TestCase):
     def setUp(self):

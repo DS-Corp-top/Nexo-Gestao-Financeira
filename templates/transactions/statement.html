@@ -25,18 +25,20 @@
         <span>Transacoes</span>
     </a>
 
-    <button
-        hx-get="{% url 'transactions:quick-add' %}"
-        hx-target="#modal-content"
-        hx-swap="innerHTML"
-        class="txn-center-fab"
-        aria-label="Adicionar transacao"
-    >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="txn-center-fab-icon" aria-hidden="true">
-            <path d="M12 5v14"></path>
-            <path d="M5 12h14"></path>
-        </svg>
-    </button>
+    <div class="fab-speed-dial" id="fab-speed-dial">
+        <button
+            class="txn-center-fab"
+            id="fab-main-btn"
+            onclick="toggleFabDial()"
+            aria-label="Menu de acoes"
+            aria-expanded="false"
+        >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="txn-center-fab-icon" aria-hidden="true">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+            </svg>
+        </button>
+    </div>
 
     <a href="{% url 'accounts:list' %}" class="txn-tab-link">
         <span class="txn-tab-icon">
@@ -59,6 +61,7 @@
         <span>Compras</span>
     </a>
 </nav>
+{% include "partials/fab_speed_dial.html" %}
 {% endif %}
 {% endblock %}
 

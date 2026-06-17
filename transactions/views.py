@@ -15,7 +15,11 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, TemplateView, UpdateView
 
 from accounts.models import Account
-from common.balance import calculate_monthly_balance, calculate_user_balance
+from common.balance import (
+    calculate_credit_card_available_limit,
+    calculate_monthly_balance,
+    calculate_user_balance,
+)
 from common.mixins import UserAssignMixin, UserQuerySetMixin
 from common.security import resolve_safe_redirect_url
 from transactions.forms import QuickTransactionForm, StatementFilterForm, TransactionForm
@@ -411,7 +415,9 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             total=Coalesce(Sum("amount"), Decimal("0.00"))
         )["total"]
 
-        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total
+        credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
+
+        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total, credit_card_limit
 
     def get_filtered_transactions(self, form, selected_month):
         queryset = Transaction.objects.filter(tenant=self.request.tenant).select_related(
@@ -433,6 +439,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             monthly_balance,
             credit_card_open_total,
             credit_card_month_total,
+            credit_card_limit,
         ) = self.get_balances(form, selected_month)
 
         query_params = self.request.GET.copy()
@@ -454,6 +461,8 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["credit_card_expense_total"] = credit_card_open_total
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total
+        context["credit_card_limit"] = credit_card_limit
+        context["consolidated_balance"] = monthly_balance + credit_card_limit
         context["statement_return_url"] = (
             f"{reverse('transactions:statement')}?{query_params.urlencode()}"
         )

@@ -8,7 +8,11 @@ from django.utils import timezone
 from django.views.generic import TemplateView
 
 from accounts.models import Account
-from common.balance import calculate_user_balance
+from common.balance import (
+    calculate_credit_card_available_limit,
+    calculate_monthly_balance,
+    calculate_user_balance,
+)
 from goals.models import SavingGoal
 from transactions.models import Transaction
 
@@ -278,6 +282,9 @@ class DashboardContextMixin(LoginRequiredMixin):
         )["total"]
         credit_card_expense_count = credit_card_open_expenses.count()
         credit_card_month_count = credit_card_expenses.count()
+        credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
+        monthly_balance = calculate_monthly_balance(user, selected_month, tenant=tenant)
+        consolidated_balance = monthly_balance + credit_card_limit
 
         category_source = current_month_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
@@ -316,6 +323,7 @@ class DashboardContextMixin(LoginRequiredMixin):
             "total_balance": calculate_user_balance(user, balance_cutoff_date, tenant=tenant),
             "monthly_income": monthly_income,
             "monthly_expense": monthly_expense,
+            "monthly_balance": monthly_balance,
             "category_title": category_title,
             "category_empty": category_empty,
             "latest_transactions": latest_transactions,
@@ -331,6 +339,8 @@ class DashboardContextMixin(LoginRequiredMixin):
             "credit_card_open_total": credit_card_expense_total,
             "credit_card_month_total": credit_card_month_total,
             "credit_card_month_count": credit_card_month_count,
+            "credit_card_limit": credit_card_limit,
+            "consolidated_balance": consolidated_balance,
             "due_notifications": due_notifications,
             "due_notifications_count": due_notifications_count,
             "due_overdue_count": due_overdue_count,
