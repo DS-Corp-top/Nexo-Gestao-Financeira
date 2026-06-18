@@ -70,23 +70,6 @@ def ensure_user_has_tenant(user):
     return create_personal_tenant_for_user(user)
 
 
-def get_active_tenant_for_user(user, tenant_id=None):
-    memberships = TenantMembership.objects.select_related("tenant").filter(
-        user=user,
-        tenant__is_active=True,
-    )
-    if tenant_id:
-        selected = memberships.filter(tenant_id=tenant_id).first()
-        if selected:
-            return selected.tenant
-
-    selected = memberships.filter(is_default=True).first()
-    if selected:
-        return selected.tenant
-
-    return ensure_user_has_tenant(user)
-
-
 def get_request_tenant(request):
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:

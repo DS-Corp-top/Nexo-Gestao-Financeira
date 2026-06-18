@@ -12,8 +12,8 @@ from common.balance import (
     calculate_credit_card_available_limit,
     calculate_monthly_balance,
     calculate_user_balance,
-    get_credit_card_total_limit,
 )
+from common.months import month_bounds, month_value_to_date, shift_month
 from investments.models import Investment, InvestmentEntry
 from transactions.models import Transaction
 
@@ -37,11 +37,6 @@ MONTH_NAMES_PT = {
 class DashboardContextMixin(LoginRequiredMixin):
     category_palette = ["#0b0b0f", "#7abf00", "#d1d5db", "#9ca3af", "#fb7185"]
 
-    def _shift_month(self, base_month: date, offset: int) -> date:
-        serial = base_month.year * 12 + (base_month.month - 1) + offset
-        year, month_idx = divmod(serial, 12)
-        return date(year, month_idx + 1, 1)
-
     def _get_selected_month(self) -> date:
         today = timezone.localdate()
         selected_value = (self.request.GET.get("month") or "").strip()
@@ -49,23 +44,15 @@ class DashboardContextMixin(LoginRequiredMixin):
         if not selected_value:
             return today.replace(day=1)
 
-        try:
-            year_str, month_str = selected_value.split("-", maxsplit=1)
-            year = int(year_str)
-            month = int(month_str)
-            if month < 1 or month > 12:
-                raise ValueError
-            return date(year, month, 1)
-        except (TypeError, ValueError):
-            return today.replace(day=1)
+        selected_month = month_value_to_date(selected_value)
+        return selected_month or today.replace(day=1)
 
     def _get_month_bounds(self, selected_month: date):
-        next_month = self._shift_month(selected_month, 1)
-        return selected_month, next_month
+        return month_bounds(selected_month)
 
     def _build_month_navigation(self, selected_month: date):
-        prev_month = self._shift_month(selected_month, -1)
-        next_month = self._shift_month(selected_month, 1)
+        prev_month = shift_month(selected_month, -1)
+        next_month = shift_month(selected_month, 1)
 
         prev_params = self.request.GET.copy()
         prev_params["month"] = f"{prev_month.year:04d}-{prev_month.month:02d}"
@@ -186,7 +173,7 @@ class DashboardContextMixin(LoginRequiredMixin):
     def _build_expense_trend(self, tenant, selected_month: date):
         points = []
         for offset in range(-5, 1):
-            month_date = self._shift_month(selected_month, offset)
+            month_date = shift_month(selected_month, offset)
             total = (
                 Transaction.objects.filter(
                     tenant=tenant,
@@ -240,7 +227,7 @@ class DashboardContextMixin(LoginRequiredMixin):
             transaction_type=Transaction.TransactionType.EXPENSE
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
-        end_of_selected_month = self._shift_month(selected_month, 1) - timedelta(days=1)
+        end_of_selected_month = shift_month(selected_month, 1) - timedelta(days=1)
         balance_cutoff_date = end_of_selected_month
 
         latest_transactions = (
@@ -420,24 +407,6 @@ class DashboardHomeView(DashboardContextMixin, TemplateView):
         context["show_post_login_loader"] = bool(
             self.request.session.pop("show_post_login_loader", False)
         )
-        return context
-
-
-class DashboardSummaryPartialView(DashboardContextMixin, TemplateView):
-    template_name = "dashboard/partials/summary_cards.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context.update(self.get_dashboard_context())
-        return context
-
-
-class DashboardLatestPartialView(DashboardContextMixin, TemplateView):
-    template_name = "dashboard/partials/latest_transactions.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context.update(self.get_dashboard_context())
         return context
 
 

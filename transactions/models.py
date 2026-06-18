@@ -177,12 +177,6 @@ class Transaction(models.Model):
         return f"{self.get_transaction_type_display()} - R$ {self.amount}"
 
     @property
-    def signed_amount(self) -> Decimal:
-        if self.transaction_type == self.TransactionType.EXPENSE:
-            return -self.amount
-        return self.amount
-
-    @property
     def display_title(self) -> str:
         base_title = (self.description or "").strip() or "Sem descricao"
         if (

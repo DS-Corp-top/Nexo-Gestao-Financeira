@@ -19,9 +19,9 @@ from common.balance import (
     calculate_credit_card_available_limit,
     calculate_monthly_balance,
     calculate_user_balance,
-    get_credit_card_total_limit,
 )
 from common.mixins import UserAssignMixin, UserQuerySetMixin
+from common.months import month_value_to_date, shift_month
 from common.security import resolve_safe_redirect_url
 from transactions.forms import QuickTransactionForm, StatementFilterForm, TransactionForm
 from transactions.models import ClosedMonth, Transaction
@@ -307,26 +307,9 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             tenant=self.request.tenant,
         )
 
-    @staticmethod
-    def month_value_to_date(month_value):
-        if not month_value:
-            return None
-        try:
-            year, month = month_value.split("-")
-            return date(int(year), int(month), 1)
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def shift_month(base_month, delta):
-        month_index = (base_month.month - 1) + delta
-        year = base_month.year + (month_index // 12)
-        month = (month_index % 12) + 1
-        return date(year, month, 1)
-
     def get_selected_month(self):
         requested_value = self.request.GET.get("month", "")
-        parsed_value = self.month_value_to_date(requested_value)
+        parsed_value = month_value_to_date(requested_value)
 
         if parsed_value:
             return parsed_value, requested_value
@@ -368,8 +351,8 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
 
     def get_month_navigation(self, selected_month):
         selected_label = date_format(selected_month, "F Y").capitalize()
-        prev_month = self.shift_month(selected_month, -1)
-        next_month = self.shift_month(selected_month, 1)
+        prev_month = shift_month(selected_month, -1)
+        next_month = shift_month(selected_month, 1)
 
         prev_params = self.request.GET.copy()
         prev_params["month"] = prev_month.strftime("%Y-%m")
@@ -380,7 +363,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         return selected_label, prev_params.urlencode(), next_params.urlencode()
 
     def get_balance_cutoff_date(self, selected_month):
-        next_month = self.shift_month(selected_month, 1)
+        next_month = shift_month(selected_month, 1)
         end_of_selected_month = next_month - timedelta(days=1)
         return end_of_selected_month
 
@@ -422,10 +405,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             total=Coalesce(Sum("amount"), Decimal("0.00"))
         )["total"]
 
-        credit_card_limit = get_credit_card_total_limit(tenant, selected_month)
-        credit_card_available = calculate_credit_card_available_limit(tenant, selected_month) - credit_card_open_total
-
-        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total, credit_card_limit, credit_card_available
+        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total
 
     def get_filtered_transactions(self, form, selected_month):
         queryset = Transaction.objects.filter(tenant=self.request.tenant).select_related(
@@ -447,8 +427,6 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             monthly_balance,
             credit_card_open_total,
             credit_card_month_total,
-            credit_card_limit,
-            credit_card_available,
         ) = self.get_balances(form, selected_month)
 
         query_params = self.request.GET.copy()
