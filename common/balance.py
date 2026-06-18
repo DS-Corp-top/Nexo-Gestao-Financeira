@@ -103,27 +103,20 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
 
 
 def get_credit_card_total_limit(tenant, selected_month):
-    card_monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
+    transaction_model = apps.get_model("transactions", "Transaction")
 
-    return card_monthly_limit_model.objects.filter(
+    return transaction_model.objects.filter(
         tenant=tenant,
         account__account_type="card",
         account__is_active=True,
-        year=selected_month.year,
-        month=selected_month.month,
+        transaction_type="income",
+        date__year=selected_month.year,
+        date__month=selected_month.month,
     ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
 
 def calculate_credit_card_available_limit(tenant, selected_month):
-    card_monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
-
-    total_limit = card_monthly_limit_model.objects.filter(
-        tenant=tenant,
-        account__account_type="card",
-        account__is_active=True,
-        year=selected_month.year,
-        month=selected_month.month,
-    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+    total_limit = get_credit_card_total_limit(tenant, selected_month)
 
     card_filter = dict(
         tenant=tenant,
@@ -140,12 +133,7 @@ def calculate_credit_card_available_limit(tenant, selected_month):
         transaction_type=Transaction.TransactionType.EXPENSE,
     ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-    monthly_income = Transaction.objects.filter(
-        **card_filter,
-        transaction_type=Transaction.TransactionType.INCOME,
-    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-
-    return total_limit - monthly_expenses + monthly_income
+    return total_limit - monthly_expenses
 
 
 def calculate_monthly_balance(user, selected_month, account=None, category=None, tenant=None):
