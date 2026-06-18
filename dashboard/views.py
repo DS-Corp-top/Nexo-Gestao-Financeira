@@ -59,6 +59,10 @@ class DashboardContextMixin(LoginRequiredMixin):
         except (TypeError, ValueError):
             return today.replace(day=1)
 
+    def _get_month_bounds(self, selected_month: date):
+        next_month = self._shift_month(selected_month, 1)
+        return selected_month, next_month
+
     def _build_month_navigation(self, selected_month: date):
         prev_month = self._shift_month(selected_month, -1)
         next_month = self._shift_month(selected_month, 1)
@@ -219,12 +223,13 @@ class DashboardContextMixin(LoginRequiredMixin):
         tenant = self.request.tenant
         today = timezone.localdate()
         selected_month = self._get_selected_month()
+        month_start, next_month_start = self._get_month_bounds(selected_month)
 
         current_month_transactions = Transaction.objects.filter(
             tenant=tenant,
             is_ignored=False,
-            date__year=selected_month.year,
-            date__month=selected_month.month,
+            date__gte=month_start,
+            date__lt=next_month_start,
         )
 
         monthly_income = current_month_transactions.filter(
@@ -250,8 +255,8 @@ class DashboardContextMixin(LoginRequiredMixin):
                 transaction_type=Transaction.TransactionType.EXPENSE,
                 is_cleared=False,
                 is_ignored=False,
-                date__year=selected_month.year,
-                date__month=selected_month.month,
+                date__gte=month_start,
+                date__lt=next_month_start,
             )
             .select_related("account", "category")
             .order_by("date", "created_at")

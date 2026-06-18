@@ -309,6 +309,63 @@ class DashboardChartsMonthScopeTests(TestCase):
         self.assertContains(response, "R$ 270,50")
         self.assertContains(response, "R$ 430,50")
 
+    def test_home_due_notifications_keep_selected_month_scope(self):
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("91.14"),
+            date=date(2026, 7, 1),
+            account=self.account,
+            category=self.category,
+            description="Conta julho",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=False,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("47.76"),
+            date=date(2026, 8, 6),
+            account=self.account,
+            category=self.category,
+            description="Conta agosto",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=False,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("35.00"),
+            date=date(2025, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Conta julho outro ano",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=False,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("22.00"),
+            date=date(2026, 7, 12),
+            account=self.account,
+            category=self.category,
+            description="Conta julho baixada",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+
+        response = self.client.get(reverse("dashboard:home"), {"month": "2026-07"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["due_notifications_count"], 1)
+        self.assertEqual(len(response.context["due_notifications"]), 1)
+        self.assertEqual(response.context["due_notifications"][0].description, "Conta julho")
+        self.assertContains(response, "/transactions/?month=2026-07")
+        self.assertContains(response, "Conta julho")
+        self.assertNotContains(response, "Conta agosto")
+        self.assertNotContains(response, "Conta julho outro ano")
+
 class DashboardPostLoginLoaderTests(TestCase):
     def setUp(self):
         user_model = get_user_model()

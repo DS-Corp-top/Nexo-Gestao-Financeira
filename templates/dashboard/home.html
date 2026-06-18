@@ -170,7 +170,7 @@
                         <p class="dash-due-empty">Sem vencimentos proximos.</p>
                     {% endif %}
 
-                    <a href="{% url 'transactions:statement' %}" class="dash-due-link">Abrir transacoes</a>
+                    <a href="{% url 'transactions:statement' %}?month={{ selected_month_value }}" class="dash-due-link">Abrir transacoes</a>
                 </div>
             </div>
 <div class="dash-month-nav" aria-label="Navegacao de mes">
