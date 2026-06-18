@@ -19,6 +19,7 @@ from common.balance import (
     calculate_credit_card_available_limit,
     calculate_monthly_balance,
     calculate_user_balance,
+    get_credit_card_total_limit,
 )
 from common.mixins import UserAssignMixin, UserQuerySetMixin
 from common.security import resolve_safe_redirect_url
@@ -421,9 +422,10 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             total=Coalesce(Sum("amount"), Decimal("0.00"))
         )["total"]
 
-        credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
+        credit_card_limit = get_credit_card_total_limit(tenant, selected_month)
+        credit_card_available = calculate_credit_card_available_limit(tenant, selected_month) - credit_card_open_total
 
-        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total, credit_card_limit
+        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total, credit_card_limit, credit_card_available
 
     def get_filtered_transactions(self, form, selected_month):
         queryset = Transaction.objects.filter(tenant=self.request.tenant).select_related(
@@ -446,6 +448,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             credit_card_open_total,
             credit_card_month_total,
             credit_card_limit,
+            credit_card_available,
         ) = self.get_balances(form, selected_month)
 
         query_params = self.request.GET.copy()
@@ -468,7 +471,6 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total
         context["credit_card_limit"] = credit_card_limit
-        credit_card_available = credit_card_limit - credit_card_open_total
         context["credit_card_available"] = credit_card_available
         consolidated_balance = monthly_balance + credit_card_available
         context["consolidated_balance"] = consolidated_balance

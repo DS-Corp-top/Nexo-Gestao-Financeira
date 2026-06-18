@@ -102,6 +102,18 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
     )
 
 
+def get_credit_card_total_limit(tenant, selected_month):
+    card_monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
+
+    return card_monthly_limit_model.objects.filter(
+        tenant=tenant,
+        account__account_type="card",
+        account__is_active=True,
+        year=selected_month.year,
+        month=selected_month.month,
+    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+
+
 def calculate_credit_card_available_limit(tenant, selected_month):
     card_monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
 
