@@ -2383,6 +2383,9 @@ body {
     color: #f8fafc;
     font-size: 0.85rem;
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .dash-legend-amount {
@@ -4259,6 +4262,9 @@ input[type="radio"] {
     font-size: 0.78rem;
     color: #cbd5e1;
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .inv-dash-legend-pct {
