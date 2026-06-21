@@ -1,5 +1,13 @@
 {
   "files.associations": {
     "**/templates/**/*.html": "html"
-  }
+  },
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.unittestEnabled": true,
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestArgs": [
+    "-v"
+  ],
+  "python.testing.autoTestDiscoverOnSaveEnabled": true
 }

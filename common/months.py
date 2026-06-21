@@ -8,7 +8,7 @@ def month_value_to_date(month_value):
     try:
         year, month = month_value.split("-")
         return date(int(year), int(month), 1)
-    except (TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError):
         return None
 
 
