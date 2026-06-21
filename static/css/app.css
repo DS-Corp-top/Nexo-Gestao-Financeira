@@ -1451,6 +1451,54 @@ body {
     color: #fb4b5f;
 }
 
+.txn-month-totals {
+    margin-top: 0.65rem;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.txn-month-totals-title {
+    padding: 0.42rem 0.65rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    color: rgba(203, 213, 225, 0.72);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.txn-month-totals-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.txn-month-total-item {
+    min-width: 0;
+    padding: 0.5rem 0.65rem 0.6rem;
+}
+
+.txn-month-total-item:first-child {
+    border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.txn-month-total-value {
+    display: block;
+    font-size: clamp(0.9rem, 4vw, 1.2rem);
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.txn-month-total-income {
+    color: #34d399;
+}
+
+.txn-month-total-expense {
+    color: #fb4b5f;
+}
+
 @media (max-width: 390px) {
     .txn-balance-card {
         padding: 0.72rem;

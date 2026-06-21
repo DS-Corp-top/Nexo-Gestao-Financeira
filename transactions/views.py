@@ -445,6 +445,20 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["today"] = timezone.localdate()
         context["current_balance"] = current_balance
         context["monthly_balance"] = monthly_balance
+
+        monthly_transactions = Transaction.objects.filter(
+            tenant=self.request.tenant,
+            is_ignored=False,
+            date__year=selected_month.year,
+            date__month=selected_month.month,
+        )
+        context["monthly_income_total"] = monthly_transactions.filter(
+            transaction_type=Transaction.TransactionType.INCOME,
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+        context["monthly_expense_total"] = monthly_transactions.filter(
+            transaction_type=Transaction.TransactionType.EXPENSE,
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+
         credit_card_limit = calculate_credit_card_available_limit(self.request.tenant, selected_month)
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total

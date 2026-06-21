@@ -15,7 +15,7 @@
     {% if not app_debug %}
     <link rel="manifest" href="{% url 'manifest' %}">
     {% endif %}
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260616a">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260621a">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -188,7 +188,7 @@
             }
 
             navigator.serviceWorker
-                .register("{% url 'service-worker' %}?v=6")
+                .register("{% url 'service-worker' %}?v=7")
                 .then(function (registration) {
                     registration.update();
                 })

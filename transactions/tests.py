@@ -868,12 +868,40 @@ class TransactionScopeAndMonthLockTests(TestCase):
             response.context["consolidated_balance"],
             response.context["monthly_balance"] + Decimal("880.05"),
         )
-        self.assertContains(response, "Cartão aberto")
+        self.assertContains(response, "Cartão em aberto")
         self.assertContains(response, "Total cartão")
         self.assertContains(response, "Balanço consolidado")
         self.assertContains(response, "R$ 750,05")
         self.assertContains(response, "R$ 870,05")
         self.assertContains(response, "R$ 880,05")
+
+    def test_statement_balance_shows_monthly_income_and_expense_totals(self):
+        expense_category = Category.objects.create(
+            user=self.user,
+            name="Despesas mensais",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("250.50"),
+            date=date(2026, 2, 12),
+            account=self.account,
+            category=expense_category,
+            description="Despesa de fevereiro",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+
+        response = self.client.get(reverse("transactions:statement"), {"month": "2026-02"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["monthly_income_total"], Decimal("7000.00"))
+        self.assertEqual(response.context["monthly_expense_total"], Decimal("250.50"))
+        self.assertContains(response, "Totais do mês")
+        self.assertContains(response, "txn-month-total-income")
+        self.assertContains(response, "txn-month-total-expense")
+        self.assertContains(response, "R$ 7.000,00")
+        self.assertContains(response, "R$ 250,50")
 
     def test_toggle_cleared_with_htmx_returns_redirect_header(self):
         response = self.client.post(
