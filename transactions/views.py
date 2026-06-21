@@ -486,7 +486,7 @@ class StatementBalancePartialView(StatementViewBase):
     template_name = "transactions/partials/statement_balance.html"
 
 
-class TransactionToggleClearedView(LoginRequiredMixin, View):
+class TransactionToggleClearedView(LoginRequiredMixin, MonthLockMixin, View):
     success_url = reverse_lazy("transactions:statement")
     modal_template_name = "transactions/partials/clear_transaction_modal.html"
 
@@ -527,6 +527,15 @@ class TransactionToggleClearedView(LoginRequiredMixin, View):
 
             if cleared_date is None:
                 messages.error(request, "Informe uma data valida para baixar a transacao.")
+                next_url = self._resolve_next_url(request)
+                if request.headers.get("HX-Request") == "true":
+                    response = HttpResponse(status=204)
+                    response["HX-Redirect"] = next_url
+                    return response
+                return HttpResponseRedirect(next_url)
+
+            if self.is_month_closed(cleared_date) and not self.is_unlock_password_valid():
+                messages.error(request, self.closed_month_error)
                 next_url = self._resolve_next_url(request)
                 if request.headers.get("HX-Request") == "true":
                     response = HttpResponse(status=204)
