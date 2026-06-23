@@ -2,7 +2,6 @@ from django import forms
 from django.utils.timezone import localdate
 
 from invoices.models import Client, Invoice
-from invoices.service_codes import SERVICE_CODES
 
 
 class ClientForm(forms.ModelForm):
