@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}NFS-e {{ invoice.number_display }} | Nexo{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
+
+{% block content %}
+<section class="app-page space-y-4">
+
+    {# Cabeçalho #}
+    <div class="flex items-start justify-between gap-3">
+        <div>
+            <h1 class="app-title">NFS-e {{ invoice.number_display }}</h1>
+        </div>
+        {% if invoice.status == 'issued' %}
+            <span class="badge badge-expense">Emitida</span>
+        {% elif invoice.status == 'paid' %}
+            <span class="badge badge-income">Paga</span>
+        {% else %}
+            <span class="badge" style="background:rgba(100,116,139,0.25);color:#94a3b8;">Cancelada</span>
+        {% endif %}
+    </div>
+
+    {# Datas #}
+    <div class="card">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <p class="app-item-meta">Data de emissão</p>
+                <p class="app-item-title">{{ invoice.issue_date|date:"d/m/Y" }}</p>
+            </div>
+            {% if invoice.due_date %}
+            <div>
+                <p class="app-item-meta">Vencimento</p>
+                <p class="app-item-title">{{ invoice.due_date|date:"d/m/Y" }}</p>
+            </div>
+            {% endif %}
+            {% if invoice.paid_at %}
+            <div>
+                <p class="app-item-meta">Recebida em</p>
+                <p class="app-item-title">{{ invoice.paid_at|date:"d/m/Y" }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Tomador #}
+    <div class="card space-y-2">
+        <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Tomador do serviço</p>
+        <p class="app-item-title">{{ invoice.client_name }}</p>
+        {% if invoice.client_document %}<p class="app-item-meta">{{ invoice.client_document }}</p>{% endif %}
+        {% if invoice.client_email %}<p class="app-item-meta">{{ invoice.client_email }}</p>{% endif %}
+        {% if invoice.client_address %}<p class="app-item-meta">{{ invoice.client_address }}{% if invoice.client_city %} — {{ invoice.client_city }}{% endif %}</p>{% endif %}
+    </div>
+
+    {# Discriminação #}
+    <div class="card space-y-2">
+        <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Discriminação dos serviços</p>
+        {% if invoice.service_code %}<p class="app-item-meta">Código: {{ invoice.service_code }}</p>{% endif %}
+        <p class="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{{ invoice.service_description }}</p>
+    </div>
+
+    {# Valores e impostos #}
+    <div class="card space-y-3">
+        <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Valores</p>
+        <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">Valor bruto</span>
+                <span class="text-slate-200 font-medium">R$ {{ invoice.gross_value }}</span>
+            </div>
+            {% if invoice.deductions %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">Deduções</span>
+                <span class="text-slate-200">− R$ {{ invoice.deductions }}</span>
+            </div>
+            <div class="flex justify-between text-sm border-t border-slate-700 pt-2">
+                <span class="text-slate-400">Base de cálculo</span>
+                <span class="text-slate-200">R$ {{ invoice.calculation_base }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="space-y-1 border-t border-slate-700 pt-3">
+            <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Impostos retidos</p>
+            {% if invoice.iss_rate %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">ISS ({{ invoice.iss_rate }}%){% if invoice.iss_withheld %} retido{% endif %}</span>
+                <span class="text-slate-200">R$ {{ invoice.iss_value }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.pis_rate %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">PIS ({{ invoice.pis_rate }}%)</span>
+                <span class="text-slate-200">R$ {{ invoice.pis_value }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.cofins_rate %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">COFINS ({{ invoice.cofins_rate }}%)</span>
+                <span class="text-slate-200">R$ {{ invoice.cofins_value }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.csll_rate %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">CSLL ({{ invoice.csll_rate }}%)</span>
+                <span class="text-slate-200">R$ {{ invoice.csll_value }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.ir_rate %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">IR ({{ invoice.ir_rate }}%)</span>
+                <span class="text-slate-200">R$ {{ invoice.ir_value }}</span>
+            </div>
+            {% endif %}
+            {% if invoice.inss_rate %}
+            <div class="flex justify-between text-sm">
+                <span class="text-slate-400">INSS ({{ invoice.inss_rate }}%)</span>
+                <span class="text-slate-200">R$ {{ invoice.inss_value }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex justify-between border-t border-slate-600 pt-3">
+            <span class="font-semibold text-slate-200">Valor líquido</span>
+            <span class="font-bold text-lg text-emerald-400">R$ {{ invoice.net_value }}</span>
+        </div>
+    </div>
+
+    {% if invoice.notes %}
+    <div class="card space-y-2">
+        <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Observações</p>
+        <p class="text-slate-300 text-sm whitespace-pre-line">{{ invoice.notes }}</p>
+    </div>
+    {% endif %}
+
+    {# Ações #}
+    <div class="space-y-3">
+        {% if invoice.status == 'issued' %}
+            <a href="{% url 'invoices:update' invoice.pk %}" class="app-btn-secondary block text-center">Editar</a>
+            <div class="card space-y-3">
+                <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Registrar recebimento</p>
+                <form method="post" action="{% url 'invoices:pay' invoice.pk %}" class="space-y-3">
+                    {% csrf_token %}
+                    <div class="space-y-1">
+                        <label class="app-field-label">{{ pay_form.account.label }}</label>
+                        {{ pay_form.account }}
+                    </div>
+                    <div class="space-y-1">
+                        <label class="app-field-label">{{ pay_form.paid_at.label }}</label>
+                        {{ pay_form.paid_at }}
+                    </div>
+                    <button type="submit" class="app-btn-primary w-full">Marcar como paga</button>
+                </form>
+            </div>
+            <form method="post" action="{% url 'invoices:cancel' invoice.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="app-btn-danger w-full"
+                    onclick="return confirm('Cancelar esta nota?')">Cancelar nota</button>
+            </form>
+        {% endif %}
+
+        {% if invoice.status == 'paid' and invoice.transaction %}
+            <div class="card">
+                <p class="app-item-meta">Receita lançada em {{ invoice.paid_at|date:"d/m/Y" }}</p>
+                <p class="app-item-title">R$ {{ invoice.net_value }}</p>
+            </div>
+        {% endif %}
+
+        <a href="{% url 'invoices:list' %}" class="app-btn-secondary block text-center">Voltar para faturas</a>
+    </div>
+
+</section>
+{% endblock %}

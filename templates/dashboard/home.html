@@ -80,6 +80,13 @@
         <span>Investimentos</span>
     </a>
 
+    <a href="{% url 'invoices:list' %}" class="dash-tab-link">
+        <span class="dash-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+        </span>
+        <span>Faturas</span>
+    </a>
+
     <a href="{% url 'shopping:list' %}" class="dash-tab-link">
         <span class="dash-tab-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -198,10 +205,8 @@
                     <p class="dash-user-menu-name">{{ user.get_full_name|default:user.email|default:user.username }}</p>
                     <p class="dash-user-menu-meta">{{ user.email|default:"Sessao ativa" }}</p>
                     <div class="dash-user-menu-actions">
-                        {% if user.is_staff %}
-                            <a href="{% url 'admin:index' %}" class="dash-user-menu-link">Painel admin</a>
-                        {% endif %}
                         {% if user.is_superuser %}
+                            <a href="{% url 'admin:index' %}" class="dash-user-menu-link">Painel admin</a>
                             <a href="{% url 'users:pending' %}" class="dash-user-menu-link">Usuários pendentes</a>
                         {% endif %}
                         <button type="button" class="dash-user-menu-link" data-view-mode-toggle>Modo navegador</button>
@@ -594,10 +599,16 @@
                     close();
                 }
             });
+
+            return { close };
         };
 
         bindTopMenu("dash-due-menu", "dash-due-menu-toggle", "dash-due-menu-panel");
-        bindTopMenu("dash-user-menu", "dash-user-menu-toggle", "dash-user-menu-panel");
+        const userMenu = bindTopMenu("dash-user-menu", "dash-user-menu-toggle", "dash-user-menu-panel");
+
+        document.querySelectorAll("#dash-user-menu-panel [data-view-mode-toggle]").forEach((btn) => {
+            btn.addEventListener("click", () => userMenu.close());
+        });
     })();
 </script>
 {% endblock %}

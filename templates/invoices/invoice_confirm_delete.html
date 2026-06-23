@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir Fatura | Nexo{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
+
+{% block content %}
+<section class="app-page space-y-4">
+    <h1 class="app-title">Excluir rascunho</h1>
+    <article class="card space-y-4">
+        <p class="app-muted-text">
+            Tem certeza que deseja excluir o rascunho
+            <strong>NFS-e {{ object.number_display }} — {{ object.client_name }}</strong>?
+        </p>
+        <form method="post" class="grid grid-cols-2 gap-2">
+            {% csrf_token %}
+            <a href="{% url 'invoices:detail' object.pk %}" class="app-btn-secondary text-center">Cancelar</a>
+            <button type="submit" class="app-btn-danger">Excluir</button>
+        </form>
+    </article>
+</section>
+{% endblock %}
