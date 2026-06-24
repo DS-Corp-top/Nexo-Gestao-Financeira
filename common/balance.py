@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.apps import apps
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -18,7 +18,8 @@ def _sum_amount(queryset):
 
 def tracked_accounts(queryset):
     return queryset.filter(
-        Q(include_in_balance=True) | Q(account_type="card")
+        include_in_balance=True,
+        account_type__in=["bank", "cash"],
     )
 
 
