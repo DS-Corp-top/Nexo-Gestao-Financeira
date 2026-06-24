@@ -79,9 +79,11 @@ class TenantForm(forms.ModelForm):
         logo = self.cleaned_data.get("logo")
         if not logo or not hasattr(logo, "name"):
             return logo
+        # Only validate newly uploaded files — existing FieldFiles have no content_type
+        if not hasattr(logo, "content_type"):
+            return logo
         ext = logo.name.rsplit(".", 1)[-1].lower() if "." in logo.name else ""
-        content_type = getattr(logo, "content_type", "")
-        if ext not in ALLOWED_IMAGE_EXTENSIONS or "svg" in content_type:
+        if ext not in ALLOWED_IMAGE_EXTENSIONS or "svg" in logo.content_type:
             raise ValidationError("Formato nao permitido. Use PNG, JPG, GIF ou WebP.")
         if logo.size > MAX_LOGO_SIZE:
             raise ValidationError("A logo deve ter no maximo 2 MB.")
