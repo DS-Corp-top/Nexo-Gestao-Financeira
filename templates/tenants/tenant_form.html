@@ -11,6 +11,25 @@
         <h1 class="app-title mb-0">Perfil da Empresa</h1>
     </div>
 
+    <a href="{% url 'tenants:nfse-credential' %}" class="card flex items-center justify-between gap-3 hover:border-slate-600 transition-colors">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-slate-700 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-200">Credenciais NFS-e</p>
+                <p class="text-xs text-slate-500">
+                    {% if request.tenant.nfse_credential %}
+                        Configuradas · {{ request.tenant.nfse_credential.gov_br_cpf }}
+                    {% else %}
+                        Não configuradas
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <svg class="w-4 h-4 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+    </a>
+
     <form method="post" enctype="multipart/form-data" class="space-y-4">
         {% csrf_token %}
 
@@ -25,13 +44,15 @@
                 </div>
                 <div class="space-y-2 flex-1">
                     <input type="file" id="id_logo" name="logo" accept="image/*" class="hidden">
-                    <label for="id_logo" class="app-btn-secondary py-2 px-4 text-sm w-full text-center cursor-pointer block">
-                        {% if form.instance.logo %}Trocar logo{% else %}Escolher imagem{% endif %}
-                    </label>
-                    {% if form.instance.logo %}
-                    <button type="button" id="btn-remove-logo" class="text-xs text-red-400 hover:text-red-300 w-full text-center transition-colors">Remover logo</button>
-                    <input type="hidden" name="logo-clear" id="logo-clear-input" value="">
-                    {% endif %}
+                    <div class="flex gap-2 flex-wrap">
+                        <label for="id_logo" class="app-btn-secondary py-2 px-4 text-sm cursor-pointer inline-block">
+                            {% if form.instance.logo %}Trocar logo{% else %}Escolher imagem{% endif %}
+                        </label>
+                        {% if form.instance.logo %}
+                        <button type="button" id="btn-remove-logo" class="app-btn-secondary py-2 px-4 text-sm text-red-400 hover:text-red-300 border-red-500/30 hover:border-red-400/50 transition-colors">Remover logo</button>
+                        <input type="hidden" name="logo-clear" id="logo-clear-input" value="">
+                        {% endif %}
+                    </div>
                     <p class="text-xs text-slate-500">PNG, JPG ou WebP. Max. 2 MB. Recomendado: fundo transparente.</p>
                 </div>
             </div>
@@ -118,6 +139,7 @@
             <button type="submit" id="btn-submit" class="app-btn-primary w-full sm:w-auto">Salvar Alteracoes</button>
         </div>
     </form>
+
 </section>
 <script>
     let cepLookupTimer = null;
