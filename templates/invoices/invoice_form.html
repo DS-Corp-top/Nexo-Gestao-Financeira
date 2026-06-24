@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}{% if object %}Editar Fatura{% else %}Nova Fatura{% endif %} | Nexo{% endblock %}
 {% block page_header %}{% endblock %}
@@ -513,7 +513,34 @@
     const serviceInput = document.getElementById('id_service_code');
     const serviceDropdown = document.getElementById('service-dropdown');
     const serviceNameDisplay = document.getElementById('selected-service-name');
-    
+    const serviceDescField = document.getElementById('id_service_description');
+
+    // Tracks last auto-generated text so manual edits are never overwritten
+    let lastAutoDescription = '';
+
+    function getCompetencia() {
+        const dateInput = document.getElementById('id_issue_date');
+        if (!dateInput || !dateInput.value) return '';
+        const [year, month] = dateInput.value.split('-');
+        return `${month}/${year}`;
+    }
+
+    function buildAutoDescription(serviceDesc) {
+        const competencia = getCompetencia();
+        let text = `Prestação de serviços de ${serviceDesc}`;
+        if (competencia) text += `\nReferente a ${competencia}`;
+        return text;
+    }
+
+    function applyAutoDescription(serviceDesc) {
+        if (!serviceDescField) return;
+        const current = serviceDescField.value.trim();
+        if (current === '' || current === lastAutoDescription.trim()) {
+            lastAutoDescription = buildAutoDescription(serviceDesc);
+            serviceDescField.value = lastAutoDescription;
+        }
+    }
+
     if (serviceInput && serviceDropdown) {
         const serviceItems = serviceDropdown.querySelectorAll('li');
 
@@ -528,10 +555,10 @@
         });
 
         serviceInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const term = e.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
             let hasVisible = false;
             serviceItems.forEach(item => {
-                const text = item.dataset.text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const text = item.dataset.text.normalize("NFD").replace(/[̀-ͯ]/g, "");
                 if (text.includes(term)) {
                     item.style.display = 'block';
                     hasVisible = true;
@@ -544,8 +571,7 @@
             } else {
                 serviceDropdown.classList.add('hidden');
             }
-            
-            // Indicate search state instead of hiding
+
             if (serviceNameDisplay && term.length > 0) {
                 serviceNameDisplay.value = "Aguardando seleção...";
             } else if (serviceNameDisplay && term.length === 0) {
@@ -560,10 +586,22 @@
                 if (serviceNameDisplay) {
                     serviceNameDisplay.value = item.dataset.desc;
                 }
+                applyAutoDescription(item.dataset.desc);
             });
         });
     }
 
+    // Atualiza competencia na descricao se a data de emissao mudar
+    document.getElementById('id_issue_date')?.addEventListener('change', () => {
+        if (!serviceDescField || !lastAutoDescription) return;
+        if (serviceDescField.value.trim() === lastAutoDescription.trim()) {
+            const display = serviceNameDisplay?.value;
+            if (display && display !== 'Nenhum serviço selecionado.' && display !== 'Aguardando seleção...') {
+                lastAutoDescription = buildAutoDescription(display);
+                serviceDescField.value = lastAutoDescription;
+            }
+        }
+    });
     // Tax preview
     function parseBRL(val) {
         if (!val) return 0;
