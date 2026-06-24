@@ -56,7 +56,6 @@ class AccountForm(forms.ModelForm):
             "name",
             "account_type",
             "initial_balance",
-            "credit_limit",
             "include_in_balance",
             "is_active",
         )
@@ -64,7 +63,6 @@ class AccountForm(forms.ModelForm):
             "name": "Nome da conta",
             "account_type": "Tipo",
             "initial_balance": "Saldo inicial",
-            "credit_limit": "Limite do cartão",
             "include_in_balance": "Considerar no saldo",
             "is_active": "Conta ativa",
         }
