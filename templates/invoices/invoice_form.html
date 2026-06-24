@@ -296,8 +296,8 @@
 
 {% block floating_action %}
 <!-- Modal Salvar Cliente -->
-<div id="client-save-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-    <div class="bg-[#161616] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-200 m-auto" id="client-save-modal-panel">
+<div id="client-save-modal" class="fixed inset-0 z-[9999] hidden items-start justify-center bg-black/60 backdrop-blur-sm p-4 pt-20 overflow-y-auto">
+    <div class="bg-[#161616] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-200 mx-auto" id="client-save-modal-panel">
         <h3 class="text-white font-semibold text-lg mb-2">Salvar novo cliente?</h3>
         <p class="text-slate-400 text-sm mb-6" id="client-save-modal-text">
             Este tomador não está na sua lista de clientes. Deseja salvá-lo automaticamente ao emitir a fatura?
@@ -431,9 +431,6 @@
         const digits = v;
         if (digits.length !== 14) return;
 
-        field.disabled = true;
-        field.style.opacity = '0.5';
-
         const hint = document.getElementById('cnpj-hint');
         const resetHint = () => {
             if (!hint) return;
@@ -489,7 +486,7 @@
                     setTimeout(resetHint, 4000);
                 }
             })
-            .finally(() => { field.disabled = false; field.style.opacity = '1'; });
+            .finally(() => {});
     });
 
     document.addEventListener('blur', function(e) {
