@@ -206,6 +206,99 @@ class DashboardContextMixin(LoginRequiredMixin):
 
         return points
 
+    def _build_expense_trend_summary(self, points):
+        if not points:
+            return {
+                "current_total": Decimal("0.00"),
+                "average_total": Decimal("0.00"),
+                "peak_total": Decimal("0.00"),
+                "peak_label": "",
+                "change_label": "Sem comparacao",
+                "change_tone": "neutral",
+            }
+
+        current_point = next((point for point in points if point.get("is_current")), points[-1])
+        previous_point = points[-2] if len(points) > 1 else None
+        peak_point = max(points, key=lambda point: point["total"])
+        total_sum = sum((point["total"] for point in points), Decimal("0.00"))
+        average_total = total_sum / Decimal(len(points))
+
+        if not previous_point:
+            change_label = "Sem comparacao"
+            change_tone = "neutral"
+        elif previous_point["total"] <= 0 and current_point["total"] <= 0:
+            change_label = "Sem variacao"
+            change_tone = "neutral"
+        elif previous_point["total"] <= 0 < current_point["total"]:
+            change_label = "Acima de zero"
+            change_tone = "up"
+        else:
+            delta_percent = ((current_point["total"] - previous_point["total"]) / previous_point["total"]) * Decimal("100.00")
+            delta_percent = delta_percent.quantize(Decimal("1"))
+            if delta_percent > 0:
+                change_label = f"+{delta_percent}% vs mes anterior"
+                change_tone = "up"
+            elif delta_percent < 0:
+                change_label = f"{delta_percent}% vs mes anterior"
+                change_tone = "down"
+            else:
+                change_label = "0% vs mes anterior"
+                change_tone = "neutral"
+
+        return {
+            "current_total": current_point["total"],
+            "average_total": average_total,
+            "peak_total": peak_point["total"],
+            "peak_label": peak_point["label"],
+            "change_label": change_label,
+            "change_tone": change_tone,
+        }
+
+    def _build_expense_trend_line(self, points):
+        if not points:
+            return {
+                "polyline_points": "",
+                "area_path": "",
+                "points": [],
+            }
+
+        top = 14.0
+        bottom = 86.0
+        left = 8.0
+        right = 92.0
+        count = len(points)
+        divisor = max(count - 1, 1)
+        max_total = max((point["total"] for point in points), default=Decimal("0.00"))
+        denominator = float(max_total) if max_total > 0 else 1.0
+
+        line_points = []
+        for idx, point in enumerate(points):
+            x = left + ((right - left) * idx / divisor)
+            ratio = float(point["total"]) / denominator if point["total"] > 0 else 0.0
+            y = bottom - ((bottom - top) * ratio)
+            line_points.append(
+                {
+                    **point,
+                    "line_x": round(x, 2),
+                    "line_y": round(y, 2),
+                }
+            )
+
+        polyline_points = " ".join(
+            f'{point["line_x"]},{point["line_y"]}' for point in line_points
+        )
+        area_path = (
+            f'M {line_points[0]["line_x"]},{bottom} '
+            + " ".join(f'L {point["line_x"]},{point["line_y"]}' for point in line_points)
+            + f' L {line_points[-1]["line_x"]},{bottom} Z'
+        )
+
+        return {
+            "polyline_points": polyline_points,
+            "area_path": area_path,
+            "points": line_points,
+        }
+
     def get_dashboard_context(self):
         user = self.request.user
         tenant = self.request.tenant
@@ -459,6 +552,8 @@ class DashboardChartsView(DashboardContextMixin, TemplateView):
             item["rank"] = idx
 
         trend_points = self._build_expense_trend(self.request.tenant, selected_month)
+        trend_summary = self._build_expense_trend_summary(trend_points)
+        trend_line = self._build_expense_trend_line(trend_points)
 
         context.update(
             {
@@ -468,6 +563,8 @@ class DashboardChartsView(DashboardContextMixin, TemplateView):
                 "ranking_scope_label": ranking_scope_label,
                 "ranking_scope_note": ranking_scope_note,
                 "trend_points": trend_points,
+                "trend_summary": trend_summary,
+                "trend_line": trend_line,
                 "selected_chart_mode": chart_mode,
             }
         )

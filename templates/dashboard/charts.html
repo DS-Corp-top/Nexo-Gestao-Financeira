@@ -22,22 +22,29 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M15 18l-6-6 6-6"/></svg>
         </a>
 
-        <h1 class="charts-title">Graficos</h1>
+        <div class="charts-title-wrap">
+            <h1 class="charts-title">Graficos</h1>
+            <p class="charts-subtitle">Leitura visual das despesas por periodo</p>
+        </div>
 
-        <a href="{% url 'transactions:statement' %}?month={{ selected_month_value }}" class="charts-circle-btn" aria-label="Filtrar">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h18l-7 8v6l-4-2v-4L3 5z"/></svg>
+        <a href="{% url 'transactions:statement' %}?month={{ selected_month_value }}" class="charts-top-link" aria-label="Abrir extrato do mes">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+            <span>Extrato</span>
         </a>
     </header>
 
     <div class="charts-segmented" role="tablist" aria-label="Visualizacao de graficos">
         <button type="button" class="charts-segment-btn{% if selected_chart_mode == "donut" %} charts-segment-btn-active{% endif %}" data-chart-toggle="donut" aria-label="Pizza">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 2v10h10"/><path d="M20.6 13A9 9 0 1 1 11 3.1"/></svg>
+            <span class="charts-segment-label">Categorias</span>
         </button>
         <button type="button" class="charts-segment-btn{% if selected_chart_mode == "trend" %} charts-segment-btn-active{% endif %}" data-chart-toggle="trend" aria-label="Linha">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 12h4l2-5 3 10 2-5h7"/></svg>
+            <span class="charts-segment-label">Tendencia</span>
         </button>
         <button type="button" class="charts-segment-btn{% if selected_chart_mode == "list" %} charts-segment-btn-active{% endif %}" data-chart-toggle="list" aria-label="Ranking">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M5 18v-3"/><path d="M12 18V8"/><path d="M19 18V5"/></svg>
+            <span class="charts-segment-label">Ranking</span>
         </button>
     </div>
 
@@ -60,7 +67,7 @@
                 </div>
 
                 <div class="charts-list-wrap charts-list-preview">
-                    {% for item in charts_items|slice:":4" %}
+                    {% for item in charts_items %}
                         <div class="charts-list-row">
                             <span class="charts-rank">{{ item.rank }}&ordm;</span>
                             <span class="charts-list-icon" style="background-color: {{ item.color }};">{{ item.icon_letter }}</span>
@@ -95,16 +102,68 @@
             </div>
 
             {% if trend_points %}
-                <div class="charts-trend-grid">
-                    {% for point in trend_points %}
-                        <div class="charts-trend-col{% if point.is_current %} charts-trend-col-current{% endif %}">
-                            <div class="charts-trend-bar-wrap">
-                                <span class="charts-trend-bar" style="height: {{ point.height_percent|floatformat:2 }}%;"></span>
+                <div class="charts-trend-summary">
+                    <article class="charts-trend-stat">
+                        <p class="charts-trend-stat-label">Mes atual</p>
+                        <strong class="charts-trend-stat-value" data-sensitive-value data-mask="R$ ****">{{ trend_summary.current_total|brl }}</strong>
+                        <span class="charts-trend-stat-meta charts-trend-stat-meta-{{ trend_summary.change_tone }}">{{ trend_summary.change_label }}</span>
+                    </article>
+                    <article class="charts-trend-stat">
+                        <p class="charts-trend-stat-label">Media</p>
+                        <strong class="charts-trend-stat-value" data-sensitive-value data-mask="R$ ****">{{ trend_summary.average_total|brl }}</strong>
+                        <span class="charts-trend-stat-meta">Janela de 6 meses</span>
+                    </article>
+                    <article class="charts-trend-stat">
+                        <p class="charts-trend-stat-label">Pico</p>
+                        <strong class="charts-trend-stat-value" data-sensitive-value data-mask="R$ ****">{{ trend_summary.peak_total|brl }}</strong>
+                        <span class="charts-trend-stat-meta">{{ trend_summary.peak_label }}</span>
+                    </article>
+                </div>
+
+                <div class="charts-trend-board">
+                    <div class="charts-trend-grid">
+                        {% for point in trend_points %}
+                            <div class="charts-trend-col{% if point.is_current %} charts-trend-col-current{% endif %}">
+                                <p class="charts-trend-top-value" data-sensitive-value data-mask="R$ ****">{{ point.total|brl }}</p>
+                                <div class="charts-trend-bar-wrap">
+                                    <span class="charts-trend-bar" style="height: {{ point.height_percent|floatformat:2 }}%;"></span>
+                                </div>
+                                <div class="charts-trend-foot">
+                                    <p class="charts-trend-label">{{ point.label }}</p>
+                                    {% if point.is_current %}
+                                        <span class="charts-trend-current-tag">Atual</span>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <p class="charts-trend-label">{{ point.label }}</p>
-                            <p class="charts-trend-value" data-sensitive-value data-mask="R$ ****">{{ point.total|brl }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="charts-line-card">
+                    <div class="charts-line-head">
+                        <h3 class="charts-line-title">Grafico de linhas</h3>
+                        <span class="charts-line-scope">Mesmo periodo</span>
+                    </div>
+                    <div class="charts-line-plot">
+                        <svg class="charts-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                            <line x1="8" y1="86" x2="92" y2="86" class="charts-line-grid"></line>
+                            <line x1="8" y1="62" x2="92" y2="62" class="charts-line-grid charts-line-grid-soft"></line>
+                            <line x1="8" y1="38" x2="92" y2="38" class="charts-line-grid charts-line-grid-soft"></line>
+                            <line x1="8" y1="14" x2="92" y2="14" class="charts-line-grid charts-line-grid-soft"></line>
+                            <path d="{{ trend_line.area_path }}" class="charts-line-area"></path>
+                            <polyline points="{{ trend_line.polyline_points }}" class="charts-line-stroke"></polyline>
+                            {% for point in trend_line.points %}
+                                <circle cx="{{ point.line_x }}" cy="{{ point.line_y }}" r="{% if point.is_current %}2.6{% else %}1.9{% endif %}" class="charts-line-dot{% if point.is_current %} charts-line-dot-current{% endif %}"></circle>
+                            {% endfor %}
+                        </svg>
+                        <div class="charts-line-axis">
+                            {% for point in trend_line.points %}
+                                <div class="charts-line-axis-item{% if point.is_current %} charts-line-axis-item-current{% endif %}">
+                                    <span class="charts-line-axis-label">{{ point.label }}</span>
+                                </div>
+                            {% endfor %}
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
             {% else %}
                 <p class="dash-empty-text">Sem dados para tendencia.</p>

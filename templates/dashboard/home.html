@@ -354,9 +354,9 @@
             </div>
             {% endif %}
 
-            <div class="flex items-center justify-between" style="padding-top:0.25rem; border-top: 1px solid rgba(71,85,105,0.35);">
+            <div class="flex flex-col items-start gap-1" style="padding-top:0.25rem; border-top: 1px solid rgba(71,85,105,0.35);">
                 <span class="inv-summary-label">{{ investment_count }} ativo{{ investment_count|pluralize:",s" }}</span>
-                <a href="{% url 'investments:list' %}" class="dash-goal-more" style="margin-top:0;">Ver carteira</a>
+                <a href="{% url 'investments:list' %}" class="app-mini-btn app-mini-btn-view" style="margin-top:0;">Ver carteira</a>
             </div>
         </article>
         {% else %}
