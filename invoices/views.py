@@ -8,7 +8,9 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView, View
+from django_ratelimit.decorators import ratelimit
 
 from common.mixins import UserAssignMixin, UserQuerySetMixin
 from invoices.forms import ClientForm, InvoiceForm, InvoicePayForm
@@ -213,6 +215,7 @@ class InvoiceNfseGuideView(UserQuerySetMixin, DetailView):
         return ctx
 
 
+@method_decorator(ratelimit(key="user", rate="10/h", method="POST", block=True), name="dispatch")
 class InvoiceNfseEmitView(UserQuerySetMixin, View):
     def post(self, request, pk):
         from django.utils import timezone as tz
@@ -498,6 +501,7 @@ class ClientListView(UserQuerySetMixin, ListView):
     context_object_name = "clients"
 
 
+@method_decorator(ratelimit(key="user", rate="60/h", method="GET", block=True), name="dispatch")
 class CnpjLookupView(LoginRequiredMixin, View):
     def get(self, request, cnpj):
         import re

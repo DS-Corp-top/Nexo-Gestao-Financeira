@@ -262,6 +262,8 @@ SESSION_COOKIE_SECURE = env_bool(
 CSRF_COOKIE_SECURE = env_bool(
     "DJANGO_CSRF_COOKIE_SECURE", default=default_secure_mode
 )
+SESSION_COOKIE_HTTPONLY = env_bool("DJANGO_SESSION_COOKIE_HTTPONLY", default=True)
+# CSRF_COOKIE_HTTPONLY mantido False — HTMX lê o token do cookie via JS
 CSRF_COOKIE_HTTPONLY = env_bool("DJANGO_CSRF_COOKIE_HTTPONLY", default=False)
 
 SESSION_COOKIE_SAMESITE = os.getenv("DJANGO_SESSION_COOKIE_SAMESITE", "Lax")

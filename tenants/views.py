@@ -7,7 +7,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views import View
+from django_ratelimit.decorators import ratelimit
 from django.views.generic import UpdateView
 
 from invoices.nfse_crypto import encrypt_password
@@ -70,6 +72,7 @@ class NfseCredentialView(LoginRequiredMixin, View):
         return render(request, self.template_name, {"form": form, "credential": credential})
 
 
+@method_decorator(ratelimit(key="user", rate="60/h", method="GET", block=True), name="dispatch")
 class CepLookupView(LoginRequiredMixin, View):
     def get(self, request, cep):
         digits = "".join(char for char in cep if char.isdigit())

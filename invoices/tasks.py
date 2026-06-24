@@ -6,6 +6,20 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+_SAFE_ERROR_PATTERNS = {
+    "login": "Credenciais inválidas. Verifique seu CPF/CNPJ e senha do portal NFS-e.",
+    "timeout": "O portal demorou demais para responder. Tente novamente.",
+    "playwright": "Erro ao iniciar o navegador de automação. Contate o suporte.",
+}
+
+def _sanitize_nfse_error(exc: Exception) -> str:
+    msg = str(exc).lower()
+    for keyword, friendly in _SAFE_ERROR_PATTERNS.items():
+        if keyword in msg:
+            return friendly
+    return "Falha ao emitir a nota. Tente novamente ou emita manualmente no portal nfse.gov.br."
+
+
 TASK_SOFT_LIMIT = 240  # 4 min — mata suavemente, salva o erro
 TASK_HARD_LIMIT = 270  # 4.5 min — kill forçado pelo Celery
 
@@ -67,16 +81,15 @@ def emit_nfse_task(self, invoice_id: int) -> dict:
     except SoftTimeLimitExceeded:
         logger.warning("Timeout ao emitir NFS-e para fatura %s", invoice_id)
         invoice.nfse_status = Invoice.NFSE_FAILED
-        invoice.nfse_error = (
-            "Tempo limite excedido (4 min). O portal NFS-e demorou demais para responder. "
-            "Tente novamente ou emita manualmente."
-        )
+        invoice.nfse_error = "Tempo limite excedido. O portal demorou demais para responder. Tente novamente ou emita manualmente."
         invoice.save(update_fields=["nfse_status", "nfse_error"])
         return {"ok": False, "error": "Timeout"}
 
     except Exception as exc:
         logger.exception("Falha ao emitir NFS-e para fatura %s", invoice_id)
         invoice.nfse_status = Invoice.NFSE_FAILED
-        invoice.nfse_error = str(exc)
+        # Mensagem sanitizada — detalhes técnicos ficam apenas no log, nunca expostos ao usuário
+        error_msg = _sanitize_nfse_error(exc)
+        invoice.nfse_error = error_msg
         invoice.save(update_fields=["nfse_status", "nfse_error"])
-        return {"ok": False, "error": str(exc)}
+        return {"ok": False, "error": error_msg}

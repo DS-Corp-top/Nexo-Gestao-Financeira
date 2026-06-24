@@ -593,6 +593,42 @@ body {
     box-shadow: 0 18px 28px -24px rgba(2, 8, 22, 0.95);
 }
 
+.app-receipt-dropdown {
+    padding: 0;
+    overflow: hidden;
+}
+
+.app-receipt-dropdown-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.app-receipt-dropdown-summary::-webkit-details-marker {
+    display: none;
+}
+
+.app-receipt-dropdown-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    color: rgba(203, 213, 225, 0.78);
+    transition: transform 0.18s ease;
+}
+
+.app-receipt-dropdown[open] .app-receipt-dropdown-icon {
+    transform: rotate(180deg);
+}
+
+.app-receipt-dropdown form {
+    padding: 0 1rem 1rem;
+}
+
 .invoice-summary-value {
     margin: 0.5rem 0 0;
     color: #f1f5f9;

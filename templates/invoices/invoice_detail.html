@@ -110,9 +110,11 @@
     {# Ações #}
     <div class="space-y-3">
         {% if invoice.status == 'issued' %}
-            <a href="{% url 'invoices:update' invoice.pk %}" class="app-btn-secondary block text-center">Editar</a>
-            <div class="card space-y-3">
-                <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Registrar recebimento</p>
+            <details class="card app-receipt-dropdown"{% if pay_form.errors %} open{% endif %}>
+                <summary class="app-receipt-dropdown-summary">
+                    <span class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Registrar recebimento</span>
+                    <svg class="app-receipt-dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </summary>
                 <form method="post" action="{% url 'invoices:pay' invoice.pk %}" class="space-y-3">
                     {% csrf_token %}
                     <div class="space-y-1">
@@ -133,7 +135,8 @@
                     </div>
                     <button type="submit" class="app-btn-primary w-full">Marcar como paga</button>
                 </form>
-            </div>
+            </details>
+            <a href="{% url 'invoices:update' invoice.pk %}" class="app-btn-secondary block text-center">Editar</a>
         {% endif %}
 
         {% if invoice.status == 'paid' and invoice.transaction %}
