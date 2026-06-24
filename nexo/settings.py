@@ -215,9 +215,9 @@ if _BUCKETEER_BUCKET:
     AWS_STORAGE_BUCKET_NAME = _BUCKETEER_BUCKET
     AWS_S3_REGION_NAME = os.getenv("BUCKETEER_AWS_REGION", "us-east-1")
     AWS_S3_ENDPOINT_URL = f"https://s3.{AWS_S3_REGION_NAME}.amazonaws.com"
-    AWS_DEFAULT_ACL = "public-read"
+    AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
-    AWS_QUERYSTRING_AUTH = False
+    AWS_QUERYSTRING_AUTH = True
     MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/"
     _DEFAULT_FILE_BACKEND = "storages.backends.s3boto3.S3Boto3Storage"
 else:
