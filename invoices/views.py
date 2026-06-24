@@ -233,7 +233,10 @@ class InvoiceNfseEmitView(UserQuerySetMixin, View):
         invoice.nfse_error = ""
         invoice.save(update_fields=["nfse_status", "nfse_requested_at", "nfse_error"])
 
-        emit_nfse_task.delay(invoice.pk)
+        try:
+            emit_nfse_task.delay(invoice.pk)
+        except Exception:
+            emit_nfse_task.apply(args=[invoice.pk])
         return redirect(reverse("invoices:nfse-status", args=[pk]))
 
 
@@ -242,8 +245,25 @@ class InvoiceNfseStatusView(UserQuerySetMixin, DetailView):
     template_name = "invoices/invoice_nfse_status.html"
     context_object_name = "invoice"
 
+    _TIMEOUT_SECONDS = 180  # 3 minutos
+
+    def _check_timeout(self, invoice):
+        if invoice.nfse_status not in (Invoice.NFSE_PENDING, Invoice.NFSE_PROCESSING):
+            return
+        if not invoice.nfse_requested_at:
+            return
+        elapsed = (timezone.now() - invoice.nfse_requested_at).total_seconds()
+        if elapsed > self._TIMEOUT_SECONDS:
+            invoice.nfse_status = Invoice.NFSE_FAILED
+            invoice.nfse_error = (
+                "Tempo limite excedido. O worker de processamento pode estar inativo "
+                "ou o portal demorou demais para responder."
+            )
+            invoice.save(update_fields=["nfse_status", "nfse_error"])
+
     def get(self, request, *args, **kwargs):
         invoice = self.get_object()
+        self._check_timeout(invoice)
         if request.headers.get("HX-Request"):
             from django.template.loader import render_to_string
             html = render_to_string(

@@ -9,8 +9,11 @@
 
     {# Cabeçalho #}
     <div class="flex items-start justify-between gap-3">
-        <div>
-            <h1 class="app-title">Fatura {{ invoice.number_display }}</h1>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'invoices:list' %}" class="text-slate-400 hover:text-slate-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            </a>
+            <h1 class="app-title mb-0">Fatura {{ invoice.number_display }}</h1>
         </div>
         <div class="flex items-center gap-3">
             {% if invoice.status == 'issued' %}
@@ -67,8 +70,8 @@
     {# Discriminação #}
     <div class="card space-y-2">
         <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Discriminação dos serviços</p>
-        {% if invoice.service_code %}<p class="app-item-meta">Código: {{ invoice.service_code }}{% if service_code_description %} — {{ service_code_description }}{% endif %}</p>{% endif %}
-        <p class="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{{ invoice.service_description }}</p>
+        {% if invoice.service_code %}<p class="app-item-title font-normal">Código: {{ invoice.service_code }}{% if service_code_description %} — {{ service_code_description }}{% endif %}</p>{% endif %}
+        <p class="app-item-title font-normal whitespace-pre-line">{{ invoice.service_description }}</p>
     </div>
 
     {# Valores e impostos #}
@@ -131,10 +134,6 @@
                     <button type="submit" class="app-btn-primary w-full">Marcar como paga</button>
                 </form>
             </div>
-            <form id="form-cancel-invoice" method="post" action="{% url 'invoices:cancel' invoice.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="app-btn-danger w-full">Cancelar nota</button>
-            </form>
         {% endif %}
 
         {% if invoice.status == 'paid' and invoice.transaction %}
@@ -144,6 +143,10 @@
             </div>
         {% endif %}
 
+        <a href="{% url 'invoices:print' invoice.pk %}" target="_blank" class="app-btn-secondary flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Imprimir fatura
+        </a>
         {% if invoice.nfse_status == 'nfse_issued' %}
         <a href="{% url 'invoices:nfse-status' invoice.pk %}" class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-center gap-3">
             <svg class="w-5 h-5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -169,20 +172,25 @@
         <a href="{% url 'invoices:nfse-status' invoice.pk %}" class="text-xs text-red-400 text-center block">Ver erro da última tentativa</a>
         {% endif %}
         {% endif %}
-        <a href="{% url 'invoices:print' invoice.pk %}" target="_blank" class="app-btn-secondary flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-            Imprimir fatura
-        </a>
-        <a href="{% url 'invoices:list' %}" class="app-btn-secondary block text-center">Voltar para faturas</a>
 
-        <div class="pt-4 flex justify-center">
-            <a href="{% url 'invoices:delete' invoice.pk %}" class="text-sm font-medium text-red-500/80 hover:text-red-400 transition-colors">Excluir fatura permanentemente</a>
-        </div>
+        <button type="button" id="btn-delete-invoice" class="app-btn-danger w-full text-center">Excluir fatura permanentemente</button>
     </div>
 
 </section>
 
 {% block floating_action %}
+<!-- Modal Excluir Fatura -->
+<div id="invoice-delete-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 pt-20 overflow-y-auto">
+    <div class="bg-[#161616] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-200 mx-auto" id="invoice-delete-modal-panel">
+        <h3 class="text-white font-semibold text-lg mb-2">Excluir fatura permanentemente?</h3>
+        <p class="text-slate-400 text-sm mb-6">Esta ação não pode ser desfeita. A fatura e todos os dados associados serão removidos.</p>
+        <div class="flex flex-col-reverse sm:flex-row gap-3 justify-end">
+            <button type="button" id="invoice-delete-modal-cancel" class="app-btn-secondary py-2.5 px-4 text-sm w-full sm:w-auto">Não, voltar</button>
+            <a href="{% url 'invoices:delete' invoice.pk %}" id="invoice-delete-modal-confirm" class="app-btn-danger py-2.5 px-4 text-sm w-full sm:w-auto text-center">Sim, excluir</a>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Cancelar Nota -->
 <div id="invoice-cancel-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
     <div class="bg-[#161616] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-200 m-auto" id="invoice-cancel-modal-panel">
@@ -219,6 +227,35 @@
         if (payLaunchField) {
             payLaunchField.addEventListener('change', syncPayFinancialFields);
             syncPayFinancialFields();
+        }
+
+        const deleteModal = document.getElementById('invoice-delete-modal');
+        const deletePanel = document.getElementById('invoice-delete-modal-panel');
+        const btnDelete = document.getElementById('btn-delete-invoice');
+        const btnDeleteCancel = document.getElementById('invoice-delete-modal-cancel');
+
+        if (deleteModal && btnDelete) {
+            function openDeleteModal() {
+                deleteModal.classList.remove('hidden');
+                deleteModal.classList.add('flex');
+                requestAnimationFrame(() => {
+                    deletePanel.classList.remove('scale-95', 'opacity-0');
+                    deletePanel.classList.add('scale-100', 'opacity-100');
+                });
+            }
+            function closeDeleteModal() {
+                deletePanel.classList.remove('scale-100', 'opacity-100');
+                deletePanel.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    deleteModal.classList.add('hidden');
+                    deleteModal.classList.remove('flex');
+                }, 200);
+            }
+            btnDelete.addEventListener('click', openDeleteModal);
+            btnDeleteCancel.addEventListener('click', closeDeleteModal);
+            deleteModal.addEventListener('click', function(e) {
+                if (e.target === deleteModal) closeDeleteModal();
+            });
         }
 
         if (!cancelForm) return;

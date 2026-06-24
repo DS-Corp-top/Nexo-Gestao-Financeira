@@ -83,11 +83,10 @@
             margin-top: 30px;
             border-top: 2px solid #000;
             padding-top: 10px;
-            text-align: right;
         }
         .total-line {
             display: flex;
-            justify-content: flex-end;
+            justify-content: flex-start;
             margin-bottom: 5px;
             font-size: 14px;
         }
@@ -174,6 +173,12 @@
                 <div class="value">{{ invoice.paid_at|date:"d/m/Y" }}</div>
             </div>
             {% endif %}
+            {% if invoice.nfse_number %}
+            <div class="col">
+                <div class="label">Número NFS-e</div>
+                <div class="value">{{ invoice.nfse_number }}</div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -226,7 +231,7 @@
         {% endif %}
         {% if invoice.iss_value > 0 %}
         <div class="total-line withheld">
-            <div class="total-label">(-) ISS {{ invoice.iss_rate }}%{% if invoice.iss_withheld %} retido{% endif %}</div>
+            <div class="total-label">{% if invoice.iss_withheld %}(-) {% endif %}ISS {{ invoice.iss_rate }}%{% if invoice.iss_withheld %} retido{% endif %}</div>
             <div class="total-value">R$ {{ invoice.iss_value }}</div>
         </div>
         {% endif %}

@@ -112,7 +112,7 @@ class NfseCredentialForm(forms.ModelForm):
 
     def clean_gov_br_cpf(self):
         import re
-        cpf = re.sub(r"\D", "", self.cleaned_data.get("gov_br_cpf", ""))
-        if len(cpf) != 11:
-            raise ValidationError("CPF invalido.")
-        return cpf
+        doc = re.sub(r"\D", "", self.cleaned_data.get("gov_br_cpf", ""))
+        if len(doc) not in (11, 14):
+            raise ValidationError("CPF ou CNPJ invalido.")
+        return doc
