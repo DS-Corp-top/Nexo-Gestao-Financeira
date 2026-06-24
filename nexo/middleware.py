@@ -19,8 +19,8 @@ class ContentSecurityPolicyMiddleware:
             "script-src": "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com",
             # Tailwind injeta estilos inline
             "style-src": "'self' 'unsafe-inline'",
-            # Imagens locais + data URIs (previews de logo) + blob (Playwright)
-            "img-src": "'self' data: blob:",
+            # Imagens locais + data URIs + S3
+            "img-src": "'self' data: blob: https://*.amazonaws.com",
             # Fetch/XHR apenas para o próprio domínio
             "connect-src": "'self'",
             "font-src": "'self'",
