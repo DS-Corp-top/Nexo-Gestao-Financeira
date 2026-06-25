@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useViewMode } from '../contexts/ViewModeContext';
 import {
   ChevronLeft,
   ChevronRight,
@@ -47,6 +48,8 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [bellOpen, setBellOpen] = useState(false);
+  const { isMobile } = useViewMode();
+  const cols2 = isMobile ? '1fr' : '1fr 1fr';
 
   useEffect(() => {
     setLoading(true);
@@ -238,7 +241,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
         {/* Expense Trend */}
         <div className="card">
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
@@ -329,7 +332,7 @@ export default function Dashboard() {
       </div>
 
       {/* Accounts + Invoices Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
         {/* Accounts */}
         <div className="card">
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>

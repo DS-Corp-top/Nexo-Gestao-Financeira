@@ -3,8 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Save } from 'lucide-react';
 import { fetchTenantProfile, updateTenantProfile } from '../api/tenant';
 import { useAuth } from '../contexts/AuthContext';
+import { useViewMode } from '../contexts/ViewModeContext';
 
 export default function CompanySettings() {
+  const { isMobile } = useViewMode();
+  const cols2 = isMobile ? '1fr' : '1fr 1fr';
+  const cols21 = isMobile ? '1fr' : '2fr 1fr';
+  const cols211 = isMobile ? '1fr' : '2fr 1fr 1fr';
   const { tenant } = useAuth();
   const queryClient = useQueryClient();
   const [successMsg, setSuccessMsg] = useState('');
@@ -98,7 +103,7 @@ export default function CompanySettings() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Nome da Empresa</label>
               <input type="text" name="name" className="input" defaultValue={profile?.name} required />
@@ -109,7 +114,7 @@ export default function CompanySettings() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">E-mail de Contato</label>
               <input type="email" name="email" className="input" defaultValue={profile?.email} />
@@ -124,7 +129,7 @@ export default function CompanySettings() {
             Endereço (para Notas Fiscais)
           </h4>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols21, gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Logradouro</label>
               <input type="text" name="address" className="input" defaultValue={profile?.address} />
@@ -135,7 +140,7 @@ export default function CompanySettings() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Complemento</label>
               <input type="text" name="address_complement" className="input" defaultValue={profile?.address_complement} />
@@ -146,7 +151,7 @@ export default function CompanySettings() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols211, gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
             <div>
               <label className="label">Cidade</label>
               <input type="text" name="city" className="input" defaultValue={profile?.city} />

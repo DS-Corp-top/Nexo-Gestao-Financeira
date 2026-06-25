@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
+import { ViewModeContext, type ViewMode } from '../../contexts/ViewModeContext';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
@@ -14,8 +15,6 @@ const pageTitles: Record<string, string> = {
   '/investments': 'Investimentos',
   '/settings/company': 'Empresa',
 };
-
-type ViewMode = 'desktop' | 'mobile';
 
 function readViewMode(): ViewMode {
   try { return (localStorage.getItem('view-mode') as ViewMode) || 'desktop'; } catch { return 'desktop'; }
@@ -51,27 +50,29 @@ export default function AppShell() {
   };
 
   return (
-    <div className={`app-layout${isMobile ? ' mobile-preview' : ''}`}>
-      {!isMobile && (
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={toggleCollapse}
-        />
-      )}
-      <div className={`app-main${sidebarCollapsed && !isMobile ? ' collapsed' : ''}`}>
-        <Header
-          title={title}
-          onMenuClick={() => setSidebarOpen((prev) => !prev)}
-          viewMode={viewMode}
-          onToggleViewMode={toggleViewMode}
-        />
-        <main className="app-content animate-fade-in" key={location.pathname}>
-          <Outlet />
-        </main>
-        {isMobile && <BottomNav />}
+    <ViewModeContext.Provider value={{ viewMode, isMobile, toggle: toggleViewMode }}>
+      <div className={`app-layout${isMobile ? ' mobile-preview' : ''}`}>
+        {!isMobile && (
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={toggleCollapse}
+          />
+        )}
+        <div className={`app-main${sidebarCollapsed && !isMobile ? ' collapsed' : ''}`}>
+          <Header
+            title={title}
+            onMenuClick={() => setSidebarOpen((prev) => !prev)}
+            viewMode={viewMode}
+            onToggleViewMode={toggleViewMode}
+          />
+          <main className="app-content animate-fade-in" key={location.pathname}>
+            <Outlet />
+          </main>
+          {isMobile && <BottomNav />}
+        </div>
       </div>
-    </div>
+    </ViewModeContext.Provider>
   );
 }

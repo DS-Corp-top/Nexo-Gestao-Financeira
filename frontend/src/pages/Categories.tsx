@@ -3,8 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Tags, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchCategories, createCategory, updateCategory, deleteCategory, type Category } from '../api/categories';
 import CategoryModal from '../components/Categories/CategoryModal';
+import { useViewMode } from '../contexts/ViewModeContext';
 
 export default function Categories() {
+  const { isMobile } = useViewMode();
+  const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   
@@ -108,7 +111,7 @@ export default function Categories() {
       </div>
 
       {isLoading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
           <div className="skeleton" style={{ height: 300 }} />
           <div className="skeleton" style={{ height: 300 }} />
         </div>

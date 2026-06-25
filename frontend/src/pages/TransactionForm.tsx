@@ -4,8 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
 import { fetchCategories } from '../api/categories';
+import { useViewMode } from '../contexts/ViewModeContext';
 
 export default function TransactionForm() {
+  const { isMobile } = useViewMode();
+  const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
@@ -156,7 +159,7 @@ export default function TransactionForm() {
           <input type="text" className="app-input" value={description} onChange={(e) => setDescription(e.target.value)} required />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: '0.5rem' }}>
           <div className="space-y-1">
             <label className="app-field-label">Valor (R$)</label>
             <input type="number" step="0.01" min="0.01" className="app-input" value={amount} onChange={(e) => setAmount(e.target.value)} required style={{ color: type === 'expense' ? 'var(--color-danger)' : type === 'income' ? 'var(--color-success)' : 'var(--color-info)', fontWeight: 600 }} />
@@ -238,7 +241,7 @@ export default function TransactionForm() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: '0.5rem', marginTop: '1.5rem' }}>
           <Link to="/transactions" className="app-btn-secondary" style={{ textAlign: 'center', textDecoration: 'none' }}>Cancelar</Link>
           <button type="submit" className="app-btn-primary" disabled={loading}>
             {loading ? 'Salvando...' : 'Salvar'}

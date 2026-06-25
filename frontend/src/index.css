@@ -389,6 +389,13 @@ a:hover {
   .mobile-preview .mobile-menu-btn {
     display: none;
   }
+  .mobile-preview .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .mobile-preview .page-header {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 .app-sidebar {
