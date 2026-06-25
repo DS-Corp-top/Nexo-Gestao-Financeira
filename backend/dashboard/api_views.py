@@ -144,6 +144,31 @@ class DashboardView(APIView):
         for inv in Investment.objects.filter(tenant=tenant, is_active=True):
             investments_total += inv.net_invested
 
+        # Due notifications (unpaid expenses in selected month)
+        due_qs = Transaction.objects.filter(
+            tenant=tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            is_cleared=False,
+            is_ignored=False,
+            date__gte=month_start,
+            date__lte=month_end,
+        ).select_related("account", "category").order_by("date", "created_at")
+
+        due_count = due_qs.count()
+        due_overdue_count = due_qs.filter(date__lt=today).count()
+        due_list = [
+            {
+                "id": t.pk,
+                "description": t.description or "Sem descricao",
+                "amount": str(t.amount),
+                "date": t.date.isoformat(),
+                "category": t.category.name if t.category else None,
+                "account": t.account.name if t.account else None,
+                "overdue": t.date < today,
+            }
+            for t in due_qs[:6]
+        ]
+
         return Response({
             "selected_month": selected_month.isoformat(),
             "month_label": f"{MONTH_NAMES_PT.get(selected_month.month, '')} {selected_month.year}",
@@ -171,4 +196,9 @@ class DashboardView(APIView):
             ],
             "expense_trend": expense_trend,
             "accounts": accounts,
+            "due_notifications": {
+                "count": due_count,
+                "overdue_count": due_overdue_count,
+                "items": due_list,
+            },
         })

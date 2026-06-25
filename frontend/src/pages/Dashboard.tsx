@@ -9,6 +9,7 @@ import {
   CreditCard,
   PiggyBank,
   FileText,
+  Bell,
 } from 'lucide-react';
 import { fetchDashboard, type DashboardData } from '../api/dashboard';
 import {
@@ -45,6 +46,7 @@ export default function Dashboard() {
   const monthParam = searchParams.get('month') || getMonthParam(new Date());
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bellOpen, setBellOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -90,16 +92,113 @@ export default function Dashboard() {
     <div className="animate-fade-in">
       {/* Month Navigation */}
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)}>
-            <ChevronLeft size={20} />
-          </button>
-          <h2 className="page-title">{data.month_label}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)}>
-            <ChevronRight size={20} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)}>
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="page-title">{data.month_label}</h2>
+            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)}>
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          {/* Bell — Vencimentos */}
+          <button
+          className="btn btn-ghost btn-icon"
+          onClick={() => setBellOpen((v) => !v)}
+          title="Vencimentos"
+          style={{ position: 'relative' }}
+        >
+          <Bell size={20} />
+          {data.due_notifications.count > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 8,
+                background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)',
+                color: '#fff',
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 3px',
+                lineHeight: 1,
+              }}
+            >
+              {data.due_notifications.count}
+            </span>
+          )}
           </button>
         </div>
       </div>
+
+      {/* Vencimentos panel */}
+      {bellOpen && (
+        <div className="card animate-fade-in" style={{ marginBottom: 'var(--space-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Bell size={14} />
+              Vencimentos do Mês
+              {data.due_notifications.overdue_count > 0 && (
+                <span className="badge badge-expense" style={{ fontSize: '0.65rem' }}>
+                  {data.due_notifications.overdue_count} em atraso
+                </span>
+              )}
+            </h3>
+            <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen(false)} style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              ✕
+            </button>
+          </div>
+
+          {data.due_notifications.items.length === 0 ? (
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-md) 0' }}>
+              Nenhum vencimento pendente
+            </p>
+          ) : (
+            <div>
+              {data.due_notifications.items.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 0',
+                    borderBottom: '1px solid var(--color-border)',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: item.overdue ? 'var(--color-danger)' : 'var(--color-text-primary)' }}>
+                      {item.description}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                      {new Date(item.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      {item.category && ` · ${item.category}`}
+                      {item.account && ` · ${item.account}`}
+                      {item.overdue && <span style={{ color: 'var(--color-danger)', marginLeft: 4 }}>• Em atraso</span>}
+                    </p>
+                  </div>
+                  <span style={{ fontWeight: 700, color: 'var(--color-danger)', marginLeft: 12, whiteSpace: 'nowrap' }}>
+                    {formatCurrency(item.amount)}
+                  </span>
+                </div>
+              ))}
+              {data.due_notifications.count > data.due_notifications.items.length && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-sm)' }}>
+                  +{data.due_notifications.count - data.due_notifications.items.length} mais
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="kpi-grid stagger" style={{ marginBottom: 'var(--space-xl)' }}>

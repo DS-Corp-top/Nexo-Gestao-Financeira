@@ -28,6 +28,22 @@ export interface AccountSummary {
   include_in_balance: boolean;
 }
 
+export interface DueNotificationItem {
+  id: number;
+  description: string;
+  amount: string;
+  date: string;
+  category: string | null;
+  account: string | null;
+  overdue: boolean;
+}
+
+export interface DueNotifications {
+  count: number;
+  overdue_count: number;
+  items: DueNotificationItem[];
+}
+
 export interface DashboardData {
   selected_month: string;
   month_label: string;
@@ -40,6 +56,7 @@ export interface DashboardData {
   income_by_category: CategoryBreakdown[];
   expense_trend: ExpenseTrendPoint[];
   accounts: AccountSummary[];
+  due_notifications: DueNotifications;
 }
 
 export async function fetchDashboard(month?: string): Promise<DashboardData> {
