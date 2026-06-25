@@ -247,35 +247,41 @@ export default function Dashboard() {
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
             Tendência de Despesas
           </h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={expenseTrend}>
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              />
-              <YAxis hide />
-              <Tooltip
-                formatter={(val: any) => formatCurrency(val)}
-                contentStyle={{
-                  background: 'var(--color-bg-elevated)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--color-text-primary)',
-                  fontSize: '0.8rem',
-                }}
-              />
-              <Bar dataKey="total" radius={[6, 6, 0, 0]}>
-                {expenseTrend.map((entry, index) => (
-                  <Cell
-                    key={index}
-                    fill={entry.isCurrent ? '#fb7185' : '#2b2f3a'}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {expenseTrend.every((p) => p.total === 0) ? (
+            <div className="empty-state" style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <p className="empty-state-text">Sem despesas nos últimos 6 meses</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={expenseTrend} barCategoryGap="25%">
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
+                />
+                <YAxis hide domain={[0, 'dataMax']} />
+                <Tooltip
+                  formatter={(val: any) => formatCurrency(val)}
+                  contentStyle={{
+                    background: 'var(--color-bg-elevated)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '0.8rem',
+                  }}
+                />
+                <Bar dataKey="total" radius={[6, 6, 0, 0]} minPointSize={3}>
+                  {expenseTrend.map((entry, index) => (
+                    <Cell
+                      key={index}
+                      fill={entry.isCurrent ? '#fb7185' : '#2b2f3a'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Expense by Category */}
