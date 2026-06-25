@@ -49,7 +49,13 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
       <aside className={`app-sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         <div className="nav-brand">
           <span className="nav-brand-text">Nexo</span>
-          {collapsed && <span className="nav-brand-icon">N</span>}
+          <button
+            className="sidebar-collapse-btn"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="nav-section" style={{ flex: 1 }}>
@@ -68,15 +74,6 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
             </NavLink>
           ))}
         </nav>
-
-        <button
-          className="sidebar-collapse-btn"
-          onClick={onToggleCollapse}
-          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-        >
-          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          {!collapsed && <span>Recolher</span>}
-        </button>
       </aside>
     </>
   );
