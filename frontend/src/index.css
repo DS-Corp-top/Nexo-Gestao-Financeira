@@ -408,11 +408,7 @@ a:hover {
   height: 1.2rem;
 }
 
-/* BottomNav hidden on desktop by default */
 @media (min-width: 769px) {
-  .txn-bottom-nav {
-    display: none;
-  }
   .mobile-preview .txn-bottom-nav {
     display: flex;
   }
@@ -881,12 +877,12 @@ a:hover {
     margin-left: 0;
   }
 
-  .app-content {
-    padding-bottom: 110px;
+  .txn-bottom-nav {
+    display: flex;
   }
 
   .app-content {
-    padding: var(--space-md);
+    padding: var(--space-md) var(--space-md) 200px;
   }
 
   .kpi-grid {
@@ -1587,7 +1583,7 @@ a:hover {
   bottom: 0;
   z-index: 45;
   margin: 0 auto;
-  display: flex;
+  display: none;
   justify-content: space-around;
   align-items: end;
   gap: 0.7rem;
