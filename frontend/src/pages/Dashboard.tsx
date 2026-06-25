@@ -290,15 +290,15 @@ export default function Dashboard() {
             Despesas por Categoria
           </h3>
           {expenseCategories.length > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-              <ResponsiveContainer width={160} height={160}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 'var(--space-md)' }}>
+              <ResponsiveContainer width={isMobile ? '100%' : 160} height={isMobile ? 180 : 160}>
                 <PieChart>
                   <Pie
                     data={expenseCategories}
                     cx="50%"
                     cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
+                    innerRadius={isMobile ? 50 : 40}
+                    outerRadius={isMobile ? 80 : 70}
                     dataKey="value"
                     stroke="none"
                   >
@@ -316,15 +316,16 @@ export default function Dashboard() {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      padding: '4px 0',
+                      padding: '6px 0',
+                      borderBottom: '1px solid var(--color-border)',
                       fontSize: '0.8rem',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.fill }} />
-                      <span style={{ color: 'var(--color-text-secondary)' }}>{cat.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.fill, flexShrink: 0 }} />
+                      <span style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
                     </div>
-                    <span style={{ fontWeight: 600 }}>{formatCurrency(cat.value)}</span>
+                    <span style={{ fontWeight: 600, marginLeft: 8, whiteSpace: 'nowrap' }}>{formatCurrency(cat.value)}</span>
                   </div>
                 ))}
               </div>
