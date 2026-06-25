@@ -34,6 +34,11 @@ class Client(models.Model):
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"
 
+    def save(self, *args, **kwargs):
+        from common.tenancy import assign_tenant
+        assign_tenant(self)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 

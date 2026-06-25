@@ -27,6 +27,18 @@ class Tenant(models.Model):
         blank=True,
         null=True,
     )
+    
+    class InterfaceChoices(models.TextChoices):
+        CLASSIC = "classic", "Clássico (Django)"
+        REACT = "react", "Novo App (React)"
+        
+    default_interface = models.CharField(
+        "Interface padrão",
+        max_length=20,
+        choices=InterfaceChoices.choices,
+        default=InterfaceChoices.CLASSIC,
+        help_text="Define qual painel abrirá por padrão ao fazer login.",
+    )
 
     is_active = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)

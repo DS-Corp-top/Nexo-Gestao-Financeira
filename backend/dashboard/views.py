@@ -502,6 +502,15 @@ class DashboardHomeView(DashboardContextMixin, TemplateView):
         self.show_public_landing = not request.user.is_authenticated
         if self.show_public_landing:
             return TemplateView.dispatch(self, request, *args, **kwargs)
+
+        tenant = getattr(request, "tenant", None)
+        if tenant and tenant.default_interface == "react":
+            if request.GET.get("ui") == "classic":
+                request.session["ui_override"] = "classic"
+            elif request.session.get("ui_override") != "classic":
+                from django.shortcuts import redirect
+                return redirect("react_app")
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_template_names(self):

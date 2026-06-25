@@ -1,0 +1,125 @@
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { login } from '../api/auth';
+import { useAuth } from '../contexts/AuthContext';
+
+export default function Login() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { refresh } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await login({ username, password });
+      await refresh();
+      navigate('/');
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setError('E-mail ou senha incorretos.');
+      } else {
+        setError('Erro ao fazer login. Tente novamente.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 440, margin: '0 auto', paddingTop: '8vh', paddingInline: 'var(--space-lg)' }} className="animate-fade-in">
+      
+      {/* Title Block */}
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
+          Entrar
+        </h1>
+        <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-xs)' }}>
+          Entre com o e-mail aprovado no seu cadastro.
+        </p>
+      </div>
+
+      {/* Info Block */}
+      <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
+        <p className="label" style={{ marginBottom: '4px' }}>Acesso ao sistema</p>
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+          Use o e-mail informado no cadastro.
+          <br />
+          Cadastros novos ficam pendentes até validação do administrador.
+        </p>
+      </div>
+
+      {/* Form Block */}
+      <form onSubmit={handleSubmit} className="card">
+        {error && (
+          <div
+            style={{
+              background: 'var(--color-danger-muted)',
+              color: 'var(--color-danger)',
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.85rem',
+              marginBottom: 'var(--space-md)',
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div style={{ marginBottom: 'var(--space-md)' }}>
+          <label className="label" htmlFor="username">E-mail</label>
+          <input
+            id="username"
+            className="input"
+            type="text"
+            placeholder="seu@email.com"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+            autoFocus
+            required
+          />
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-lg)' }}>
+          <label className="label" htmlFor="password">Senha</label>
+          <input
+            id="password"
+            className="input"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="btn btn-primary btn-lg"
+          style={{ width: '100%' }}
+          disabled={loading}
+        >
+          {loading ? <span className="spinner" /> : 'Entrar'}
+        </button>
+      </form>
+
+      {/* Footer */}
+      <div style={{ textAlign: 'center', marginTop: 'var(--space-xl)' }}>
+        <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+          Ainda não possui conta?{' '}
+          <Link to="/register" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+            Cadastrar
+          </Link>
+        </p>
+      </div>
+      
+    </div>
+  );
+}

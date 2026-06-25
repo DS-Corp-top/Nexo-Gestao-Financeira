@@ -23,6 +23,7 @@ class TenantForm(forms.ModelForm):
             "state",
             "postal_code",
             "logo",
+            "default_interface",
         ]
         widgets = {
             "name": forms.TextInput(

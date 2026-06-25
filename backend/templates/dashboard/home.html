@@ -122,6 +122,8 @@
                             <a href="{% url 'admin:index' %}" class="dash-user-menu-link">Painel admin</a>
                             <a href="{% url 'users:pending' %}" class="dash-user-menu-link">Usuários pendentes</a>
                         {% endif %}
+                        <a href="{% url 'tenants:update' %}" class="dash-user-menu-link">Configurações da Empresa</a>
+                        <a href="{% url 'react_app' %}" class="dash-user-menu-link">Novo App (React)</a>
                         <button type="button" class="dash-user-menu-link" data-view-mode-toggle>Modo navegador</button>
                         <form method="post" action="{% url 'users:logout' %}">
                             {% csrf_token %}

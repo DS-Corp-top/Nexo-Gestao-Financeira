@@ -1,0 +1,49 @@
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from common.api_mixins import TenantQuerySetMixin
+from shopping.models import ShoppingItem, ShoppingList
+from shopping.serializers import (
+    ShoppingItemSerializer,
+    ShoppingListSerializer,
+    ShoppingListSummarySerializer,
+)
+
+
+class ShoppingListViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
+    queryset = ShoppingList.objects.prefetch_related("items").all()
+    search_fields = ("name",)
+    ordering_fields = ("name", "list_date", "updated_at")
+    ordering = ("-updated_at",)
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ShoppingListSummarySerializer
+        return ShoppingListSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, tenant=self.get_tenant())
+
+
+class ShoppingItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
+    queryset = ShoppingItem.objects.all()
+    serializer_class = ShoppingItemSerializer
+    filterset_fields = ("shopping_list", "is_purchased")
+    search_fields = ("title",)
+    ordering_fields = ("title", "created_at")
+    ordering = ("is_purchased", "-updated_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, tenant=self.get_tenant())
+
+    @action(detail=True, methods=["post"])
+    def toggle_purchased(self, request, pk=None):
+        """Toggle purchased status of a shopping item."""
+        item = self.get_object()
+        item.toggle_purchased()
+        item.save(update_fields=["is_purchased", "purchased_at", "updated_at"])
+        return Response(
+            ShoppingItemSerializer(item).data,
+            status=status.HTTP_200_OK,
+        )
