@@ -899,6 +899,37 @@ a:hover {
     flex-direction: row;
     align-items: center;
   }
+
+  .txn-bottom-nav {
+    padding: 0.4rem 0.6rem calc(0.5rem + env(safe-area-inset-bottom));
+    gap: 0.3rem;
+  }
+
+  .txn-tab-link {
+    min-width: 3.8rem;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.65rem;
+  }
+
+  .txn-tab-icon {
+    height: 1.2rem;
+    width: 1.2rem;
+  }
+
+  .txn-tab-icon svg {
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+
+  .txn-center-fab {
+    height: 3rem;
+    width: 3rem;
+  }
+
+  .txn-center-fab svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
 }
 
 @media (max-width: 480px) {
