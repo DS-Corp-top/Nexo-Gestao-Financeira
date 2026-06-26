@@ -66,7 +66,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: 680, width: '95vw', maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ maxWidth: 680, width: '95vw', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -147,16 +147,16 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
           )
         ) : tab === 'tendencia' ? (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 'var(--space-lg)' }}>
               {[
                 { label: 'Mês atual', value: formatCurrency(currentMonth?.total ?? 0), sub: 'Sem variação' },
-                { label: 'Média', value: formatCurrency(trendAvg), sub: 'Janela de 6 meses' },
+                { label: 'Média', value: formatCurrency(trendAvg), sub: '6 meses' },
                 { label: 'Pico', value: formatCurrency(trendPeak?.total ?? 0), sub: trendPeak?.label ?? '-' },
               ].map((card) => (
-                <div key={card.label} style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md)', border: '1px solid var(--color-border)' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{card.label}</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{card.value}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{card.sub}</div>
+                <div key={card.label} style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', padding: '10px 8px', border: '1px solid var(--color-border)', minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{card.label}</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.value}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{card.sub}</div>
                 </div>
               ))}
             </div>
@@ -164,24 +164,20 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>Sem despesas nos últimos meses.</p>
             ) : (
               <>
-                <ResponsiveContainer width="100%" height={180}>
+                <ResponsiveContainer width="100%" height={150}>
                   <BarChart data={expenseTrend} barCategoryGap="25%">
-                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                     <YAxis hide domain={[0, 'dataMax']} />
                     <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} />
-                    <Bar dataKey="total" radius={[6, 6, 0, 0]} minPointSize={3}>
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={3}>
                       {expenseTrend.map((e, i) => <Cell key={i} fill={e.isCurrent ? '#fb7185' : '#2b2f3a'} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <div style={{ marginTop: 'var(--space-lg)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>Gráfico de linhas</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mesmo período</span>
-                  </div>
-                  <ResponsiveContainer width="100%" height={140}>
+                <div style={{ marginTop: 'var(--space-md)' }}>
+                  <ResponsiveContainer width="100%" height={110}>
                     <LineChart data={expenseTrend}>
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                       <YAxis hide />
                       <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} />
                       <Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2} dot={false} />

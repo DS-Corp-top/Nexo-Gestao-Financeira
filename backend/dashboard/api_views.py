@@ -144,25 +144,27 @@ class DashboardView(APIView):
             .order_by("-total")
         )
 
-        # Expense trend (last 6 months — matches views.py)
+        # Expense + Income trend (last 6 months — matches views.py)
         expense_trend = []
+        income_trend = []
         for offset in range(-5, 1):
             month_date = shift_month(selected_month, offset)
-            total = (
-                Transaction.objects.filter(
-                    tenant=tenant,
-                    transaction_type=Transaction.TransactionType.EXPENSE,
-                    is_ignored=False,
-                    date__year=month_date.year,
-                    date__month=month_date.month,
-                ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+            base_qs = Transaction.objects.filter(
+                tenant=tenant,
+                is_ignored=False,
+                date__year=month_date.year,
+                date__month=month_date.month,
             )
+            exp_total = base_qs.filter(
+                transaction_type=Transaction.TransactionType.EXPENSE,
+            ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+            inc_total = base_qs.filter(
+                transaction_type=Transaction.TransactionType.INCOME,
+            ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
             short_month = MONTH_NAMES_PT.get(month_date.month, "")[:3]
-            expense_trend.append({
-                "label": f"{short_month}/{month_date.year % 100:02d}",
-                "total": str(total),
-                "is_current": offset == 0,
-            })
+            label = f"{short_month}/{month_date.year % 100:02d}"
+            expense_trend.append({"label": label, "total": str(exp_total), "is_current": offset == 0})
+            income_trend.append({"label": label, "total": str(inc_total), "is_current": offset == 0})
 
         # Accounts summary
         accounts = []
@@ -250,6 +252,7 @@ class DashboardView(APIView):
                 if row["total"] > 0
             ],
             "expense_trend": expense_trend,
+            "income_trend": income_trend,
             "accounts": accounts,
             "due_notifications": {
                 "count": due_count,

@@ -68,6 +68,7 @@ export interface DashboardData {
   expense_by_category: CategoryBreakdown[];
   income_by_category: CategoryBreakdown[];
   expense_trend: ExpenseTrendPoint[];
+  income_trend: ExpenseTrendPoint[];
   accounts: AccountSummary[];
   due_notifications: DueNotifications;
   alerts: DashboardAlerts;

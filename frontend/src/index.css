@@ -1014,6 +1014,17 @@ a:hover {
 }
 
 /* TRANSACTIONS CSS FROM DJANGO */
+.txn-desktop-new-btn {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .txn-desktop-new-btn {
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
 .txn-month-nav {
   display: grid;
   grid-template-columns: 2.3rem 1fr 2.3rem;

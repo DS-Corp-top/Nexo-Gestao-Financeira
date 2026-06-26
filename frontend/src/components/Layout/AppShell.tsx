@@ -78,8 +78,6 @@ export default function AppShell() {
           <Header
             title={title}
             onMenuClick={() => setSidebarOpen((prev) => !prev)}
-            viewMode={viewMode}
-            onToggleViewMode={toggleViewMode}
             isMobile={isMobile}
           />
           <main className="app-content animate-fade-in" key={location.pathname}>

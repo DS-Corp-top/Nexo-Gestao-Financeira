@@ -158,6 +158,13 @@ export default function Transactions() {
           <h1 className="txn-month-title">{selectedMonthLabel}</h1>
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
         </div>
+
+        {/* Nova transação — só no desktop (mobile usa FAB) */}
+        <div className="txn-desktop-new-btn">
+          <button className="btn btn-primary" onClick={() => navigate('/transactions/new')}>
+            + Nova transação
+          </button>
+        </div>
         {/* Balance */}
         <div id="statement-balance">
           <article className="txn-balance-card">

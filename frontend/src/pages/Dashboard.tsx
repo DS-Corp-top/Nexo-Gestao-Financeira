@@ -100,11 +100,14 @@ export default function Dashboard() {
     );
   }
 
-  const expenseTrend = data.expense_trend.map((p) => ({
+  const combinedTrend = data.expense_trend.map((p, i) => ({
     label: p.label,
-    total: parseFloat(p.total),
+    expense: parseFloat(p.total),
+    income: parseFloat(data.income_trend[i]?.total ?? '0'),
     isCurrent: p.is_current,
   }));
+
+  const expenseTrend = combinedTrend;
 
   const expenseCategories = data.expense_by_category.map((c, i) => ({
     name: c.name,
@@ -320,39 +323,26 @@ export default function Dashboard() {
         {/* Expense Trend */}
         <div className="card">
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
-            Tendência de Despesas
+            Tendência
           </h3>
-          {expenseTrend.every((p) => p.total === 0) ? (
+          {combinedTrend.every((p) => p.expense === 0 && p.income === 0) ? (
             <div className="empty-state" style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p className="empty-state-text">Sem despesas nos últimos 6 meses</p>
+              <p className="empty-state-text">Sem movimentações nos últimos 6 meses</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={expenseTrend} barCategoryGap="25%">
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-                />
+              <BarChart data={combinedTrend} barCategoryGap="20%" barGap={3}>
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} />
                 <YAxis hide domain={[0, 'dataMax']} />
                 <Tooltip
-                  formatter={(val: any) => formatCurrency(val)}
-                  contentStyle={{
-                    background: 'var(--color-bg-elevated)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--color-text-primary)',
-                    fontSize: '0.8rem',
-                  }}
+                  formatter={(val: any, name: string) => [formatCurrency(val), name === 'expense' ? 'Despesas' : 'Receitas']}
+                  contentStyle={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)', fontSize: '0.8rem' }}
                 />
-                <Bar dataKey="total" radius={[6, 6, 0, 0]} minPointSize={3}>
-                  {expenseTrend.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={entry.isCurrent ? '#fb7185' : '#2b2f3a'}
-                    />
-                  ))}
+                <Bar dataKey="income" radius={[4, 4, 0, 0]} minPointSize={2}>
+                  {combinedTrend.map((e, i) => <Cell key={i} fill={e.isCurrent ? '#22c55e' : '#14532d'} />)}
+                </Bar>
+                <Bar dataKey="expense" radius={[4, 4, 0, 0]} minPointSize={2}>
+                  {combinedTrend.map((e, i) => <Cell key={i} fill={e.isCurrent ? '#fb7185' : '#2b2f3a'} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
