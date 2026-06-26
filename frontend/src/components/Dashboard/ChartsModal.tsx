@@ -35,6 +35,7 @@ interface ChartsModalProps {
 export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps) {
   const [tab, setTab] = useState<Tab>('ranking');
   const [month, setMonth] = useState(initialMonth);
+  const [mode, setMode] = useState<'expense' | 'income'>('expense');
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-charts', month],
@@ -47,19 +48,34 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
+  const incomeCategories = (data?.income_by_category ?? []).map((c, i) => ({
+    name: c.name,
+    value: parseFloat(c.total),
+    fill: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
   const expenseTrend = (data?.expense_trend ?? []).map((p) => ({
     label: p.label,
     total: parseFloat(p.total),
     isCurrent: p.is_current,
   }));
 
-  const ranking = [...expenseCategories].sort((a, b) => b.value - a.value);
+  const incomeTrend = (data?.income_trend ?? []).map((p) => ({
+    label: p.label,
+    total: parseFloat(p.total),
+    isCurrent: p.is_current,
+  }));
+
+  const activeCategories = mode === 'expense' ? expenseCategories : incomeCategories;
+  const activeTrend = mode === 'expense' ? expenseTrend : incomeTrend;
+
+  const ranking = [...activeCategories].sort((a, b) => b.value - a.value);
   const rankingTotal = ranking.reduce((s, c) => s + c.value, 0);
 
-  const currentMonth = expenseTrend.find((p) => p.isCurrent);
-  const trendAvg = expenseTrend.length ? expenseTrend.reduce((s, p) => s + p.total, 0) / expenseTrend.length : 0;
-  const trendPeak = expenseTrend.length ? expenseTrend.reduce((max, p) => p.total > max.total ? p : max, expenseTrend[0]) : null;
-  const hasData = expenseTrend.some((p) => p.total > 0);
+  const currentMonth = activeTrend.find((p) => p.isCurrent);
+  const trendAvg = activeTrend.length ? activeTrend.reduce((s, p) => s + p.total, 0) / activeTrend.length : 0;
+  const trendPeak = activeTrend.length ? activeTrend.reduce((max, p) => p.total > max.total ? p : max, activeTrend[0]) : null;
+  const hasData = activeTrend.some((p) => p.total > 0);
   const tooltipStyle = { background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)', fontSize: '0.8rem' };
 
   return createPortal(
@@ -74,10 +90,38 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
           <div>
             <h2 className="modal-title">Gráficos</h2>
             <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>
-              Leitura visual das despesas por período
+              Leitura visual por período
             </p>
           </div>
           <button className="btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {/* Toggle Mode */}
+        <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <button
+            onClick={() => setMode('expense')}
+            style={{
+              flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: '0.8rem',
+              background: mode === 'expense' ? '#fb7185' : 'transparent',
+              color: mode === 'expense' ? '#fff' : 'var(--color-text-muted)',
+              border: `1px solid ${mode === 'expense' ? '#fb7185' : 'var(--color-border)'}`,
+              cursor: 'pointer'
+            }}
+          >
+            Despesas
+          </button>
+          <button
+            onClick={() => setMode('income')}
+            style={{
+              flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: '0.8rem',
+              background: mode === 'income' ? '#22c55e' : 'transparent',
+              color: mode === 'income' ? '#fff' : 'var(--color-text-muted)',
+              border: `1px solid ${mode === 'income' ? '#22c55e' : 'var(--color-border)'}`,
+              cursor: 'pointer'
+            }}
+          >
+            Receitas
+          </button>
         </div>
 
         {/* Tabs */}
@@ -119,21 +163,21 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
         {isLoading ? (
           <div className="skeleton" style={{ height: 240 }} />
         ) : tab === 'categorias' ? (
-          expenseCategories.length === 0 ? (
+          activeCategories.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>
-              Sem despesas no mês selecionado.
+              Sem registros no mês selecionado.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <PieChart width={200} height={200}>
-                  <Pie data={expenseCategories} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" stroke="none">
-                    {expenseCategories.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                  <Pie data={activeCategories} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" stroke="none">
+                    {activeCategories.map((e, i) => <Cell key={i} fill={e.fill} />)}
                   </Pie>
                 </PieChart>
               </div>
               <div>
-                {expenseCategories.map((cat, i) => (
+                {activeCategories.map((cat, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.83rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.fill }} />
@@ -161,26 +205,28 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               ))}
             </div>
             {!hasData ? (
-              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>Sem despesas nos últimos meses.</p>
+              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>Sem registros nos últimos meses.</p>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={expenseTrend} barCategoryGap="25%">
+                  <BarChart data={activeTrend} barCategoryGap="25%">
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                     <YAxis hide domain={[0, 'dataMax']} />
                     <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} />
                     <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={3}>
-                      {expenseTrend.map((e, i) => <Cell key={i} fill={e.isCurrent ? '#fb7185' : '#2b2f3a'} />)}
+                      {activeTrend.map((e, i) => (
+                        <Cell key={i} fill={e.isCurrent ? (mode === 'expense' ? '#fb7185' : '#22c55e') : (mode === 'expense' ? '#2b2f3a' : '#14532d')} />
+                      ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
                 <div style={{ marginTop: 'var(--space-md)' }}>
                   <ResponsiveContainer width="100%" height={110}>
-                    <LineChart data={expenseTrend}>
+                    <LineChart data={activeTrend}>
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                       <YAxis hide />
                       <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} />
-                      <Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="total" stroke={mode === 'expense' ? '#22d3ee' : '#34d399'} strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -190,12 +236,12 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
         ) : (
           ranking.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>
-              Sem despesas cadastradas para montar ranking.
+              Sem registros cadastrados para montar ranking.
             </p>
           ) : (
             <div>
               <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Ranking de maiores despesas
+                Ranking de {mode === 'expense' ? 'maiores despesas' : 'maiores receitas'}
               </p>
               {ranking.map((cat, i) => {
                 const pct = rankingTotal > 0 ? (cat.value / rankingTotal) * 100 : 0;
