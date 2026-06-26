@@ -27,8 +27,8 @@ export type CreateShoppingListPayload = Pick<ShoppingList, 'name' | 'list_date' 
 export type CreateShoppingItemPayload = Pick<ShoppingItem, 'shopping_list' | 'title' | 'quantity' | 'unit_price' | 'notes'>;
 
 export async function fetchShoppingLists(): Promise<ShoppingList[]> {
-  const { data } = await api.get<ShoppingList[]>('/shopping-lists/');
-  return data;
+  const { data } = await api.get<any>('/shopping-lists/');
+  return data.results !== undefined ? data.results : data;
 }
 
 export async function fetchShoppingList(id: number): Promise<ShoppingList> {
@@ -45,6 +45,11 @@ export async function deleteShoppingList(id: number): Promise<void> {
   await api.delete(`/shopping-lists/${id}/`);
 }
 
+export async function updateShoppingList(id: number, payload: Partial<CreateShoppingListPayload>): Promise<ShoppingList> {
+  const { data } = await api.patch<ShoppingList>(`/shopping-lists/${id}/`, payload);
+  return data;
+}
+
 export async function createShoppingItem(payload: CreateShoppingItemPayload): Promise<ShoppingItem> {
   const { data } = await api.post<ShoppingItem>('/shopping-items/', payload);
   return data;
@@ -52,6 +57,11 @@ export async function createShoppingItem(payload: CreateShoppingItemPayload): Pr
 
 export async function deleteShoppingItem(id: number): Promise<void> {
   await api.delete(`/shopping-items/${id}/`);
+}
+
+export async function updateShoppingItem(id: number, payload: Partial<CreateShoppingItemPayload>): Promise<ShoppingItem> {
+  const { data } = await api.patch<ShoppingItem>(`/shopping-items/${id}/`, payload);
+  return data;
 }
 
 export async function toggleShoppingItem(id: number): Promise<ShoppingItem> {

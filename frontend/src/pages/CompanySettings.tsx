@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, Save } from 'lucide-react';
-import { fetchTenantProfile, updateTenantProfile } from '../api/tenant';
+import { Building2, KeyRound, MapPin, Save } from 'lucide-react';
+import { createNfseCredential, fetchNfseCredentials, fetchTenantProfile, lookupCep, updateNfseCredential, updateTenantProfile } from '../api/tenant';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewMode } from '../contexts/ViewModeContext';
 
@@ -14,11 +14,18 @@ export default function CompanySettings() {
   const queryClient = useQueryClient();
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['tenantProfile'],
     queryFn: fetchTenantProfile,
   });
+
+  const { data: nfseCredentials } = useQuery({
+    queryKey: ['nfseCredentials'],
+    queryFn: fetchNfseCredentials,
+  });
+  const nfseCredential = nfseCredentials?.[0];
 
   const updateMutation = useMutation({
     mutationFn: updateTenantProfile,
@@ -30,6 +37,20 @@ export default function CompanySettings() {
     onError: () => {
       setErrorMsg('Erro ao atualizar os dados. Verifique e tente novamente.');
     }
+  });
+
+  const nfseMutation = useMutation({
+    mutationFn: (payload: { gov_br_cpf: string; gov_br_password?: string }) => (
+      nfseCredential
+        ? updateNfseCredential(nfseCredential.id, payload)
+        : createNfseCredential(payload)
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nfseCredentials'] });
+      setSuccessMsg('Credenciais NFS-e salvas com sucesso!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    },
+    onError: () => setErrorMsg('Erro ao salvar credenciais NFS-e.'),
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -44,6 +65,38 @@ export default function CompanySettings() {
     }
 
     await updateMutation.mutateAsync(formData);
+  };
+
+  const handleCepLookup = async () => {
+    const input = document.querySelector<HTMLInputElement>('input[name="postal_code"]');
+    const cep = input?.value || '';
+    if (!cep.trim()) return;
+    setCepLoading(true);
+    setErrorMsg('');
+    try {
+      const data = await lookupCep(cep);
+      document.querySelector<HTMLInputElement>('input[name="address"]')!.value = data.address || '';
+      document.querySelector<HTMLInputElement>('input[name="district"]')!.value = data.district || '';
+      document.querySelector<HTMLInputElement>('input[name="city"]')!.value = data.city || '';
+      document.querySelector<HTMLInputElement>('input[name="state"]')!.value = data.state || '';
+      if (input) input.value = data.postal_code || cep;
+    } catch {
+      setErrorMsg('CEP não encontrado ou serviço indisponível.');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const handleNfseSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const gov_br_cpf = String(formData.get('gov_br_cpf') || '');
+    const gov_br_password = String(formData.get('gov_br_password') || '');
+    await nfseMutation.mutateAsync({
+      gov_br_cpf,
+      ...(gov_br_password ? { gov_br_password } : {}),
+    });
+    e.currentTarget.reset();
   };
 
   if (isLoading) {
@@ -162,7 +215,12 @@ export default function CompanySettings() {
             </div>
             <div>
               <label className="label">CEP</label>
-              <input type="text" name="postal_code" className="input" defaultValue={profile?.postal_code} />
+              <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                <input type="text" name="postal_code" className="input" defaultValue={profile?.postal_code} />
+                <button type="button" className="btn btn-secondary" onClick={handleCepLookup} disabled={cepLoading}>
+                  <MapPin size={16} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -180,6 +238,37 @@ export default function CompanySettings() {
             >
               <Save size={18} />
               {updateMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card" style={{ maxWidth: 800, marginTop: 'var(--space-lg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+          <KeyRound size={22} style={{ color: 'var(--color-accent)' }} />
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Credenciais NFS-e</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+              {nfseCredential?.has_password ? 'Senha configurada' : 'Senha ainda não configurada'}
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleNfseSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+            <div>
+              <label className="label">CPF do portal NFS-e</label>
+              <input type="text" name="gov_br_cpf" className="input" defaultValue={nfseCredential?.gov_br_cpf} required />
+            </div>
+            <div>
+              <label className="label">Senha</label>
+              <input type="password" name="gov_br_password" className="input" placeholder={nfseCredential?.has_password ? 'Deixe em branco para manter' : ''} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="submit" className="btn btn-primary" disabled={nfseMutation.isPending}>
+              <Save size={18} />
+              {nfseMutation.isPending ? 'Salvando...' : 'Salvar Credenciais'}
             </button>
           </div>
         </form>

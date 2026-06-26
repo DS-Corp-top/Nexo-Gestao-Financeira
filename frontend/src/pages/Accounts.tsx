@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Wallet } from 'lucide-react';
-import { fetchAccounts, createAccount, updateAccount, type Account } from '../api/accounts';
+import { Plus, Edit2, Wallet, CalendarClock } from 'lucide-react';
+import { fetchAccounts, createAccount, updateAccount, upsertCardMonthlyLimit, type Account } from '../api/accounts';
 import AccountModal from '../components/Accounts/AccountModal';
 
 function formatCurrency(value: string | number): string {
@@ -30,6 +30,15 @@ export default function Accounts() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounts'] }),
   });
 
+  const cardLimitMutation = useMutation({
+    mutationFn: upsertCardMonthlyLimit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
   const handleOpenNew = () => {
     setEditingAccount(null);
     setModalOpen(true);
@@ -46,6 +55,20 @@ export default function Accounts() {
     } else {
       await createMutation.mutateAsync(payload);
     }
+  };
+
+  const handleMonthlyLimit = (account: Account) => {
+    const now = new Date();
+    const monthValue = prompt('Mês do limite (AAAA-MM):', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    if (!monthValue) return;
+    const [year, month] = monthValue.split('-').map(Number);
+    if (!year || !month || month < 1 || month > 12) {
+      alert('Informe o mês no formato AAAA-MM.');
+      return;
+    }
+    const amount = prompt(`Limite de ${account.name} em ${monthValue}:`, account.credit_limit || '0.00');
+    if (amount === null || amount.trim() === '') return;
+    cardLimitMutation.mutate({ account: account.id, year, month, amount });
   };
 
   return (
@@ -85,6 +108,15 @@ export default function Accounts() {
                 >
                   <Edit2 size={16} />
                 </button>
+                {account.account_type === 'card' && (
+                  <button
+                    className="btn-ghost btn-icon"
+                    onClick={() => handleMonthlyLimit(account)}
+                    title="Limite mensal"
+                  >
+                    <CalendarClock size={16} />
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>

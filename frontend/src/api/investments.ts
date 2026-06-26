@@ -27,8 +27,8 @@ export type CreateInvestmentPayload = Pick<Investment, 'name' | 'investment_type
 export type CreateInvestmentEntryPayload = Pick<InvestmentEntry, 'investment' | 'entry_type' | 'amount' | 'date' | 'description'>;
 
 export async function fetchInvestments(): Promise<Investment[]> {
-  const { data } = await api.get<Investment[]>('/investments/');
-  return data;
+  const { data } = await api.get<any>('/investments/');
+  return data.results !== undefined ? data.results : data;
 }
 
 export async function fetchInvestment(id: number): Promise<Investment> {

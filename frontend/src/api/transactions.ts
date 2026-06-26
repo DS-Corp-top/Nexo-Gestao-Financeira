@@ -45,6 +45,15 @@ export interface StatementSummary {
   monthly_expense_total: string;
 }
 
+export interface ClosedMonth {
+  id: number;
+  year: number;
+  month: number;
+  is_closed: boolean;
+  closed_at: string;
+  updated_at: string;
+}
+
 export async function fetchTransactions(params?: { date__gte?: string; date__lte?: string; account?: string; category?: string; order_by?: string }): Promise<Transaction[]> {
   const { data } = await api.get<any>('/transactions/', { params });
   return data.results !== undefined ? data.results : data;
@@ -76,5 +85,20 @@ export async function toggleTransactionCleared({ id, cleared_date, unlock_passwo
 
 export async function toggleTransactionIgnored(id: number): Promise<Transaction> {
   const { data } = await api.post<Transaction>(`/transactions/${id}/toggle_ignored/`);
+  return data;
+}
+
+export async function fetchClosedMonths(params?: { year?: number; month?: number; is_closed?: boolean }): Promise<ClosedMonth[]> {
+  const { data } = await api.get<any>('/closed-months/', { params });
+  return data.results !== undefined ? data.results : data;
+}
+
+export async function createClosedMonth(payload: { year: number; month: number; is_closed?: boolean }): Promise<ClosedMonth> {
+  const { data } = await api.post<ClosedMonth>('/closed-months/', payload);
+  return data;
+}
+
+export async function updateClosedMonth(id: number, payload: Partial<Pick<ClosedMonth, 'is_closed'>>): Promise<ClosedMonth> {
+  const { data } = await api.patch<ClosedMonth>(`/closed-months/${id}/`, payload);
   return data;
 }

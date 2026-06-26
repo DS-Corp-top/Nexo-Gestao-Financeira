@@ -7,7 +7,7 @@ import { ViewModeContext, type ViewMode } from '../../contexts/ViewModeContext';
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
-  '/transactions': 'Transações',
+  '/transactions': 'Financeiro',
   '/transactions/new': 'Nova Transação',
   '/accounts': 'Contas',
   '/categories': 'Categorias',
@@ -15,6 +15,7 @@ const pageTitles: Record<string, string> = {
   '/shopping': 'Compras',
   '/investments': 'Investimentos',
   '/settings/company': 'Empresa',
+  '/settings/users': 'Usuários',
 };
 
 function readViewMode(): ViewMode {

@@ -17,6 +17,23 @@ export interface TenantProfile {
   logo: string | null;
 }
 
+export interface CepLookupResult {
+  address: string;
+  district: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  complement: string;
+}
+
+export interface NfseCredential {
+  id: number;
+  tenant: number;
+  gov_br_cpf: string;
+  has_password: boolean;
+  updated_at: string;
+}
+
 export async function fetchTenantProfile(): Promise<TenantProfile> {
   const { data } = await api.get<TenantProfile>('/tenant/');
   return data;
@@ -28,5 +45,25 @@ export async function updateTenantProfile(payload: FormData): Promise<TenantProf
       'Content-Type': 'multipart/form-data',
     },
   });
+  return data;
+}
+
+export async function lookupCep(cep: string): Promise<CepLookupResult> {
+  const { data } = await api.get<CepLookupResult>(`/cep/${encodeURIComponent(cep)}/`);
+  return data;
+}
+
+export async function fetchNfseCredentials(): Promise<NfseCredential[]> {
+  const { data } = await api.get<any>('/nfse-credentials/');
+  return data.results !== undefined ? data.results : data;
+}
+
+export async function createNfseCredential(payload: { gov_br_cpf: string; gov_br_password?: string }): Promise<NfseCredential> {
+  const { data } = await api.post<NfseCredential>('/nfse-credentials/', payload);
+  return data;
+}
+
+export async function updateNfseCredential(id: number, payload: { gov_br_cpf?: string; gov_br_password?: string }): Promise<NfseCredential> {
+  const { data } = await api.patch<NfseCredential>(`/nfse-credentials/${id}/`, payload);
   return data;
 }

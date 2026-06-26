@@ -9,6 +9,9 @@ import {
   deleteTransaction, 
   toggleTransactionCleared, 
   toggleTransactionIgnored,
+  fetchClosedMonths,
+  createClosedMonth,
+  updateClosedMonth,
   type Transaction 
 } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
@@ -72,8 +75,27 @@ export default function Transactions() {
     queryFn: () => fetchStatementSummary({ month: monthParam }),
   });
 
+  const [yearNumber, monthNumber] = monthParam.split('-').map(Number);
+  const { data: closedMonths } = useQuery({
+    queryKey: ['closed-months', monthParam],
+    queryFn: () => fetchClosedMonths({ year: yearNumber, month: monthNumber }),
+  });
+  const closedMonth = closedMonths?.[0];
+  const isMonthClosed = !!closedMonth?.is_closed;
 
-
+  const closeMonthMutation = useMutation({
+    mutationFn: async () => {
+      if (closedMonth) {
+        return updateClosedMonth(closedMonth.id, { is_closed: !closedMonth.is_closed });
+      }
+      return createClosedMonth({ year: yearNumber, month: monthNumber, is_closed: true });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['closed-months'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
+    },
+  });
 
 
   const deleteMutation = useMutation({
@@ -144,7 +166,6 @@ export default function Transactions() {
           <h1 className="txn-month-title">{selectedMonthLabel}</h1>
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
         </div>
-
         {/* Balance */}
         <div id="statement-balance">
           <article className="txn-balance-card">

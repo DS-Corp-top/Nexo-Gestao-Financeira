@@ -10,8 +10,8 @@ export interface Category {
 export type CreateCategoryPayload = Omit<Category, 'id' | 'created_at'>;
 
 export async function fetchCategories(): Promise<Category[]> {
-  const { data } = await api.get<Category[]>('/categories/');
-  return data;
+  const { data } = await api.get<any>('/categories/');
+  return data.results !== undefined ? data.results : data;
 }
 
 export async function createCategory(payload: CreateCategoryPayload): Promise<Category> {

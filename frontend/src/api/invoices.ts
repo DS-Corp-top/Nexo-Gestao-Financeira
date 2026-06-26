@@ -88,8 +88,8 @@ export interface InvoiceNfseStatus {
 }
 
 export async function fetchInvoices(): Promise<Invoice[]> {
-  const { data } = await api.get<Invoice[]>('/invoices/');
-  return data;
+  const { data } = await api.get<any>('/invoices/');
+  return data.results !== undefined ? data.results : data;
 }
 
 export async function fetchInvoice(id: number): Promise<Invoice> {
@@ -122,8 +122,8 @@ export async function cancelInvoice(id: number): Promise<Invoice> {
 }
 
 export async function fetchClients(): Promise<Client[]> {
-  const { data } = await api.get<Client[]>('/clients/');
-  return data;
+  const { data } = await api.get<any>('/clients/');
+  return data.results !== undefined ? data.results : data;
 }
 
 export async function fetchInvoicePrintData(id: number): Promise<InvoicePrintData> {

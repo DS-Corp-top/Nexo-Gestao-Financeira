@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, CheckCircle2, Circle, ShoppingCart, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, ShoppingCart, Trash2, ArrowLeft, Edit2 } from 'lucide-react';
 import { 
   fetchShoppingLists, fetchShoppingList, createShoppingList, deleteShoppingList,
-  createShoppingItem, deleteShoppingItem, toggleShoppingItem
+  updateShoppingList, createShoppingItem, updateShoppingItem, deleteShoppingItem, toggleShoppingItem,
+  type ShoppingItem
 } from '../api/shopping';
 
 function formatCurrency(value: string | number): string {
@@ -43,8 +44,24 @@ export default function Shopping() {
     },
   });
 
+  const updateListMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => updateShoppingList(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping-list', selectedListId] });
+      queryClient.invalidateQueries({ queryKey: ['shopping-lists'] });
+    },
+  });
+
   const createItemMutation = useMutation({
     mutationFn: createShoppingItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping-list', selectedListId] });
+      queryClient.invalidateQueries({ queryKey: ['shopping-lists'] });
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => updateShoppingItem(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping-list', selectedListId] });
       queryClient.invalidateQueries({ queryKey: ['shopping-lists'] });
@@ -72,6 +89,32 @@ export default function Shopping() {
     if (name) {
       createListMutation.mutate({ name, list_date: new Date().toISOString().split('T')[0], notes: '' });
     }
+  };
+
+  const handleEditList = () => {
+    if (!currentList) return;
+    const name = prompt('Nome da lista:', currentList.name);
+    if (name === null || !name.trim()) return;
+    const listDate = prompt('Data da lista (AAAA-MM-DD):', currentList.list_date);
+    if (listDate === null || !listDate.trim()) return;
+    updateListMutation.mutate({ id: currentList.id, payload: { name, list_date: listDate, notes: currentList.notes || '' } });
+  };
+
+  const handleEditItem = (item: ShoppingItem) => {
+    const title = prompt('Item:', item.title);
+    if (title === null || !title.trim()) return;
+    const quantityRaw = prompt('Quantidade:', String(item.quantity));
+    if (quantityRaw === null) return;
+    const unitPrice = prompt('Preço unitário:', item.unit_price || '');
+    updateItemMutation.mutate({
+      id: item.id,
+      payload: {
+        title,
+        quantity: Number(quantityRaw || 1),
+        unit_price: unitPrice || null,
+        notes: item.notes || '',
+      },
+    });
   };
 
   const handleCreateItem = (e: React.FormEvent<HTMLFormElement>) => {
@@ -109,6 +152,9 @@ export default function Shopping() {
             </button>
             <h2 className="page-title">{currentList?.name}</h2>
           </div>
+          <button className="btn btn-secondary" onClick={handleEditList}>
+            <Edit2 size={18} style={{ marginRight: 6 }} /> Editar Lista
+          </button>
           <button 
             className="btn btn-ghost" 
             style={{ color: 'var(--color-danger)' }}
@@ -182,6 +228,13 @@ export default function Shopping() {
                       {formatCurrency(item.estimated_total)}
                     </div>
                   )}
+                  <button
+                    className="btn-ghost btn-icon"
+                    onClick={() => handleEditItem(item)}
+                    title="Editar item"
+                  >
+                    <Edit2 size={16} />
+                  </button>
                   <button 
                     className="btn-ghost btn-icon" 
                     onClick={() => { if(window.confirm('Excluir item?')) deleteItemMutation.mutate(item.id); }}

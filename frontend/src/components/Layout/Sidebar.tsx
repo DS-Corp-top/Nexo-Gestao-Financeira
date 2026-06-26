@@ -7,13 +7,15 @@ import {
   FileText,
   ShoppingCart,
   TrendingUp,
+  Users,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/transactions', icon: ArrowLeftRight, label: 'Transações' },
+  { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/categories', icon: Tags, label: 'Categorias' },
   { to: '/invoices', icon: FileText, label: 'Faturas' },
@@ -29,6 +31,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
+  const { user } = useAuth();
+  const items = user?.is_superuser
+    ? [...navItems, { to: '/settings/users', icon: Users, label: 'Usuários' }]
+    : navItems;
+
   return (
     <>
       {/* Mobile overlay */}
@@ -60,7 +67,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
 
         <nav className="nav-section" style={{ flex: 1 }}>
           {!collapsed && <div className="nav-section-title">Menu</div>}
-          {navItems.map(({ to, icon: Icon, label }) => (
+          {items.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
