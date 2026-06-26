@@ -1,7 +1,10 @@
+from decimal import Decimal
+
 from django import forms
 from django.utils.timezone import localdate
 
 from invoices.models import Client, Invoice
+from transactions.models import Transaction
 
 
 class ClientForm(forms.ModelForm):
@@ -19,6 +22,18 @@ class ClientForm(forms.ModelForm):
 
 
 class InvoiceForm(forms.ModelForm):
+    OPTIONAL_DEFAULTS = {
+        "deductions": Decimal("0.00"),
+        "iss_rate": Decimal("0.00"),
+        "pis_rate": Decimal("0.65"),
+        "cofins_rate": Decimal("3.00"),
+        "csll_rate": Decimal("1.00"),
+        "ir_rate": Decimal("1.50"),
+        "inss_rate": Decimal("0.00"),
+        "recurrence_type": Transaction.RecurrenceType.ONCE,
+        "recurrence_interval": 1,
+        "recurrence_interval_unit": Transaction.IntervalUnit.MONTH,
+    }
     launch_financial = forms.TypedChoiceField(
         label="Lancar no financeiro",
         choices=(
@@ -109,6 +124,10 @@ class InvoiceForm(forms.ModelForm):
             self.fields["expected_account"].queryset = Account.objects.filter(
                 tenant=tenant
             )
+        self.fields["launch_financial"].required = False
+        for field_name, default in self.OPTIONAL_DEFAULTS.items():
+            self.fields[field_name].required = False
+            self.fields[field_name].initial = default
         for field in self.fields.values():
             if isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs["class"] = "app-checkbox"
@@ -117,6 +136,11 @@ class InvoiceForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        for field_name, default in self.OPTIONAL_DEFAULTS.items():
+            if cleaned_data.get(field_name) in (None, ""):
+                cleaned_data[field_name] = default
+        if cleaned_data.get("launch_financial") is None:
+            cleaned_data["launch_financial"] = False
         if cleaned_data.get("launch_financial") and not cleaned_data.get(
             "expected_account"
         ):
