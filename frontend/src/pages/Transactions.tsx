@@ -9,6 +9,7 @@ import {
   deleteTransaction,
   toggleTransactionCleared,
   toggleTransactionIgnored,
+  fetchClosedMonths,
   type Transaction
 } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
@@ -71,6 +72,20 @@ export default function Transactions() {
     queryKey: ['statement_summary', monthParam],
     queryFn: () => fetchStatementSummary({ month: monthParam }),
   });
+
+  const [yearNumber, monthNumber] = monthParam.split('-').map(Number);
+  const { data: closedMonths } = useQuery({
+    queryKey: ['closed-months', monthParam],
+    queryFn: () => fetchClosedMonths({ year: yearNumber, month: monthNumber }),
+  });
+  const closedMonth = closedMonths?.[0];
+  const isMonthClosed = !!closedMonth?.is_closed;
+
+  const requestUnlockPassword = () => {
+    if (!isMonthClosed) return undefined;
+    const password = window.prompt('Mês fechado. Informe sua senha para confirmar esta alteração:');
+    return password || undefined;
+  };
 
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
@@ -142,6 +157,11 @@ export default function Transactions() {
           <button className="txn-month-arrow" onClick={() => navigateMonth(-1)} aria-label="Mês anterior">&lsaquo;</button>
           <h1 className="txn-month-title">{selectedMonthLabel}</h1>
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
+          <button className={`btn ${isMonthClosed ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => closeMonthMutation.mutate()} disabled={closeMonthMutation.isPending}>
+            {isMonthClosed ? 'Reabrir mês' : 'Fechar mês'}
+          </button>
         </div>
         {/* Balance */}
         <div id="statement-balance">
