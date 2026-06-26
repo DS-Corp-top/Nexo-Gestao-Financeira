@@ -33,7 +33,7 @@ interface ChartsModalProps {
 }
 
 export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps) {
-  const [tab, setTab] = useState<Tab>('categorias');
+  const [tab, setTab] = useState<Tab>('ranking');
   const [month, setMonth] = useState(initialMonth);
 
   const { data, isLoading } = useQuery({
@@ -54,6 +54,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
   }));
 
   const ranking = [...expenseCategories].sort((a, b) => b.value - a.value);
+  const rankingTotal = ranking.reduce((s, c) => s + c.value, 0);
 
   const currentMonth = expenseTrend.find((p) => p.isCurrent);
   const trendAvg = expenseTrend.length ? expenseTrend.reduce((s, p) => s + p.total, 0) / expenseTrend.length : 0;
@@ -81,7 +82,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
 
         {/* Tabs */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-          {(['categorias', 'tendencia', 'ranking'] as Tab[]).map((t) => (
+          {(['ranking', 'tendencia', 'categorias'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -200,20 +201,26 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Ranking de maiores despesas
               </p>
-              {ranking.map((cat, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '10px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', width: 24, textAlign: 'center' }}>{i + 1}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span>{cat.name}</span>
-                      <span style={{ fontWeight: 700 }}>{formatCurrency(cat.value)}</span>
-                    </div>
-                    <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: cat.fill, width: `${(cat.value / ranking[0].value) * 100}%`, borderRadius: 2 }} />
+              {ranking.map((cat, i) => {
+                const pct = rankingTotal > 0 ? (cat.value / rankingTotal) * 100 : 0;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', padding: '10px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text-muted)', width: 24, textAlign: 'center' }}>{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span>{cat.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{pct.toFixed(1)}%</span>
+                          <span style={{ fontWeight: 700 }}>{formatCurrency(cat.value)}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 4, borderRadius: 2, background: 'var(--color-border)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: cat.fill, width: `${pct}%`, borderRadius: 2 }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )
         )}

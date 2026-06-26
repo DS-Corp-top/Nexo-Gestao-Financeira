@@ -8,9 +8,10 @@ interface HeaderProps {
   onMenuClick: () => void;
   viewMode?: 'desktop' | 'mobile';
   onToggleViewMode?: () => void;
+  isMobile?: boolean;
 }
 
-export default function Header({ title, onMenuClick, viewMode = 'desktop', onToggleViewMode }: HeaderProps) {
+export default function Header({ title, onMenuClick, viewMode = 'desktop', onToggleViewMode, isMobile = false }: HeaderProps) {
   const { user, tenant, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -27,13 +28,15 @@ export default function Header({ title, onMenuClick, viewMode = 'desktop', onTog
 
   return (
     <header className="app-header">
-      <button
-        className="btn-ghost btn-icon mobile-menu-btn"
-        onClick={onMenuClick}
-        style={{ marginRight: 'var(--space-md)' }}
-      >
-        <Menu size={22} />
-      </button>
+      {!isMobile && (
+        <button
+          className="btn-ghost btn-icon mobile-menu-btn"
+          onClick={onMenuClick}
+          style={{ marginRight: 'var(--space-md)' }}
+        >
+          <Menu size={22} />
+        </button>
+      )}
 
       <h1 style={{ fontSize: '1.125rem', fontWeight: 700, flex: 1 }}>{title}</h1>
 

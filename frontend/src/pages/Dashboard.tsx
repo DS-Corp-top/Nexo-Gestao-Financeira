@@ -116,56 +116,61 @@ export default function Dashboard() {
     <>
     {chartsOpen && <ChartsModal initialMonth={monthParam} onClose={() => setChartsOpen(false)} />}
     <div className="animate-fade-in">
-      {/* Month Navigation */}
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 'var(--space-sm)' }}>
+      {/* Month Navigation + Saldo */}
+      <div style={{ marginBottom: 'var(--space-lg)' }}>
+        {/* Linha de navegação */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: 'var(--space-sm)', minHeight: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-sm)' }}>
             <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)}>
               <ChevronLeft size={20} />
             </button>
-            <h2 className="page-title">{data.month_label}</h2>
+            <h2 className="page-title" style={{ margin: 0, textAlign: 'center' }}>{data.month_label}</h2>
             <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)}>
               <ChevronRight size={20} />
             </button>
           </div>
+          <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 4 }}>
+            <button className="btn btn-ghost btn-icon" onClick={() => setChartsOpen(true)} title="Gráficos">
+              <BarChart2 size={20} />
+            </button>
+            <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
+              <Bell size={20} />
+              {data.due_notifications.count > 0 && (
+                <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)', color: '#fff', fontSize: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', lineHeight: 1 }}>
+                  {data.due_notifications.count}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
 
-          <div style={{ display: 'flex', gap: 4 }}>
-          {/* Gráficos */}
-          <button className="btn btn-ghost btn-icon" onClick={() => setChartsOpen(true)} title="Gráficos">
-            <BarChart2 size={20} />
-          </button>
-          {/* Bell — Vencimentos */}
-          <button
-          className="btn btn-ghost btn-icon"
-          onClick={() => setBellOpen((v) => !v)}
-          title="Vencimentos"
-          style={{ position: 'relative' }}
-        >
-          <Bell size={20} />
-          {data.due_notifications.count > 0 && (
-            <span
-              style={{
-                position: 'absolute',
-                top: 2,
-                right: 2,
-                minWidth: 16,
-                height: 16,
-                borderRadius: 8,
-                background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)',
-                color: '#fff',
-                fontSize: '0.6rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 3px',
-                lineHeight: 1,
-              }}
-            >
-              {data.due_notifications.count}
-            </span>
-          )}
-          </button>
+        {/* Saldo */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 'var(--space-md) 0', width: '100%' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-accent)', marginBottom: 4 }}>
+            Saldo atual em contas
+          </div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: parseFloat(data.kpis.user_balance) >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)' }}>
+            {formatCurrency(data.kpis.user_balance)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Receitas</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#22c55e' }}>{formatCurrency(data.kpis.monthly_income)}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Despesas</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-danger)', textAlign: 'right' }}>{formatCurrency(data.kpis.monthly_expense)}</div>
+            </div>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            </div>
           </div>
         </div>
       </div>
@@ -238,18 +243,6 @@ export default function Dashboard() {
           Pendências e alertas
         </h3>
         <div className="kpi-grid">
-          {/* Receitas do mês */}
-          <div className="kpi-card">
-            <div className="kpi-label">Receitas do mês</div>
-            <div className="kpi-value positive">{formatCurrency(data.kpis.monthly_income)}</div>
-          </div>
-
-          {/* Despesas do mês */}
-          <div className="kpi-card">
-            <div className="kpi-label">Despesas do mês</div>
-            <div className="kpi-value negative">{formatCurrency(data.kpis.monthly_expense)}</div>
-          </div>
-
           {/* Total cartão */}
           <div className="kpi-card" style={{ position: 'relative' }}>
             {data.alerts.credit_card_month_count > 0 && (
@@ -297,6 +290,18 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Total investido */}
+          <div className="kpi-card">
+            <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Total investido</div>
+            <div className="kpi-value accent">{formatCurrency(data.kpis.investments_total)}</div>
+          </div>
+
+          {/* Rendimentos */}
+          <div className="kpi-card">
+            <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Rendimentos</div>
+            <div className="kpi-value positive">{formatCurrency(data.kpis.investments_earnings)}</div>
+          </div>
+
           {/* Faturas emitidas */}
           <div className="kpi-card" style={{ position: 'relative' }}>
             {data.invoices.count > 0 && (
@@ -306,12 +311,6 @@ export default function Dashboard() {
             )}
             <div className="kpi-label"><FileText size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Faturas emitidas</div>
             <div className="kpi-value accent">{formatCurrency(data.invoices.total_gross)}</div>
-          </div>
-
-          {/* Total investido */}
-          <div className="kpi-card">
-            <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Total investido</div>
-            <div className="kpi-value accent">{formatCurrency(data.kpis.investments_total)}</div>
           </div>
         </div>
       </div>

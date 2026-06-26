@@ -112,6 +112,12 @@ class DashboardView(APIView):
         inv_withdrawn = inv_entries.filter(
             entry_type=InvestmentEntry.EntryType.WITHDRAWAL
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        inv_earnings = InvestmentEntry.objects.filter(
+            tenant=tenant,
+            entry_type__in=[InvestmentEntry.EntryType.DIVIDEND, InvestmentEntry.EntryType.YIELD],
+            date__gte=month_start,
+            date__lt=next_month_start,
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
         net_invested = inv_deposited - inv_withdrawn
 
         safe_credit = credit_available if credit_available is not None else ZERO
@@ -216,6 +222,7 @@ class DashboardView(APIView):
                 "monthly_balance": str(monthly_balance),
                 "credit_available": str(credit_available),
                 "investments_total": str(investments_total),
+                "investments_earnings": str(inv_earnings),
             },
             "alerts": {
                 "pending_expense_count": pending_expense_count,

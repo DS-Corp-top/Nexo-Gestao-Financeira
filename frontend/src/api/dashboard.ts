@@ -7,6 +7,7 @@ export interface DashboardKPIs {
   monthly_balance: string;
   credit_available: string;
   investments_total: string;
+  investments_earnings: string;
 }
 
 export interface CategoryBreakdown {
