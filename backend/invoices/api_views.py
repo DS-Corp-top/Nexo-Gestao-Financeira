@@ -72,9 +72,12 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
-        # SSR InvoiceDeleteView deletes the uncleared transaction before deleting the invoice
+        # SSR InvoiceDeleteView deletes the uncleared transaction before deleting the invoice.
+        # Must null out FK in memory before deleting, because OneToOneField SET_NULL only
+        # updates the DB — the in-memory object still holds the stale reference.
         if instance.transaction and not instance.transaction.is_cleared:
             instance.transaction.delete()
+            instance.transaction = None
         instance.delete()
 
     @action(detail=True, methods=["post"])
@@ -153,9 +156,12 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             )
 
         invoice.status = Invoice.CANCELLED
+        update_fields = ["status", "updated_at"]
         if invoice.transaction and not invoice.transaction.is_cleared:
             invoice.transaction.delete()
-        invoice.save(update_fields=["status", "updated_at"])
+            invoice.transaction = None
+            update_fields.append("transaction")
+        invoice.save(update_fields=update_fields)
 
         return Response(InvoiceSerializer(invoice).data)
 

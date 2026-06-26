@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
-import { fetchAccounts } from '../api/accounts';
-import { fetchCategories } from '../api/categories';
+import { fetchAccounts, type Account } from '../api/accounts';
+import { fetchCategories, type Category } from '../api/categories';
 import { useViewMode } from '../contexts/ViewModeContext';
 
 const GAP = { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' };
+type RecurrenceType = CreateTransactionPayload['recurrence_type'];
 
 export default function TransactionForm() {
   const { isMobile } = useViewMode();
@@ -21,8 +22,8 @@ export default function TransactionForm() {
 
   const { data: rawAccounts } = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts });
   const { data: rawCategories } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories });
-  const accounts = Array.isArray(rawAccounts) ? rawAccounts : (rawAccounts as any)?.results ?? [];
-  const categories = Array.isArray(rawCategories) ? rawCategories : (rawCategories as any)?.results ?? [];
+  const accounts: Account[] = Array.isArray(rawAccounts) ? rawAccounts : (rawAccounts as any)?.results ?? [];
+  const categories: Category[] = Array.isArray(rawCategories) ? rawCategories : (rawCategories as any)?.results ?? [];
 
   const { data: transaction, isLoading: txLoading } = useQuery({
     queryKey: ['transaction', id],
@@ -41,7 +42,7 @@ export default function TransactionForm() {
   const [category, setCategory] = useState<number | string>('');
   const [isCleared, setIsCleared] = useState(true);
   const [isIgnored, setIsIgnored] = useState(false);
-  const [recurrenceType, setRecurrenceType] = useState<'once' | 'monthly' | 'installment'>('once');
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once');
   const [installmentCount, setInstallmentCount] = useState<number | string>('');
   const [scope, setScope] = useState<'this' | 'future'>('this');
 
@@ -56,7 +57,7 @@ export default function TransactionForm() {
       setCategory(transaction.category || '');
       setIsCleared(transaction.is_cleared);
       setIsIgnored(transaction.is_ignored);
-      setRecurrenceType(transaction.recurrence_type || 'none');
+      setRecurrenceType(transaction.recurrence_type || 'once');
       setInstallmentCount(transaction.installment_count || '');
     } else if (accounts?.length && !account) {
       setAccount(accounts[0].id);
@@ -218,7 +219,7 @@ export default function TransactionForm() {
           <div>
             <label className="label">Recorrência</label>
             <div style={{ display: 'grid', gridTemplateColumns: recurrenceType === 'installment' ? '2fr 1fr' : '1fr', gap: '0.5rem' }}>
-              <select className="select" value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as any)}>
+              <select className="select" value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}>
                 <option value="once">Única</option>
                 <option value="monthly">Recorrente (Mensal)</option>
                 <option value="installment">Parcelada (Mensal)</option>
@@ -239,7 +240,7 @@ export default function TransactionForm() {
         </div>
 
         {/* Escopo (edição recorrente) */}
-        {isEditing && transaction?.recurrence_type && transaction.recurrence_type !== 'none' && (
+        {isEditing && transaction?.recurrence_type && transaction.recurrence_type !== 'once' && (
           <div style={{ padding: '12px 16px', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
             <label className="label" style={{ marginBottom: 10 }}>Aplicar alteração em</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

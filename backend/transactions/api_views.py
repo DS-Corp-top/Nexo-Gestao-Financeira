@@ -205,15 +205,21 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         account_id = request.query_params.get("account")
         category_id = request.query_params.get("category")
 
+        # Resolve raw IDs to model instances — calculate_monthly_balance expects objects, not strings
+        from accounts.models import Account as AccountModel
+        from categories.models import Category as CategoryModel
+        account = AccountModel.objects.filter(tenant=tenant, pk=account_id).first() if account_id else None
+        category = CategoryModel.objects.filter(tenant=tenant, pk=category_id).first() if category_id else None
+
         next_month = shift_month(selected_month, 1)
         balance_cutoff_date = next_month - timedelta(days=1)
-        
+
         current_balance = calculate_user_balance(user, balance_cutoff_date, tenant=tenant)
         monthly_balance = calculate_monthly_balance(
             user,
             selected_month,
-            account=account_id,
-            category=category_id,
+            account=account,
+            category=category,
             tenant=tenant,
         )
 
@@ -225,8 +231,8 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             date__year=selected_month.year,
             date__month=selected_month.month,
         )
-        if category_id:
-            credit_card_expenses = credit_card_expenses.filter(category=category_id)
+        if category:
+            credit_card_expenses = credit_card_expenses.filter(category=category)
 
         credit_card_month_total = credit_card_expenses.aggregate(
             total=Coalesce(Sum("amount"), Decimal("0.00"))

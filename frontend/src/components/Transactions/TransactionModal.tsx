@@ -4,6 +4,8 @@ import { type Transaction, type CreateTransactionPayload } from '../../api/trans
 import { fetchAccounts } from '../../api/accounts';
 import { fetchCategories } from '../../api/categories';
 
+type RecurrenceType = CreateTransactionPayload['recurrence_type'];
+
 interface TransactionModalProps {
   transaction: Transaction | null;
   isOpen: boolean;
@@ -32,7 +34,7 @@ export default function TransactionModal({ transaction, isOpen, onClose, onSave,
   const [isCleared, setIsCleared] = useState(transaction?.is_cleared ?? true);
   const [isIgnored, setIsIgnored] = useState(transaction?.is_ignored ?? false);
   
-  const [recurrenceType, setRecurrenceType] = useState<'none' | 'recurring' | 'installment'>(transaction?.recurrence_type || 'none');
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(transaction?.recurrence_type || 'once');
   const [installmentCount, setInstallmentCount] = useState(transaction?.installment_count || '');
 
   // Update default category type when transaction type changes
@@ -77,7 +79,7 @@ export default function TransactionModal({ transaction, isOpen, onClose, onSave,
         is_ignored: isIgnored,
         recurrence_type: recurrenceType,
         recurrence_interval: 1,
-        recurrence_interval_unit: 'months',
+        recurrence_interval_unit: 'month',
         installment_count: recurrenceType === 'installment' ? Number(installmentCount) : null,
       });
       onClose();
@@ -175,9 +177,9 @@ export default function TransactionModal({ transaction, isOpen, onClose, onSave,
             <div style={{ marginBottom: 'var(--space-md)' }}>
               <label className="label">Recorrência</label>
               <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
-                <select className="select" value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as any)}>
-                  <option value="none">Única</option>
-                  <option value="recurring">Recorrente (Mensal)</option>
+                <select className="select" value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}>
+                  <option value="once">Única</option>
+                  <option value="monthly">Recorrente (Mensal)</option>
                   <option value="installment">Parcelada (Mensal)</option>
                 </select>
                 {recurrenceType === 'installment' && (
