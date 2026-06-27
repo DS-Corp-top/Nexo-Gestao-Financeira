@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { type Investment, type CreateInvestmentPayload } from '../../api/investments';
 
 interface InvestmentModalProps {
@@ -43,7 +44,7 @@ export default function InvestmentModal({ investment, isOpen, onClose, onSave, o
     }
   };
 
-  return (
+  return createPortal(
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
@@ -78,7 +79,7 @@ export default function InvestmentModal({ investment, isOpen, onClose, onSave, o
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Tipo</label>
               <select
@@ -143,6 +144,7 @@ export default function InvestmentModal({ investment, isOpen, onClose, onSave, o
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

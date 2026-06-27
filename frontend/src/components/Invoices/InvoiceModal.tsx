@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createInvoice, updateInvoice, type Invoice } from '../../api/invoices';
 
@@ -68,7 +69,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: 800 }}>
         <div className="modal-header">
@@ -83,7 +84,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Data de Emissão</label>
               <input type="date" name="issue_date" className="input" defaultValue={invoice?.issue_date || new Date().toISOString().split('T')[0]} required />
@@ -95,7 +96,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           </div>
 
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: 'var(--space-lg)', marginBottom: 'var(--space-md)' }}>Cliente</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Razão Social / Nome</label>
               <input type="text" name="client_name" className="input" defaultValue={invoice?.client_name} required />
@@ -106,7 +107,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">E-mail</label>
               <input type="email" name="client_email" className="input" defaultValue={invoice?.client_email} />
@@ -131,7 +132,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
             <textarea name="service_description" className="textarea" rows={3} defaultValue={invoice?.service_description} required />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
             <div>
               <label className="label">Código do Serviço (NFS-e)</label>
               <input type="text" name="service_code" className="input" defaultValue={invoice?.service_code || '1.01'} placeholder="1.01" />
@@ -144,7 +145,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
           <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
             <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 'var(--space-md)', color: 'var(--color-text-secondary)' }}>Retenções de Impostos (em %)</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-sm)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: 'var(--space-sm)' }}>
               <div>
                 <label className="label" style={{ fontSize: '0.7rem' }}>ISS</label>
                 <input type="number" step="0.01" name="iss_rate" className="input" defaultValue={invoice?.iss_rate || '0.00'} style={{ fontSize: '0.8rem', padding: '6px 8px' }} />
@@ -187,6 +188,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

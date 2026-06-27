@@ -33,7 +33,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
   const { user } = useAuth();
   const items = user?.is_superuser
-    ? [...navItems, { to: '/settings/users', icon: Users, label: 'Usuários' }]
+    ? [...navItems, { to: '/settings/users', icon: Users, label: 'Cadastro Pendente' }]
     : navItems;
 
   return (

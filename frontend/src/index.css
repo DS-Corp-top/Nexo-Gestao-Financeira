@@ -964,6 +964,7 @@ input[type="time"].input {
   justify-content: center;
   z-index: 50;
   padding: var(--space-lg);
+  overflow: hidden;
   animation: fade-in 150ms forwards;
 }
 
@@ -974,7 +975,8 @@ input[type="time"].input {
   padding: var(--space-xl);
   max-width: 560px;
   width: 100%;
-  max-height: 85vh;
+  box-sizing: border-box;
+  max-height: calc(100dvh - 2 * var(--space-lg));
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   animation: scale-in 200ms forwards;
@@ -1037,7 +1039,7 @@ input[type="time"].input {
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 480px) {
   .form-amount-date-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -2658,4 +2660,208 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.86) !important;
   border-color: rgba(255, 255, 255, 0.86) !important;
   color: #000000 !important;
+}
+
+/* Mobile typography scale */
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
+
+  .page-title,
+  .app-title {
+    font-size: 1.35rem;
+  }
+
+  .modal-title,
+  .app-title-sm,
+  .txn-month-title {
+    font-size: 1rem;
+  }
+
+  .input,
+  .select,
+  .textarea,
+  .btn,
+  .table td,
+  .txn-item-title,
+  .txn-day-label {
+    font-size: 0.85rem;
+  }
+
+  .label,
+  .table th,
+  .txn-item-meta,
+  .txn-menu-item,
+  .txn-tab-link {
+    font-size: 0.72rem;
+  }
+
+  .txn-amount {
+    font-size: 0.96rem;
+  }
+}
+
+@media (max-width: 390px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    align-items: flex-start;
+    padding: calc(var(--space-md) + env(safe-area-inset-top)) var(--space-sm) calc(120px + env(safe-area-inset-bottom));
+  }
+
+  .modal-content {
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    max-height: calc(100dvh - 120px - var(--space-md) - env(safe-area-inset-top));
+  }
+}
+
+.mobile-preview .app-main {
+  font-size: 15px;
+}
+
+.mobile-preview .page-title,
+.mobile-preview .app-title {
+  font-size: 1.35rem;
+}
+
+.mobile-preview .modal-title,
+.mobile-preview .app-title-sm,
+.mobile-preview .txn-month-title {
+  font-size: 1rem;
+}
+
+.mobile-preview .input,
+.mobile-preview .select,
+.mobile-preview .textarea,
+.mobile-preview .btn,
+.mobile-preview .table td,
+.mobile-preview .txn-item-title,
+.mobile-preview .txn-day-label {
+  font-size: 0.85rem;
+}
+
+.mobile-preview .label,
+.mobile-preview .table th,
+.mobile-preview .txn-item-meta,
+.mobile-preview .txn-menu-item,
+.mobile-preview .txn-tab-link {
+  font-size: 0.72rem;
+}
+
+.mobile-preview .txn-amount {
+  font-size: 0.96rem;
+}
+
+@media (max-width: 768px) {
+  .investments-page .investment-list-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .investments-page .card {
+    padding: 0.9rem;
+  }
+
+  .investments-page .investment-card-title {
+    font-size: 0.95rem !important;
+  }
+
+  .investments-page .investment-card-meta,
+  .investments-page .investment-card-row,
+  .investments-page .investment-detail-meta,
+  .investments-page .empty-state-text {
+    font-size: 0.74rem !important;
+  }
+
+  .investments-page .investment-card-total,
+  .investments-page .card > h3 {
+    font-size: 0.86rem !important;
+  }
+
+  .investments-page .kpi-label {
+    font-size: 0.62rem;
+  }
+
+  .investments-page .kpi-value {
+    font-size: 0.95rem;
+  }
+
+  .investments-page .investment-entry-form {
+    gap: 0.55rem !important;
+  }
+
+  .investments-page .investment-entry-form .input,
+  .investments-page .investment-entry-form .select,
+  .investments-page .investment-entry-form .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 0.78rem !important;
+  }
+
+  .investments-page .table th {
+    font-size: 0.64rem;
+  }
+
+  .investments-page .table td,
+  .investments-page .badge {
+    font-size: 0.72rem;
+  }
+}
+
+.mobile-preview .investments-page .investment-list-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.mobile-preview .investments-page .card {
+  padding: 0.9rem;
+}
+
+.mobile-preview .investments-page .investment-card-title {
+  font-size: 0.95rem !important;
+}
+
+.mobile-preview .investments-page .investment-card-meta,
+.mobile-preview .investments-page .investment-card-row,
+.mobile-preview .investments-page .investment-detail-meta,
+.mobile-preview .investments-page .empty-state-text {
+  font-size: 0.74rem !important;
+}
+
+.mobile-preview .investments-page .investment-card-total,
+.mobile-preview .investments-page .card > h3 {
+  font-size: 0.86rem !important;
+}
+
+.mobile-preview .investments-page .kpi-label {
+  font-size: 0.62rem;
+}
+
+.mobile-preview .investments-page .kpi-value {
+  font-size: 0.95rem;
+}
+
+.mobile-preview .investments-page .investment-entry-form {
+  gap: 0.55rem !important;
+}
+
+.mobile-preview .investments-page .investment-entry-form .input,
+.mobile-preview .investments-page .investment-entry-form .select,
+.mobile-preview .investments-page .investment-entry-form .btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  font-size: 0.78rem !important;
+}
+
+.mobile-preview .investments-page .table th {
+  font-size: 0.64rem;
+}
+
+.mobile-preview .investments-page .table td,
+.mobile-preview .investments-page .badge {
+  font-size: 0.72rem;
 }

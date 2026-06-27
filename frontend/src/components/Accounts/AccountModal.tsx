@@ -82,7 +82,7 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Tipo</label>
               <select

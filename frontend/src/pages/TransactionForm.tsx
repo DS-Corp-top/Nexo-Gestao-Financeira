@@ -251,11 +251,11 @@ export default function TransactionForm() {
 
         {/* Botões */}
         <div className="form-amount-date-grid" style={{ gap: '0.75rem', paddingTop: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
-            Cancelar
-          </button>
           <button type="submit" className="btn btn-primary" disabled={loading} onClick={handleSubmit}>
             {loading ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Salvar'}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
+            Cancelar
           </button>
         </div>
       </div>

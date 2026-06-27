@@ -118,7 +118,7 @@ export default function Investments() {
     if (invLoading) return <div className="page-header"><span className="spinner"/></div>;
     
     return (
-      <div className="animate-slide-in">
+      <div className="animate-slide-in investments-page">
         <div className="page-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
             <button className="btn-ghost btn-icon" onClick={() => setSelectedInvId(null)}>
@@ -131,7 +131,7 @@ export default function Investments() {
                   <Edit2 size={14} />
                 </button>
               </h2>
-              <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+              <div className="investment-detail-meta" style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
                 {currentInv?.broker} • {currentInv?.investment_type}
               </div>
             </div>
@@ -159,7 +159,7 @@ export default function Investments() {
 
         <div className="card">
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-md)' }}>Novo Lançamento</h3>
-          <form onSubmit={handleCreateEntry} style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-xl)' }}>
+          <form className="investment-entry-form" onSubmit={handleCreateEntry} style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-xl)' }}>
             <select name="entry_type" className="select" style={{ width: 140 }} required>
               <option value="deposit">Aporte</option>
               <option value="withdrawal">Resgate</option>
@@ -236,7 +236,7 @@ export default function Investments() {
 
   // List View
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in investments-page">
       <div className="page-header">
         <button className="btn btn-primary" onClick={handleOpenNew}>
           <Plus size={18} /> Novo Investimento
@@ -244,7 +244,7 @@ export default function Investments() {
       </div>
 
       {invsLoading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+        <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 160 }} />)}
         </div>
       ) : investments?.length === 0 ? (
@@ -254,7 +254,7 @@ export default function Investments() {
           <p className="empty-state-text">Comece a registrar seus investimentos e controle seus aportes.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+        <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
           {investments?.map((inv) => (
             <div 
               key={inv.id} 
@@ -264,8 +264,8 @@ export default function Investments() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-sm)' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{inv.name}</h3>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                  <h3 className="investment-card-title" style={{ fontSize: '1.1rem', fontWeight: 600 }}>{inv.name}</h3>
+                  <div className="investment-card-meta" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                     {inv.broker} • {inv.investment_type}
                   </div>
                 </div>
@@ -273,15 +273,15 @@ export default function Investments() {
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginTop: 'var(--space-md)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Total Aportado</span>
                   <span>{formatCurrency(inv.total_invested)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Rendimentos</span>
                   <span className="positive">{formatCurrency(inv.total_earnings)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
+                <div className="investment-card-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Líquido</span>
                   <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(inv.net_invested)}</span>
                 </div>

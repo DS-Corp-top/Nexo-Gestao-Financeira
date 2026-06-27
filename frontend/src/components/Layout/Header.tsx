@@ -66,21 +66,22 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
               position: 'absolute',
               top: 'calc(100% + 0.5rem)',
               right: 0,
-              minWidth: '13rem',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
+              minWidth: '11.25rem',
+              maxWidth: 'calc(100vw - 1.5rem)',
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border-hover)',
               borderRadius: 'var(--radius-lg)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
               zIndex: 100,
               overflow: 'hidden',
             }}>
               <div style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.7rem',
+                padding: '0.4rem 0.72rem 0.25rem',
+                fontSize: '0.64rem',
                 fontWeight: 700,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                color: 'var(--color-text-muted)',
+                color: 'var(--color-text-secondary)',
               }}>
                 Empresa
               </div>
@@ -91,17 +92,18 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.6rem',
-                  padding: '0.55rem 0.75rem',
-                  fontSize: '0.875rem',
-                  color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
+                  gap: '0.55rem',
+                  padding: '0.62rem 0.72rem',
+                  fontSize: '0.82rem',
+                  lineHeight: 1.25,
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-primary)',
                   background: isActive ? 'var(--color-accent-muted)' : 'transparent',
                   textDecoration: 'none',
                   transition: 'background 0.15s',
                 })}
               >
-                <Building2 size={16} />
-                <span>{tenant?.name || 'Configurações'}</span>
+                <Building2 size={15} />
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{tenant?.name || 'Configurações'}</span>
               </NavLink>
 
               <div style={{ height: '1px', background: 'var(--color-border)', margin: '0.25rem 0' }} />
@@ -111,11 +113,12 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.6rem',
+                  gap: '0.55rem',
                   width: '100%',
-                  padding: '0.55rem 0.75rem',
-                  fontSize: '0.875rem',
-                  color: 'var(--color-text)',
+                  padding: '0.62rem 0.72rem',
+                  fontSize: '0.82rem',
+                  lineHeight: 1.25,
+                  color: 'var(--color-text-primary)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
@@ -125,7 +128,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-hover, rgba(255,255,255,0.05))')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
               >
-                <LogOut size={16} />
+                <LogOut size={15} />
                 <span>Sair</span>
               </button>
             </div>
