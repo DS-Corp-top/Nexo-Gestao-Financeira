@@ -334,7 +334,9 @@ export default function Dashboard() {
                 <YAxis hide domain={[0, 'dataMax']} />
                 <Tooltip
                   formatter={(val: any, name) => [formatCurrency(val), name === 'expense' ? 'Despesas' : 'Receitas']}
-                  contentStyle={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)', fontSize: '0.8rem' }}
+                  contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: '0.8rem' }}
+                  labelStyle={{ color: '#fff', fontWeight: 700, marginBottom: 2 }}
+                  itemStyle={{ color: 'rgba(255,255,255,0.7)' }}
                 />
                 <Bar dataKey="income" radius={[4, 4, 0, 0]} minPointSize={2}>
                   {combinedTrend.map((e, i) => <Cell key={i} fill={e.isCurrent ? '#22c55e' : '#14532d'} />)}

@@ -76,7 +76,9 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
   const trendAvg = activeTrend.length ? activeTrend.reduce((s, p) => s + p.total, 0) / activeTrend.length : 0;
   const trendPeak = activeTrend.length ? activeTrend.reduce((max, p) => p.total > max.total ? p : max, activeTrend[0]) : null;
   const hasData = activeTrend.some((p) => p.total > 0);
-  const tooltipStyle = { background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)', fontSize: '0.8rem' };
+  const tooltipStyle = { background: '#111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: '0.8rem' };
+  const tooltipLabelStyle = { color: '#fff', fontWeight: 700, marginBottom: 2 };
+  const tooltipItemStyle = { color: 'rgba(255,255,255,0.7)' };
 
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
@@ -212,7 +214,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                   <BarChart data={activeTrend} barCategoryGap="25%">
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                     <YAxis hide domain={[0, 'dataMax']} />
-                    <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} />
+                    <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                     <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={3}>
                       {activeTrend.map((e, i) => (
                         <Cell key={i} fill={e.isCurrent ? (mode === 'expense' ? '#fb7185' : '#22c55e') : (mode === 'expense' ? '#2b2f3a' : '#14532d')} />
@@ -225,7 +227,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                     <LineChart data={activeTrend}>
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                       <YAxis hide />
-                      <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} />
+                      <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                       <Line type="monotone" dataKey="total" stroke={mode === 'expense' ? '#22d3ee' : '#34d399'} strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
