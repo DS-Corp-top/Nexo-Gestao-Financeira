@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children, requireSuperuser = false }: {
   }
 
   if (requireSuperuser && !user?.is_superuser) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

@@ -8,7 +8,7 @@ export default function BottomNav() {
   // Se for Desktop, o CSS vai ocultar essa barra automaticamente usando .txn-bottom-nav { display: none }
   return (
     <nav className="txn-bottom-nav">
-      <Link to="/" className={`txn-tab-link ${location.pathname === '/' ? 'txn-tab-active' : ''}`}>
+      <Link to="/dashboard" className={`txn-tab-link ${location.pathname === '/dashboard' ? 'txn-tab-active' : ''}`}>
         <span className="txn-tab-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
         </span>

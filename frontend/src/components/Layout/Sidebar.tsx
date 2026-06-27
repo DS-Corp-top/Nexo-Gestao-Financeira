@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/categories', icon: Tags, label: 'Categorias' },
@@ -71,7 +71,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === '/dashboard'}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               onClick={onClose}
               title={collapsed ? label : undefined}

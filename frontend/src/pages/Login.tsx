@@ -19,7 +19,7 @@ export default function Login() {
     try {
       await login({ username, password });
       await refresh();
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError('E-mail ou senha incorretos.');

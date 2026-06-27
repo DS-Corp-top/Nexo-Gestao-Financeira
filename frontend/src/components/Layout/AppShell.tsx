@@ -6,7 +6,7 @@ import BottomNav from './BottomNav';
 import { ViewModeContext, type ViewMode } from '../../contexts/ViewModeContext';
 
 const pageTitles: Record<string, string> = {
-  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
   '/transactions': 'Financeiro',
   '/transactions/new': 'Nova Transação',
   '/accounts': 'Contas',
