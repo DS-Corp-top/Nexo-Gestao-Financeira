@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { login } from '../api/auth';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -33,7 +34,12 @@ export default function Login() {
 
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', paddingTop: '8vh', paddingInline: 'var(--space-lg)' }} className="animate-fade-in">
-      
+
+      {/* Back link */}
+      <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-xl)', textDecoration: 'none' }}>
+        <ArrowLeft size={15} /> Voltar
+      </Link>
+
       {/* Title Block */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--color-text-primary)' }}>
