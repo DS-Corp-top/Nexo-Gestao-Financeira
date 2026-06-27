@@ -437,10 +437,13 @@ a:hover {
 
 .app-main {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .app-header {
