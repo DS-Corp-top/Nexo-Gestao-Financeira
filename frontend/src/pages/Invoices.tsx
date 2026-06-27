@@ -205,7 +205,6 @@ export default function Invoices() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h2 className="page-title">Faturas</h2>
         <button className="btn btn-primary" onClick={handleOpenNew}>
           <Plus size={18} /> Nova Fatura
         </button>

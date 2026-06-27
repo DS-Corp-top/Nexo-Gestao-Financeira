@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, CheckCircle2, Circle, ShoppingCart, Trash2, ArrowLeft, Edit2 } from 'lucide-react';
-import { 
+import {
   fetchShoppingLists, fetchShoppingList, createShoppingList, deleteShoppingList,
   updateShoppingList, createShoppingItem, updateShoppingItem, deleteShoppingItem, toggleShoppingItem,
   type ShoppingItem
@@ -13,9 +13,39 @@ function formatCurrency(value: string | number): string {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+const OVERLAY: React.CSSProperties = {
+  position: 'fixed', inset: 0, zIndex: 1000,
+  background: 'rgba(0,0,0,0.6)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  padding: '1rem',
+};
+
+function Modal({ title, onClose, onConfirm, confirmLabel = 'Salvar', children }: {
+  title: string; onClose: () => void; onConfirm: () => void;
+  confirmLabel?: string; children: React.ReactNode;
+}) {
+  return (
+    <div style={OVERLAY} onClick={onClose}>
+      <div className="card" style={{ width: '100%', maxWidth: 420, gap: '1rem', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>{title}</h3>
+        {children}
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Shopping() {
   const [selectedListId, setSelectedListId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+
+  // Modal state
+  const [listModal, setListModal] = useState<{ mode: 'create' | 'edit'; name: string; date: string } | null>(null);
+  const [itemModal, setItemModal] = useState<{ item: ShoppingItem; title: string; quantity: string; unitPrice: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const { data: lists, isLoading: listsLoading } = useQuery({
     queryKey: ['shopping-lists'],
@@ -85,64 +115,59 @@ export default function Shopping() {
   });
 
   const handleCreateList = () => {
-    const name = prompt('Nome da nova lista:');
-    if (name) {
-      createListMutation.mutate({ name, list_date: new Date().toISOString().split('T')[0], notes: '' });
-    }
+    setListModal({ mode: 'create', name: '', date: new Date().toISOString().split('T')[0] });
   };
 
   const handleEditList = () => {
     if (!currentList) return;
-    const name = prompt('Nome da lista:', currentList.name);
-    if (name === null || !name.trim()) return;
-    const listDate = prompt('Data da lista (AAAA-MM-DD):', currentList.list_date);
-    if (listDate === null || !listDate.trim()) return;
-    updateListMutation.mutate({ id: currentList.id, payload: { name, list_date: listDate, notes: currentList.notes || '' } });
+    setListModal({ mode: 'edit', name: currentList.name, date: currentList.list_date });
+  };
+
+  const handleConfirmList = () => {
+    if (!listModal) return;
+    if (!listModal.name.trim()) return;
+    if (listModal.mode === 'create') {
+      createListMutation.mutate({ name: listModal.name, list_date: listModal.date, notes: '' });
+    } else if (currentList) {
+      updateListMutation.mutate({ id: currentList.id, payload: { name: listModal.name, list_date: listModal.date, notes: currentList.notes || '' } });
+    }
+    setListModal(null);
   };
 
   const handleEditItem = (item: ShoppingItem) => {
-    const title = prompt('Item:', item.title);
-    if (title === null || !title.trim()) return;
-    const quantityRaw = prompt('Quantidade:', String(item.quantity));
-    if (quantityRaw === null) return;
-    const unitPrice = prompt('Preço unitário:', item.unit_price || '');
+    setItemModal({ item, title: item.title, quantity: String(item.quantity), unitPrice: item.unit_price || '' });
+  };
+
+  const handleConfirmItem = () => {
+    if (!itemModal || !itemModal.title.trim()) return;
     updateItemMutation.mutate({
-      id: item.id,
+      id: itemModal.item.id,
       payload: {
-        title,
-        quantity: Number(quantityRaw || 1),
-        unit_price: unitPrice || null,
-        notes: item.notes || '',
+        title: itemModal.title,
+        quantity: Number(itemModal.quantity || 1),
+        unit_price: itemModal.unitPrice || null,
+        notes: itemModal.item.notes || '',
       },
     });
+    setItemModal(null);
   };
 
   const handleCreateItem = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedListId) return;
-    
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
     const quantity = Number(formData.get('quantity') || 1);
     const unitPriceRaw = formData.get('unit_price') as string;
-    const unitPrice = unitPriceRaw ? unitPriceRaw : null;
-
     if (title) {
-      createItemMutation.mutate({
-        shopping_list: selectedListId,
-        title,
-        quantity,
-        unit_price: unitPrice,
-        notes: '',
-      });
+      createItemMutation.mutate({ shopping_list: selectedListId, title, quantity, unit_price: unitPriceRaw || null, notes: '' });
       e.currentTarget.reset();
     }
   };
 
   if (selectedListId) {
-    // List Detail View
     if (listLoading) return <div className="page-header"><span className="spinner"/></div>;
-    
+
     return (
       <div className="animate-slide-in">
         <div className="page-header">
@@ -155,14 +180,13 @@ export default function Shopping() {
           <button className="btn btn-secondary" onClick={handleEditList}>
             <Edit2 size={18} style={{ marginRight: 6 }} /> Editar Lista
           </button>
-          <button 
-            className="btn btn-ghost" 
+          <button
+            className="btn btn-ghost"
             style={{ color: 'var(--color-danger)' }}
-            onClick={() => {
-              if (window.confirm('Excluir esta lista e todos os seus itens?')) {
-                deleteListMutation.mutate(selectedListId);
-              }
-            }}
+            onClick={() => setConfirmModal({
+              message: 'Excluir esta lista e todos os seus itens?',
+              onConfirm: () => { deleteListMutation.mutate(selectedListId); setConfirmModal(null); },
+            })}
           >
             <Trash2 size={18} style={{ marginRight: 6 }} /> Excluir Lista
           </button>
@@ -200,18 +224,17 @@ export default function Shopping() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {currentList?.items?.map((item) => (
-                <div 
-                  key={item.id} 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex', alignItems: 'center',
                     padding: '12px 0',
                     borderBottom: '1px solid var(--color-border)',
-                    opacity: item.is_purchased ? 0.6 : 1
+                    opacity: item.is_purchased ? 0.6 : 1,
                   }}
                 >
-                  <button 
-                    className="btn-ghost btn-icon" 
+                  <button
+                    className="btn-ghost btn-icon"
                     onClick={() => toggleItemMutation.mutate(item.id)}
                     style={{ color: item.is_purchased ? 'var(--color-success)' : 'var(--color-text-muted)', marginRight: 'var(--space-md)' }}
                   >
@@ -228,16 +251,15 @@ export default function Shopping() {
                       {formatCurrency(item.estimated_total)}
                     </div>
                   )}
-                  <button
-                    className="btn-ghost btn-icon"
-                    onClick={() => handleEditItem(item)}
-                    title="Editar item"
-                  >
+                  <button className="btn-ghost btn-icon" onClick={() => handleEditItem(item)} title="Editar item">
                     <Edit2 size={16} />
                   </button>
-                  <button 
-                    className="btn-ghost btn-icon" 
-                    onClick={() => { if(window.confirm('Excluir item?')) deleteItemMutation.mutate(item.id); }}
+                  <button
+                    className="btn-ghost btn-icon"
+                    onClick={() => setConfirmModal({
+                      message: 'Excluir item?',
+                      onConfirm: () => { deleteItemMutation.mutate(item.id); setConfirmModal(null); },
+                    })}
                   >
                     <Trash2 size={16} style={{ color: 'var(--color-danger)' }} />
                   </button>
@@ -246,6 +268,49 @@ export default function Shopping() {
             </div>
           )}
         </div>
+
+        {/* Modals */}
+        {listModal && (
+          <Modal
+            title={listModal.mode === 'create' ? 'Nova Lista' : 'Editar Lista'}
+            onClose={() => setListModal(null)}
+            onConfirm={handleConfirmList}
+          >
+            <div>
+              <label className="label">Nome</label>
+              <input className="input" value={listModal.name} onChange={e => setListModal(m => m && ({ ...m, name: e.target.value }))} autoFocus />
+            </div>
+            <div>
+              <label className="label">Data</label>
+              <input className="input" type="date" value={listModal.date} onChange={e => setListModal(m => m && ({ ...m, date: e.target.value }))} />
+            </div>
+          </Modal>
+        )}
+
+        {itemModal && (
+          <Modal title="Editar Item" onClose={() => setItemModal(null)} onConfirm={handleConfirmItem}>
+            <div>
+              <label className="label">Item</label>
+              <input className="input" value={itemModal.title} onChange={e => setItemModal(m => m && ({ ...m, title: e.target.value }))} autoFocus />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div>
+                <label className="label">Quantidade</label>
+                <input className="input" type="number" min="1" value={itemModal.quantity} onChange={e => setItemModal(m => m && ({ ...m, quantity: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Preço unitário</label>
+                <input className="input" type="number" step="0.01" placeholder="Opcional" value={itemModal.unitPrice} onChange={e => setItemModal(m => m && ({ ...m, unitPrice: e.target.value }))} />
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {confirmModal && (
+          <Modal title="Confirmar" onClose={() => setConfirmModal(null)} onConfirm={confirmModal.onConfirm} confirmLabel="Excluir">
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>{confirmModal.message}</p>
+          </Modal>
+        )}
       </div>
     );
   }
@@ -254,7 +319,6 @@ export default function Shopping() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h2 className="page-title">Listas de Compras</h2>
         <button className="btn btn-primary" onClick={handleCreateList}>
           <Plus size={18} /> Nova Lista
         </button>
@@ -273,9 +337,9 @@ export default function Shopping() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
           {lists?.map((list) => (
-            <div 
-              key={list.id} 
-              className="card" 
+            <div
+              key={list.id}
+              className="card"
               style={{ cursor: 'pointer' }}
               onClick={() => setSelectedListId(list.id)}
             >
@@ -290,6 +354,24 @@ export default function Shopping() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Modal criar lista (view de listagem) */}
+      {listModal && (
+        <Modal
+          title="Nova Lista"
+          onClose={() => setListModal(null)}
+          onConfirm={handleConfirmList}
+        >
+          <div>
+            <label className="label">Nome</label>
+            <input className="input" value={listModal.name} onChange={e => setListModal(m => m && ({ ...m, name: e.target.value }))} autoFocus />
+          </div>
+          <div>
+            <label className="label">Data</label>
+            <input className="input" type="date" value={listModal.date} onChange={e => setListModal(m => m && ({ ...m, date: e.target.value }))} />
+          </div>
+        </Modal>
       )}
     </div>
   );

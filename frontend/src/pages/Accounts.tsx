@@ -74,7 +74,6 @@ export default function Accounts() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h2 className="page-title">Contas</h2>
         <button className="btn btn-primary" onClick={handleOpenNew}>
           <Plus size={18} /> Nova Conta
         </button>

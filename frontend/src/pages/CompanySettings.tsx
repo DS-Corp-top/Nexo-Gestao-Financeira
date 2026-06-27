@@ -102,9 +102,6 @@ export default function CompanySettings() {
   if (isLoading) {
     return (
       <div className="animate-fade-in">
-        <div className="page-header">
-          <h2 className="page-title">Configurações da Empresa</h2>
-        </div>
         <div className="card skeleton" style={{ height: 400 }} />
       </div>
     );
@@ -112,10 +109,6 @@ export default function CompanySettings() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h2 className="page-title">Configurações da Empresa</h2>
-      </div>
-
       <div className="card" style={{ maxWidth: 800 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
           <div style={{

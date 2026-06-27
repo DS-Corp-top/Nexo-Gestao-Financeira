@@ -16,10 +16,6 @@ export default function PendingUsers() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h2 className="page-title">Usuários Pendentes</h2>
-      </div>
-
       <div className="card" style={{ padding: 0 }}>
         {isLoading ? (
           <div style={{ padding: 'var(--space-xl)', display: 'flex', justifyContent: 'center' }}>

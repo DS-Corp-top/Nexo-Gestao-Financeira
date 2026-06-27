@@ -104,7 +104,6 @@ export default function Categories() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h2 className="page-title">Categorias</h2>
         <button className="btn btn-primary" onClick={handleOpenNew}>
           <Plus size={18} /> Nova Categoria
         </button>

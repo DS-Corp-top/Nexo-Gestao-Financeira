@@ -125,11 +125,6 @@ export default function TransactionForm() {
 
   return (
     <div style={GAP}>
-      {/* Header */}
-      <div className="page-header">
-        <h1 className="page-title">{isEditing ? 'Editar transação' : 'Nova transação'}</h1>
-      </div>
-
       <div className="card" style={GAP}>
         {error && (
           <div style={{ padding: '12px 16px', background: 'var(--color-danger-muted)', border: '1px solid var(--color-danger)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger)', fontSize: '0.875rem' }}>
