@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django.apps import apps
-from django.db import models
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -15,13 +14,6 @@ ZERO = Decimal("0.00")
 
 def _sum_amount(queryset):
     return queryset.aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-
-
-def tracked_accounts(queryset):
-    return queryset.filter(
-        include_in_balance=True,
-        account_type__in=["bank", "cash"],
-    )
 
 
 def calculate_account_balance(account, cutoff_date=None):

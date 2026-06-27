@@ -71,6 +71,12 @@ O build do Heroku executa:
 
 O `Procfile` da raiz valida `frontend/dist/index.html` no release e depois sobe o Gunicorn apontando para `backend/nexo.wsgi`. Se aparecer `React build not found`, o buildpack Node.js nao rodou, rodou depois do Python, ou o deploy foi feito a partir da pasta `backend/` em vez da raiz do repositorio.
 
+Se o erro mostrar um caminho como `/frontend/dist/index.html`, remova a config var customizada para o Django usar o caminho correto do slug:
+
+```powershell
+heroku config:unset FRONTEND_DIST_DIR -a nexo-django-drf
+```
+
 Config minima:
 
 ```powershell

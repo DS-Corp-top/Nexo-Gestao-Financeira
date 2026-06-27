@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from nexo.react_build import find_react_index, react_build_missing_message
+
 
 class Command(BaseCommand):
     help = "Validate that the compiled React app is present when Django serves it."
@@ -10,10 +12,10 @@ class Command(BaseCommand):
             self.stdout.write("React app serving is disabled.")
             return
 
-        index_path = settings.FRONTEND_DIST_DIR / "index.html"
-        if not index_path.exists():
+        index_path = find_react_index(settings)
+        if index_path is None:
             raise CommandError(
-                f"React build not found at {index_path}. "
+                f"{react_build_missing_message(settings)} "
                 "Check that the Heroku Node.js buildpack runs before the Python buildpack."
             )
 

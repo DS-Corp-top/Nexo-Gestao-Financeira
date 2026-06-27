@@ -213,8 +213,30 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 SERVE_REACT_APP = env_bool("SERVE_REACT_APP", default=not RUNSERVER)
-FRONTEND_DIST_DIR = Path(
-    os.getenv("FRONTEND_DIST_DIR", BASE_DIR.parent / "frontend" / "dist")
+
+_frontend_dist_candidates = []
+_frontend_dist_env = os.getenv("FRONTEND_DIST_DIR", "").strip()
+if _frontend_dist_env:
+    _frontend_dist_path = Path(_frontend_dist_env)
+    if not _frontend_dist_path.is_absolute():
+        _frontend_dist_path = BASE_DIR.parent / _frontend_dist_path
+    _frontend_dist_candidates.append(_frontend_dist_path)
+
+_frontend_dist_candidates.extend(
+    [
+        BASE_DIR.parent / "frontend" / "dist",
+        Path("/app/frontend/dist"),
+    ]
+)
+
+FRONTEND_DIST_CANDIDATES = tuple(dict.fromkeys(_frontend_dist_candidates))
+FRONTEND_DIST_DIR = next(
+    (
+        frontend_dist_dir
+        for frontend_dist_dir in FRONTEND_DIST_CANDIDATES
+        if (frontend_dist_dir / "index.html").exists()
+    ),
+    BASE_DIR.parent / "frontend" / "dist",
 )
 if SERVE_REACT_APP:
     WHITENOISE_ROOT = FRONTEND_DIST_DIR
