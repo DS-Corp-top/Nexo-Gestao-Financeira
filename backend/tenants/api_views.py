@@ -16,7 +16,7 @@ class TenantProfileView(generics.RetrieveUpdateAPIView):
     """
     Retrieve and update the authenticated user's tenant profile.
     Supports multipart/form-data for logo uploads.
-    Send clear_logo=true to remove the current logo (mirrors TenantUpdateView SSR).
+    Send clear_logo=true to remove the current logo.
     """
     serializer_class = TenantSerializer
     parser_classes = [parsers.MultiPartParser, parsers.JSONParser]

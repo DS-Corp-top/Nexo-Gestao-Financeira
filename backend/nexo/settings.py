@@ -78,7 +78,6 @@ PUBLIC_SIGNUP_ENABLED = env_bool(
     default=RUNSERVER and (not TESTING) and (not HEROKU_DYNO),
 )
 
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -245,9 +244,9 @@ STORAGES = {
 }
 
 
-LOGIN_URL = "users:login"
-LOGIN_REDIRECT_URL = "dashboard:home"
-LOGOUT_REDIRECT_URL = "users:login"
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/admin/"
+LOGOUT_REDIRECT_URL = "/admin/login/"
 AUTHENTICATION_BACKENDS = [
     "users.backends.EmailOnlyBackend",
     "django.contrib.auth.backends.ModelBackend",
@@ -311,7 +310,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -343,8 +341,18 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# CORS
-CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:5173")
+# CORS: allow the separately deployed React app to call the API.
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+)
+CORS_ALLOWED_ORIGIN_REGEXES = env_list("CORS_ALLOWED_ORIGIN_REGEXES", "")
+CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", default=False)
+CORS_URLS_REGEX = r"^/api/v1/.*$"
+
+for origin in CORS_ALLOWED_ORIGINS:
+    if origin.startswith(("http://", "https://")) and origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 
 # Celery
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

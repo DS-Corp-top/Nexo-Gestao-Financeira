@@ -10,7 +10,7 @@ from common.throttles import CnpjLookupThrottle, NfseEmitThrottle
 from invoices.models import Client, Invoice
 from invoices.serializers import ClientSerializer, InvoicePaySerializer, InvoiceSerializer
 from invoices.service_codes import SERVICE_CODES
-from invoices.views import _invoice_transaction_description, _sync_invoice_transaction
+from invoices.services import invoice_transaction_description, sync_invoice_transaction
 from tenants.serializers import TenantSerializer
 
 
@@ -54,7 +54,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
                 },
             )
 
-        _sync_invoice_transaction(
+        sync_invoice_transaction(
             invoice,
             user=self.request.user,
             tenant=tenant,
@@ -62,7 +62,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
-        # SSR InvoiceUpdateView only allows editing ISSUED invoices
+        # Business rule: only issued invoices can be edited.
         if serializer.instance.status != Invoice.ISSUED:
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "Apenas faturas emitidas podem ser editadas."})
@@ -71,7 +71,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         serializer.validated_data.pop("save_client", None)
         invoice = serializer.save()
 
-        _sync_invoice_transaction(
+        sync_invoice_transaction(
             invoice,
             user=self.request.user,
             tenant=self.get_tenant(),
@@ -79,7 +79,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         )
 
     def perform_destroy(self, instance):
-        # SSR InvoiceDeleteView deletes the uncleared transaction before deleting the invoice.
+        # Delete the uncleared linked transaction before deleting the invoice.
         # Must null out FK in memory before deleting, because OneToOneField SET_NULL only
         # updates the DB — the in-memory object still holds the stale reference.
         if instance.transaction and not instance.transaction.is_cleared:
@@ -119,7 +119,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
                 txn.is_cleared = True
                 txn.date = pay_serializer.validated_data["paid_at"]
                 txn.account = account
-                txn.description = _invoice_transaction_description(invoice)
+                txn.description = invoice_transaction_description(invoice)
                 txn.save(update_fields=["is_cleared", "date", "account", "description", "updated_at"])
             else:
                 from transactions.models import Transaction
@@ -130,7 +130,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
                     amount=invoice.net_value,
                     date=pay_serializer.validated_data["paid_at"],
                     account=account,
-                    description=_invoice_transaction_description(invoice),
+                    description=invoice_transaction_description(invoice),
                     is_cleared=True,
                     recurrence_type=Transaction.RecurrenceType.ONCE,
                 )

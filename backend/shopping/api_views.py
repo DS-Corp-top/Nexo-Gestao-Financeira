@@ -31,7 +31,7 @@ class ShoppingListViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
-        """Global shopping stats across all lists (mirrors ShoppingListView.get_context_data)."""
+        """Global shopping stats across all lists."""
         tenant = self.get_tenant()
         items_qs = ShoppingItem.objects.filter(tenant=tenant)
         purchased_qs = items_qs.filter(is_purchased=True)

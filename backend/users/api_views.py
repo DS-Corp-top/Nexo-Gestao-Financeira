@@ -8,7 +8,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from common.api_mixins import get_user_tenant
 from common.throttles import LoginThrottle
-from users.serializers import RegisterSerializer, UserSerializer
+from users.serializers import PendingUserSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -69,11 +69,15 @@ class PendingUsersView(generics.ListAPIView):
     Lista usuários aguardando aprovação (is_active=False).
     Restrito a superusuários. Espelho de PendingUsersView SSR.
     """
-    serializer_class = UserSerializer
+    serializer_class = PendingUserSerializer
     permission_classes = [IsSuperuser]
 
     def get_queryset(self):
-        return User.objects.filter(is_active=False).order_by("date_joined")
+        return (
+            User.objects.filter(is_active=False)
+            .prefetch_related("tenant_memberships__tenant")
+            .order_by("date_joined")
+        )
 
 
 class ApproveUserView(APIView):

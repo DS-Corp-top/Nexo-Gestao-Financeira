@@ -36,7 +36,7 @@ class InvestmentViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def add_entry(self, request, pk=None):
-        """Add an InvestmentEntry inline (mirrors InvestmentDetailView.post)."""
+        """Add an InvestmentEntry inline for the selected investment."""
         investment = self.get_object()
         data = {**request.data, "investment": investment.pk}
         serializer = InvestmentEntrySerializer(data=data)

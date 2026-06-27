@@ -1,80 +1,80 @@
-﻿# Sistema de Financas Pessoais (Django + HTMX + Tailwind)
+# Nexo Gestao Financeira
 
-Aplicacao full stack de financas pessoais com foco mobile-first, autenticacao nativa Django, PostgreSQL e estrutura PWA.
+Aplicacao de gestao financeira com frontend React separado do backend Django.
 
-## Stack
-- Django Templates + Views + Models
-- Tailwind CSS (via CDN)
-- HTMX para interacoes sem recarregar a pagina
-- PostgreSQL (opcional em desenvolvimento)
-- Django Auth
-- PWA: `manifest.json` + `service-worker.js`
+## Arquitetura
 
-## Apps
-- `users`: cadastro, login e logout
-- `accounts`: contas/carteiras
-- `categories`: categorias de receitas e despesas
-- `transactions`: transacoes, extrato com filtros e modal HTMX
-- `dashboard`: resumo financeiro e ultimas transacoes
+- `frontend/`: React + TypeScript + Vite. Consome a API por `VITE_API_URL`.
+- `backend/`: Django + Django REST Framework. Serve API, admin, jobs Celery e arquivos de media/static.
+- Autenticacao da API: JWT via `/api/v1/auth/token/` e `/api/v1/auth/token/refresh/`.
 
-## Instalacao
-1. Criar e ativar ambiente virtual:
+O backend fica em modo API-only. A UI classica Django/HTMX foi removida; o frontend React e deployado separadamente.
+
+## Desenvolvimento Local
+
+Backend:
+
 ```powershell
+cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-2. Instalar dependencias:
-```powershell
 python -m pip install -r requirements.txt
-```
-
-3. Rodar migracoes:
-```powershell
-python manage.py makemigrations
+Copy-Item .env.example .env
 python manage.py migrate
+python manage.py runserver 8003 --noreload
 ```
 
-4. Criar superusuario (opcional):
+Frontend:
+
 ```powershell
-python manage.py createsuperuser
+cd frontend
+npm install
+Copy-Item .env.example .env
+npm run dev
 ```
 
-5. Executar projeto:
-```powershell
-python manage.py runserver --noreload
+Para desenvolvimento local, `frontend/.env` deve apontar para:
+
+```env
+VITE_API_URL=http://127.0.0.1:8003/api/v1
 ```
 
-## Banco de dados
-- Desenvolvimento local (padrao): SQLite, sem configuracao extra.
-- Para usar PostgreSQL, habilite explicitamente:
-```powershell
-$env:USE_POSTGRES="1"
-$env:POSTGRES_DB="financas"
-$env:POSTGRES_USER="postgres"
-$env:POSTGRES_PASSWORD="postgres"
-$env:POSTGRES_HOST="localhost"
-$env:POSTGRES_PORT="5432"
-python manage.py migrate
-python manage.py runserver --noreload
+E o backend deve permitir a origem do Vite:
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-## Observacoes
-- Se quiser forcar SQLite mesmo com variaveis de Postgres no ambiente:
-```powershell
-$env:USE_SQLITE="1"
-```
-- O botao `+` abre modal HTMX para inclusao rapida de transacoes sem reload.
-- O layout usa bottom navigation: Dashboard, Transacoes, Contas e Categorias.
+## Deploy Separado
 
-## Testes automatizados
-- Rodar a suite local:
-```powershell
-python manage.py test
+Frontend:
+
+```env
+VITE_API_URL=https://api.seu-dominio.com/api/v1
 ```
-- Validar configuracao Django antes dos testes:
+
+Backend:
+
+```env
+DJANGO_ALLOWED_HOSTS=api.seu-dominio.com
+CORS_ALLOWED_ORIGINS=https://app.seu-dominio.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://app.seu-dominio.com
+```
+
+Como a API usa JWT no header `Authorization: Bearer`, `CORS_ALLOW_CREDENTIALS=false` e cookies de sessao nao sao necessarios para o frontend.
+
+## Comandos Uteis
+
+Backend:
+
 ```powershell
 python manage.py check
+python manage.py test
 ```
-- CI:
-  O workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) executa `check` e `test` automaticamente em `push` e `pull request`, usando SQLite.
+
+Frontend:
+
+```powershell
+npm run build
+npm run test
+```

@@ -11,7 +11,9 @@ export interface TokenResponse {
 }
 
 export interface RegisterPayload {
-  username: string;
+  person_type: 'pf' | 'pj';
+  name: string;
+  document: string;
   email: string;
   password: string;
   password_confirm: string;

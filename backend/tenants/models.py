@@ -28,10 +28,22 @@ class Tenant(models.Model):
         null=True,
     )
     
+    class PersonType(models.TextChoices):
+        PF = "pf", "Pessoa Física"
+        PJ = "pj", "Pessoa Jurídica"
+
+    person_type = models.CharField(
+        "Tipo de pessoa",
+        max_length=2,
+        choices=PersonType.choices,
+        default=PersonType.PF,
+        blank=True,
+    )
+
     class InterfaceChoices(models.TextChoices):
         CLASSIC = "classic", "Clássico (Django)"
         REACT = "react", "Novo App (React)"
-        
+
     default_interface = models.CharField(
         "Interface padrão",
         max_length=20,

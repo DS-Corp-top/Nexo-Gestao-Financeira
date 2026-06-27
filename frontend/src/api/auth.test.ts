@@ -56,14 +56,18 @@ describe('auth api', () => {
     apiMock.post.mockResolvedValueOnce({ data: {} });
 
     await register({
-      username: 'pending',
+      person_type: 'pf',
+      name: 'Pending User',
+      document: '000.000.000-00',
       email: 'pending@example.com',
       password: 'Strong-pass-123',
       password_confirm: 'Strong-pass-123',
     });
 
     expect(apiMock.post).toHaveBeenCalledWith('/auth/register/', {
-      username: 'pending',
+      person_type: 'pf',
+      name: 'Pending User',
+      document: '000.000.000-00',
       email: 'pending@example.com',
       password: 'Strong-pass-123',
       password_confirm: 'Strong-pass-123',
