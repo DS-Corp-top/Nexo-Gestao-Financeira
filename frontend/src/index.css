@@ -1082,11 +1082,11 @@ a:hover {
   padding: 0.35rem 0.65rem;
 }
 
-.txn-balance-item:nth-child(odd) {
+.txn-balance-item:nth-child(odd):not(:last-child) {
   border-right: 1px solid rgba(148, 163, 184, 0.28);
 }
 
-.txn-balance-item:nth-child(-n + 2) {
+.txn-balance-item:not(:last-child) {
   border-bottom: 1px solid rgba(148, 163, 184, 0.28);
 }
 

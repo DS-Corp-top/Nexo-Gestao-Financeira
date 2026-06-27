@@ -149,7 +149,7 @@ export default function Transactions() {
   }, [transactions]);
 
   return (
-    <div className="transactions-body animate-fade-in" style={{ padding: 'max(1.5rem, env(safe-area-inset-top)) 1.25rem 9rem', minHeight: '100vh' }}>
+    <div className="transactions-body animate-fade-in" style={{ padding: '1.5rem 1.25rem 0', minHeight: '100vh' }}>
       <section className="transactions-screen space-y-5">
         
         {/* Nav Month */}
