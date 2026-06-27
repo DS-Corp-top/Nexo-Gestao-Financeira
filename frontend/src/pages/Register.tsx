@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { register } from '../api/auth';
 
 function formatCPF(v: string) {
@@ -91,6 +92,9 @@ export default function Register() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', paddingTop: '6vh', paddingInline: 'var(--space-lg)', paddingBottom: '2rem' }} className="animate-fade-in">
+      <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-xl)', textDecoration: 'none' }}>
+        <ArrowLeft size={15} /> Voltar
+      </Link>
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.03em' }}>Criar conta</h1>
         <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-xs)' }}>

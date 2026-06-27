@@ -47,7 +47,7 @@ function MockBarChart({ height = 120, fontSize = 9 }: { height?: number; fontSiz
   const gap = groupW * 0.04;
   const r = 3;
 
-  function roundedBar(x: number, topY: number, w: number, h: number, fill: string) {
+  function roundedBar(x: number, w: number, h: number, fill: string) {
     const bh = Math.max(h, r * 2 + 1);
     const by = chartH - bh;
     return (
@@ -68,8 +68,8 @@ function MockBarChart({ height = 120, fontSize = 9 }: { height?: number; fontSiz
         const expX = cx + gap / 2;
         return (
           <g key={i}>
-            {roundedBar(incX, chartH - incH, barW, incH, m.current ? '#22c55e' : '#14532d')}
-            {roundedBar(expX, chartH - expH, barW, expH, m.current ? '#fb7185' : '#2b2f3a')}
+            {roundedBar(incX, barW, incH, m.current ? '#22c55e' : '#14532d')}
+            {roundedBar(expX, barW, expH, m.current ? '#fb7185' : '#2b2f3a')}
             <text
               x={cx} y={height - 2}
               textAnchor="middle"
