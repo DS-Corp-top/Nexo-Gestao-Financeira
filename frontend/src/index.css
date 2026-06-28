@@ -200,6 +200,23 @@ input[type="time"].input {
   color: var(--color-text-muted);
 }
 
+select.input,
+select.select {
+  color-scheme: dark;
+}
+
+select.input option,
+select.select option {
+  background: #050505;
+  color: #ffffff;
+}
+
+select.input option:checked,
+select.select option:checked {
+  background: #111111;
+  color: #ffffff;
+}
+
 .input-error {
   border-color: var(--color-danger);
 }
