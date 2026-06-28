@@ -633,10 +633,21 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
           .tenant-indicator-label {
             display: none;
           }
+          .tenant-dropdown {
+            position: fixed;
+            top: var(--header-height);
+            left: var(--space-md);
+            right: var(--space-md);
+            width: auto;
+            max-width: none;
+          }
         }
         @media (max-width: 420px) {
           .tenant-indicator {
             max-width: 38vw;
+          }
+          .tenant-indicator-name {
+            font-size: 0.7rem;
           }
         }
       `}</style>

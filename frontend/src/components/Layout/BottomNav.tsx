@@ -31,8 +31,16 @@ export default function BottomNav() {
       <div className="txn-more-menu-wrapper">
         <button 
           type="button" 
-          className={`txn-tab-link ${isMoreMenuOpen ? 'txn-tab-active' : ''}`}
+          className={`txn-tab-link txn-more-trigger ${isMoreMenuOpen ? 'txn-more-open' : ''}`}
           onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+          style={{
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            background: isMoreMenuOpen ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+            border: isMoreMenuOpen ? '1px solid rgba(255, 255, 255, 0.22)' : '1px solid transparent',
+            color: 'rgba(255, 255, 255, 0.86)',
+            boxShadow: 'none',
+          }}
         >
           <span className="txn-tab-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">

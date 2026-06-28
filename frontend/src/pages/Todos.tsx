@@ -354,20 +354,18 @@ export default function Todos() {
 
   return (
     <div className="animate-fade-in" style={{ display: 'grid', gap: 'var(--space-lg)', maxWidth: viewMode === 'kanban' ? 'none' : 720, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.6rem' }}>
-        <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+      <div className="todos-toolbar">
           <select
-            className="input"
+            className="input todos-toolbar-control"
             value={filter}
             onChange={(event) => setFilter(event.target.value as 'all' | 'pending' | 'done')}
             aria-label="Filtrar tarefas por status"
-            style={{ fontSize: '0.8rem', height: 34, padding: '0.35rem 0.75rem', width: 144 }}
           >
             <option value="all">Todas ({todos.length})</option>
             <option value="pending">Pendentes ({pendingCount})</option>
             <option value="done">Concluidas ({doneCount})</option>
           </select>
-          <select className="input" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as Priority | 'all')} style={{ fontSize: '0.8rem', height: 34, padding: '0.35rem 0.75rem', width: 150 }}>
+          <select className="input todos-toolbar-control" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as Priority | 'all')}>
             <option value="all">Todas prioridades</option>
             <option value="high">Alta</option>
             <option value="medium">Media</option>
@@ -375,20 +373,18 @@ export default function Todos() {
           </select>
 
           <select
-            className="input"
+            className="input todos-toolbar-control"
             value={viewMode}
             onChange={(event) => setViewMode(event.target.value as 'list' | 'kanban')}
             aria-label="Selecionar visualizacao"
-            style={{ fontSize: '0.8rem', height: 34, padding: '0.35rem 0.75rem', width: 112 }}
           >
             <option value="list">Lista</option>
             <option value="kanban">Kanban</option>
           </select>
 
-          <button type="button" className="btn btn-primary" onClick={() => { setShowForm(true); setEditingItem(null); }} style={{ height: 34, padding: '0.35rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', lineHeight: 1 }}>
+          <button type="button" className="btn btn-primary todos-toolbar-control todos-toolbar-button" onClick={() => { setShowForm(true); setEditingItem(null); }}>
             <Plus size={16} /> Nova tarefa
           </button>
-        </div>
       </div>
 
       {showForm && (
