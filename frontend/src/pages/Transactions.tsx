@@ -52,11 +52,11 @@ export default function Transactions() {
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ['transactions', monthParam, accountFilter, orderBy],
-    queryFn: () => fetchTransactions({ 
-      date__gte: start, 
+    queryFn: () => fetchTransactions({
+      date__gte: start,
       date__lte: end,
       account: accountFilter || undefined,
-      order_by: orderBy || undefined
+      ordering: orderBy || undefined,
     }),
   });
 
@@ -246,9 +246,9 @@ export default function Transactions() {
               <option value="-date">Mais recentes</option>
               <option value="date">Mais antigas</option>
               <option value="-amount">Maior valor</option>
-              <option value="amount_asc">Menor valor</option>
-              <option value="pending">Pendentes primeiro</option>
-              <option value="cleared">Baixadas primeiro</option>
+              <option value="amount">Menor valor</option>
+              <option value="is_cleared">Pendentes primeiro</option>
+              <option value="-is_cleared">Baixadas primeiro</option>
             </select>
           </label>
         </form>

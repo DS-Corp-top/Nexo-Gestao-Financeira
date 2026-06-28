@@ -54,9 +54,9 @@ export interface ClosedMonth {
   updated_at: string;
 }
 
-export async function fetchTransactions(params?: { date__gte?: string; date__lte?: string; account?: string; category?: string; order_by?: string }): Promise<Transaction[]> {
+export async function fetchTransactions(params?: { date__gte?: string; date__lte?: string; account?: string; category?: string; ordering?: string }): Promise<Transaction[]> {
   const { data } = await api.get<any>('/transactions/', { params });
-  return data.results !== undefined ? data.results : data;
+  return Array.isArray(data) ? data : (data.results ?? []);
 }
 
 export async function fetchStatementSummary(params?: { month?: string; account?: string; category?: string }): Promise<StatementSummary> {

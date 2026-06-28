@@ -8,6 +8,7 @@ from transactions.serializers import ClosedMonthSerializer, TransactionSerialize
 
 
 class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
+    pagination_class = None
     queryset = Transaction.objects.select_related(
         "account", "destination_account", "category"
     ).all()
@@ -22,7 +23,7 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         "date": ["exact", "gte", "lte"],
         "recurrence_type": ["exact"],
     }
-    ordering_fields = ("date", "amount", "created_at")
+    ordering_fields = ("date", "amount", "created_at", "is_cleared")
     ordering = ("-date", "-created_at")
 
     def _is_month_closed(self, target_date):
@@ -282,6 +283,7 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         })
 
 class ClosedMonthViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
+    pagination_class = None
     queryset = ClosedMonth.objects.all()
     serializer_class = ClosedMonthSerializer
     filterset_fields = ("year", "month", "is_closed")
