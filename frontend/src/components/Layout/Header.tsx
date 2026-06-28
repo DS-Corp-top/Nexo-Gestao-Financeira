@@ -84,7 +84,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
           },
           {}
         )
-      )
+      ).sort((a, b) => a.tenant_code.localeCompare(b.tenant_code, 'pt-BR', { numeric: true }))
     : [];
   const userDisplayName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email || user.username

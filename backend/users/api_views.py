@@ -141,7 +141,7 @@ class SystemAllCompaniesView(APIView):
         companies = (
             TenantCompany.objects
             .select_related("tenant")
-            .order_by("tenant__name", "sequence_number", "name")
+            .order_by("tenant__created_at", "tenant_id", "sequence_number", "name")
         )
         return Response([
             {
