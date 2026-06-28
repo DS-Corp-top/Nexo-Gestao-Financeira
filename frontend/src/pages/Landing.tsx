@@ -226,7 +226,7 @@ function AppPreview() {
                   fontSize: '0.7rem', fontWeight: i === 0 ? 700 : 400,
                   color: i === 0 ? '#fff' : 'rgba(255,255,255,0.32)',
                   background: i === 0 ? 'rgba(255,255,255,0.07)' : 'transparent',
-                  borderLeft: i === 0 ? '2px solid #a855f7' : '2px solid transparent',
+                  borderLeft: i === 0 ? '2px solid #fff' : '2px solid transparent',
                 }}>{l}</div>
               ))}
             </div>
@@ -384,13 +384,13 @@ export default function Landing() {
       {/* Hero */}
       <section style={{ position: 'relative', overflow: 'hidden' }}>
         <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-          <div style={{ position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '70%', background: 'radial-gradient(ellipse at center, rgba(168,85,247,0.12) 0%, transparent 60%)' }} />
+          <div style={{ position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '70%', background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%)' }} />
           <div style={{ position: 'absolute', top: '30%', right: '-10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(96,165,250,0.07) 0%, transparent 60%)' }} />
         </div>
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto', padding: 'clamp(4rem, 10vw, 7rem) clamp(1rem, 4vw, 2.5rem) clamp(3rem, 6vw, 5rem)', textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.28rem 0.85rem', border: '1px solid rgba(168,85,247,0.35)', borderRadius: 999, background: 'rgba(168,85,247,0.08)', fontSize: '0.72rem', fontWeight: 700, color: 'rgba(216,180,254,0.9)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '2rem' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', flexShrink: 0 }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.28rem 0.85rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 999, background: 'rgba(255,255,255,0.06)', fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '2rem' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', flexShrink: 0 }} />
             Gestão financeira pessoal e empresarial
           </div>
 
@@ -414,7 +414,7 @@ export default function Landing() {
 
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', bottom: -40, left: '50%', transform: 'translateX(-50%)', width: '80%', height: 80, background: 'rgba(168,85,247,0.2)', filter: 'blur(40px)', borderRadius: '50%' }} />
+              <div style={{ position: 'absolute', bottom: -40, left: '50%', transform: 'translateX(-50%)', width: '80%', height: 80, background: 'rgba(255,255,255,0.06)', filter: 'blur(40px)', borderRadius: '50%' }} />
               <AppPreview />
             </div>
           </div>
@@ -489,9 +489,9 @@ export default function Landing() {
       {/* CTA */}
       <section style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(1rem, 4vw, 2.5rem) clamp(5rem, 10vw, 8rem)', textAlign: 'center' }}>
         <div style={{ position: 'relative', padding: '3rem 2rem', borderRadius: 24, background: '#080808', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-          <div aria-hidden style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 120, background: 'rgba(168,85,247,0.15)', filter: 'blur(40px)' }} />
+          <div aria-hidden style={{ position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 120, background: 'rgba(255,255,255,0.04)', filter: 'blur(40px)' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(168,85,247,0.8)', textTransform: 'uppercase', marginBottom: '1rem' }}>Comece agora</p>
+            <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '1rem' }}>Comece agora</p>
             <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.15, marginBottom: '0.9rem' }}>Pronto para assumir o controle?</h2>
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.88rem', lineHeight: 1.7, maxWidth: 420, margin: '0 auto 2rem' }}>
               Crie sua conta com CPF ou CNPJ. O acesso fica pendente até validação e é liberado em breve.
