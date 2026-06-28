@@ -4,6 +4,7 @@ export interface AllCompanyItem {
   id: number;
   tenant_id: number;
   tenant_name: string;
+  tenant_code: string;
   name: string;
   document: string;
   sequence_number: string;

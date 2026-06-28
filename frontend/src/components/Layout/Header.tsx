@@ -68,11 +68,17 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
   });
 
   // Group all companies by tenant for superuser view
-  const allCompaniesByTenant: { tenant_name: string; companies: AllCompanyItem[] }[] = isSuperuser
+  const allCompaniesByTenant: { tenant_name: string; tenant_code: string; companies: AllCompanyItem[] }[] = isSuperuser
     ? Object.values(
-        allCompanies.reduce<Record<number, { tenant_name: string; companies: AllCompanyItem[] }>>(
+        allCompanies.reduce<Record<number, { tenant_name: string; tenant_code: string; companies: AllCompanyItem[] }>>(
           (acc, c) => {
-            if (!acc[c.tenant_id]) acc[c.tenant_id] = { tenant_name: c.tenant_name, companies: [] };
+            if (!acc[c.tenant_id]) {
+              acc[c.tenant_id] = {
+                tenant_name: c.tenant_name,
+                tenant_code: c.tenant_code || String(c.tenant_id),
+                companies: [],
+              };
+            }
             acc[c.tenant_id].companies.push(c);
             return acc;
           },
@@ -226,12 +232,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                   ) : allCompaniesByTenant.map((group) => (
                     <div key={group.tenant_name}>
                       <div className="tenant-dropdown-group">
-                        {displayName(group.tenant_name)}
-                        {group.tenant_name.includes('@') && (
-                          <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: 4 }}>
-                            @{group.tenant_name.split('@')[1]}
-                          </span>
-                        )}
+                        Tenant {group.tenant_code}
                       </div>
                       {group.companies.map((company) => (
                         <button

@@ -148,6 +148,7 @@ class SystemAllCompaniesView(APIView):
                 "id": c.pk,
                 "tenant_id": c.tenant_id,
                 "tenant_name": c.tenant.name,
+                "tenant_code": c.tenant.created_at.strftime("%d%m%Y"),
                 "name": c.name,
                 "document": c.document,
                 "sequence_number": c.sequence_number,
