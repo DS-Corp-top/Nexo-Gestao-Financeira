@@ -236,7 +236,7 @@ export default function CompanySettings() {
   ];
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 640 }}>
+    <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
       {/* Header */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
         <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
