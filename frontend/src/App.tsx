@@ -56,7 +56,7 @@ export default function App() {
               <Route path="shopping" element={<Shopping />} />
               <Route path="investments" element={<Investments />} />
               <Route path="settings/company" element={<CompanySettings />} />
-              <Route path="admin" element={<Administration />} />
+              <Route path="admin" element={<ProtectedRoute requireSuperuser><Administration /></ProtectedRoute>} />
             </Route>
           </Routes>
         </BrowserRouter>

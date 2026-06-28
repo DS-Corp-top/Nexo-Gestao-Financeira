@@ -71,6 +71,7 @@ export interface InvoicePrintData {
   tenant: TenantProfile | null;
   issuer_company: TenantCompany | null;
   service_code_description: string;
+  responsible_name: string;
 }
 
 export interface InvoiceNfseGuide {
@@ -91,8 +92,19 @@ export interface InvoiceNfseStatus {
   nfse_requested_at: string | null;
 }
 
-export async function fetchInvoices(): Promise<Invoice[]> {
-  const { data } = await api.get<any>('/invoices/');
+export interface InvoiceFilters {
+  status?: string;
+  start?: string;
+  end?: string;
+}
+
+export async function fetchInvoices(filters?: InvoiceFilters): Promise<Invoice[]> {
+  const query = new URLSearchParams();
+  if (filters?.status) query.set('status', filters.status);
+  if (filters?.start) query.set('issue_date__gte', filters.start);
+  if (filters?.end) query.set('issue_date__lte', filters.end);
+  const qs = query.toString();
+  const { data } = await api.get<any>(`/invoices/${qs ? `?${qs}` : ''}`);
   return data.results !== undefined ? data.results : data;
 }
 
@@ -130,6 +142,20 @@ export async function fetchClients(): Promise<Client[]> {
   return data.results !== undefined ? data.results : data;
 }
 
+export async function createClient(payload: Partial<Client>): Promise<Client> {
+  const { data } = await api.post<Client>('/clients/', payload);
+  return data;
+}
+
+export async function updateClient(id: number, payload: Partial<Client>): Promise<Client> {
+  const { data } = await api.patch<Client>(`/clients/${id}/`, payload);
+  return data;
+}
+
+export async function deleteClient(id: number): Promise<void> {
+  await api.delete(`/clients/${id}/`);
+}
+
 export async function fetchInvoicePrintData(id: number): Promise<InvoicePrintData> {
   const { data } = await api.get<InvoicePrintData>(`/invoices/${id}/print_data/`);
   return data;
@@ -147,5 +173,20 @@ export async function emitInvoiceNfse(id: number): Promise<Invoice> {
 
 export async function fetchInvoiceNfseStatus(id: number): Promise<InvoiceNfseStatus> {
   const { data } = await api.get<InvoiceNfseStatus>(`/invoices/${id}/nfse_status/`);
+  return data;
+}
+
+export interface ServiceCode {
+  code: string;
+  description: string;
+}
+
+export async function fetchServiceCodes(): Promise<ServiceCode[]> {
+  const { data } = await api.get<ServiceCode[]>('/invoices/service_codes/');
+  return data;
+}
+
+export async function lookupClientCnpj(cnpj: string): Promise<{ name: string; email: string; phone: string; address: string; city: string }> {
+  const { data } = await api.get(`/clients/cnpj_lookup/?cnpj=${encodeURIComponent(cnpj)}`);
   return data;
 }

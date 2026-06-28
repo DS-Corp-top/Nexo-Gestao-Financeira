@@ -107,3 +107,8 @@ export async function updateNfseCredential(id: number, payload: { gov_br_cpf?: s
   const { data } = await api.patch<NfseCredential>(`/nfse-credentials/${id}/`, payload);
   return data;
 }
+
+export async function inviteTenantUser(payload: { name: string; email: string; password: string; role: string }): Promise<{ id: number; user_email: string; user_full_name: string; role: string }> {
+  const { data } = await api.post('/tenant/invite-user/', payload);
+  return data;
+}

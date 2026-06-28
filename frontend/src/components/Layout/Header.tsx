@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Menu, Building2, ChevronDown, LogOut } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { fetchTenantCompanies } from '../../api/tenant';
+import { fetchAllCompanies, type AllCompanyItem } from '../../api/system';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
@@ -11,19 +12,54 @@ interface HeaderProps {
   isMobile?: boolean;
 }
 
+const ACTIVE_COMPANY_STORAGE_KEY = 'nexo.activeCompanyId';
+const ACTIVE_TENANT_STORAGE_KEY = 'nexo.activeTenantId';
+
 export default function Header({ title, onMenuClick, isMobile = false }: HeaderProps) {
-  const { user, tenant, logout } = useAuth();
+  const { user, tenant, logout, refresh } = useAuth();
+  const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [tenantMenuOpen, setTenantMenuOpen] = useState(false);
+  const [activeCompanyId, setActiveCompanyId] = useState<number | null>(() => {
+    try {
+      const value = localStorage.getItem(ACTIVE_COMPANY_STORAGE_KEY);
+      return value ? Number(value) : null;
+    } catch {
+      return null;
+    }
+  });
   const menuRef = useRef<HTMLDivElement>(null);
   const tenantMenuRef = useRef<HTMLDivElement>(null);
   const tenantLabel = tenant?.person_type === 'pf' ? 'Pessoa' : 'Empresa';
   const tenantTitle = tenant?.name ? `${tenantLabel}: ${tenant.name}` : `${tenantLabel} atual`;
+  const isSuperuser = Boolean(user?.is_superuser);
+  const [tenantScopeReady, setTenantScopeReady] = useState(false);
+
   const { data: tenantCompanies = [] } = useQuery({
-    queryKey: ['tenantCompanies'],
+    queryKey: ['tenantCompanies', tenant?.id],
     queryFn: fetchTenantCompanies,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && !isSuperuser && tenantScopeReady,
   });
+
+  const { data: allCompanies = [] } = useQuery({
+    queryKey: ['allCompanies'],
+    queryFn: fetchAllCompanies,
+    enabled: isSuperuser,
+  });
+
+  // Group all companies by tenant for superuser view
+  const allCompaniesByTenant: { tenant_name: string; companies: AllCompanyItem[] }[] = isSuperuser
+    ? Object.values(
+        allCompanies.reduce<Record<number, { tenant_name: string; companies: AllCompanyItem[] }>>(
+          (acc, c) => {
+            if (!acc[c.tenant_id]) acc[c.tenant_id] = { tenant_name: c.tenant_name, companies: [] };
+            acc[c.tenant_id].companies.push(c);
+            return acc;
+          },
+          {}
+        )
+      )
+    : [];
   const userDisplayName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email || user.username
     : '';
@@ -34,6 +70,53 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     if (digits.length === 11) return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
     return value || '';
   }
+
+  const availableCompanies = isSuperuser ? allCompanies : tenantCompanies;
+  const activeCompany =
+    availableCompanies.find((company) => company.id === activeCompanyId) ||
+    availableCompanies.find((company) => company.is_default) ||
+    availableCompanies[0];
+  const activeCompanyName = activeCompany?.name || tenant?.name || 'Sem empresa';
+
+  function selectCompany(company: { id: number; name: string; tenant?: number; tenant_id?: number }) {
+    const tenantId = company.tenant_id || company.tenant || tenant?.id;
+    setActiveCompanyId(company.id);
+    try {
+      localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, String(company.id));
+      if (tenantId) {
+        localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, String(tenantId));
+        localStorage.setItem(`nexo.activeCompanyId.${tenantId}`, String(company.id));
+      }
+    } catch {}
+    window.dispatchEvent(new CustomEvent('nexo:company-change', { detail: { companyId: company.id, tenantId } }));
+    queryClient.invalidateQueries();
+    void refresh();
+    setTenantMenuOpen(false);
+  }
+
+  useEffect(() => {
+    if (!user) {
+      setTenantScopeReady(false);
+      return;
+    }
+    if (isSuperuser) {
+      setTenantScopeReady(true);
+      return;
+    }
+    if (!tenant?.id) {
+      setTenantScopeReady(false);
+      return;
+    }
+    try {
+      localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, String(tenant.id));
+      const storedCompanyId = localStorage.getItem(`nexo.activeCompanyId.${tenant.id}`);
+      if (storedCompanyId) {
+        localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, storedCompanyId);
+        setActiveCompanyId(Number(storedCompanyId));
+      }
+    } catch {}
+    setTenantScopeReady(true);
+  }, [isSuperuser, tenant?.id, user]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -54,6 +137,22 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     if (tenantMenuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [tenantMenuOpen]);
+
+  useEffect(() => {
+    if (availableCompanies.length === 0) return;
+    if (activeCompanyId && availableCompanies.some((company) => company.id === activeCompanyId)) return;
+
+    const nextCompany = availableCompanies.find((company) => company.is_default) || availableCompanies[0];
+    setActiveCompanyId(nextCompany.id);
+    try {
+      localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, String(nextCompany.id));
+      const tenantId = 'tenant_id' in nextCompany ? nextCompany.tenant_id : nextCompany.tenant;
+      if (tenantId) {
+        localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, String(tenantId));
+        localStorage.setItem(`nexo.activeCompanyId.${tenantId}`, String(nextCompany.id));
+      }
+    } catch {}
+  }, [activeCompanyId, availableCompanies, tenant?.id]);
 
   return (
     <header className="app-header">
@@ -79,34 +178,71 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
           >
             <Building2 size={15} className="tenant-indicator-icon" />
             <span className="tenant-indicator-label">{tenantLabel}</span>
-            <span className="tenant-indicator-name">{tenant?.name || 'Sem empresa'}</span>
+            <span className="tenant-indicator-name">{activeCompanyName}</span>
             <ChevronDown size={14} className="tenant-indicator-icon" />
           </button>
 
           {tenantMenuOpen && (
             <div className="tenant-dropdown">
-              <div className="tenant-dropdown-title">Empresas do tenant</div>
-              {tenantCompanies.length === 0 ? (
-                <div className="tenant-dropdown-empty">Nenhuma empresa disponivel.</div>
-              ) : tenantCompanies.map((company) => (
-                <div key={company.id} className="tenant-dropdown-item">
-                  <div className="tenant-dropdown-main">
-                    <span className="tenant-dropdown-seq">{company.sequence_number}</span>
-                    <span className="tenant-dropdown-name">{company.name}</span>
-                    {company.is_default && <span className="tenant-dropdown-badge">Padrao</span>}
-                  </div>
-                  <div className="tenant-dropdown-doc">
-                    {formatDocument(company.document) || 'CPF/CNPJ nao informado'}
-                  </div>
-                </div>
-              ))}
-              <NavLink
-                to="/settings/company"
-                className="tenant-dropdown-link"
-                onClick={() => setTenantMenuOpen(false)}
-              >
-                Gerenciar empresas
-              </NavLink>
+              {isSuperuser ? (
+                <>
+                  <div className="tenant-dropdown-title">Todas as empresas</div>
+                  {allCompaniesByTenant.length === 0 ? (
+                    <div className="tenant-dropdown-empty">Nenhuma empresa cadastrada.</div>
+                  ) : allCompaniesByTenant.map((group) => (
+                    <div key={group.tenant_name}>
+                      <div className="tenant-dropdown-group">{group.tenant_name}</div>
+                      {group.companies.map((company) => (
+                        <button
+                          key={company.id}
+                          type="button"
+                          className={`tenant-dropdown-item ${company.id === activeCompany?.id ? 'active' : ''}`}
+                          onClick={() => selectCompany(company)}
+                        >
+                          <div className="tenant-dropdown-main">
+                            <span className="tenant-dropdown-seq">{company.sequence_number}</span>
+                            <span className="tenant-dropdown-name">{company.name}</span>
+                            {company.is_default && <span className="tenant-dropdown-badge">Padrão</span>}
+                          </div>
+                          <div className="tenant-dropdown-doc">
+                            {formatDocument(company.document) || 'CPF/CNPJ não informado'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <div className="tenant-dropdown-title">Empresas do tenant</div>
+                  {tenantCompanies.length === 0 ? (
+                    <div className="tenant-dropdown-empty">Nenhuma empresa disponivel.</div>
+                  ) : tenantCompanies.map((company) => (
+                    <button
+                      key={company.id}
+                      type="button"
+                      className={`tenant-dropdown-item ${company.id === activeCompany?.id ? 'active' : ''}`}
+                      onClick={() => selectCompany(company)}
+                    >
+                      <div className="tenant-dropdown-main">
+                        <span className="tenant-dropdown-seq">{company.sequence_number}</span>
+                        <span className="tenant-dropdown-name">{company.name}</span>
+                        {company.is_default && <span className="tenant-dropdown-badge">Padrao</span>}
+                      </div>
+                      <div className="tenant-dropdown-doc">
+                        {formatDocument(company.document) || 'CPF/CNPJ nao informado'}
+                      </div>
+                    </button>
+                  ))}
+                  <NavLink
+                    to="/settings/company"
+                    className="tenant-dropdown-link"
+                    onClick={() => setTenantMenuOpen(false)}
+                  >
+                    Configurações
+                  </NavLink>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -156,7 +292,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 textTransform: 'uppercase',
                 color: 'var(--color-text-secondary)',
               }}>
-                {tenantLabel}
+                {tenantLabel} {tenant?.id ? `#${String(tenant.id).padStart(4, '0')}` : ''}
               </div>
 
               <div style={{
@@ -286,16 +422,40 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
           letter-spacing: 0.06em;
           text-transform: uppercase;
         }
+        .tenant-dropdown-group {
+          padding: 0.5rem 0.55rem 0.2rem;
+          color: var(--color-accent);
+          font-size: 0.66rem;
+          font-weight: 800;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          border-top: 1px solid var(--color-border);
+          margin-top: 0.25rem;
+        }
+        .tenant-dropdown-group:first-child {
+          border-top: none;
+          margin-top: 0;
+        }
         .tenant-dropdown-item {
+          display: block;
+          width: 100%;
           padding: 0.55rem;
+          border: none;
           border-radius: var(--radius-md);
+          background: none;
           color: var(--color-text-primary);
+          font-family: inherit;
+          text-align: left;
+          cursor: pointer;
         }
         .tenant-dropdown-item + .tenant-dropdown-item {
           margin-top: 0.1rem;
         }
         .tenant-dropdown-item:hover {
           background: rgba(255,255,255,0.055);
+        }
+        .tenant-dropdown-item.active {
+          background: rgba(255,255,255,0.09);
         }
         .tenant-dropdown-main {
           display: flex;

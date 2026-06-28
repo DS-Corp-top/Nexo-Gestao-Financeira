@@ -15,6 +15,12 @@ api.interceptors.request.use((config) => {
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const activeTenantId = localStorage.getItem('nexo.activeTenantId');
+  const url = config.url || '';
+  const isAuthRequest = url.includes('/auth/token') || url.includes('/auth/register');
+  if (activeTenantId && config.headers && !isAuthRequest) {
+    config.headers['X-Tenant-ID'] = activeTenantId;
+  }
   return config;
 });
 

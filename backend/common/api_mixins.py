@@ -2,15 +2,29 @@
 
 from rest_framework.exceptions import PermissionDenied
 
-from tenants.models import TenantMembership
+from tenants.models import Tenant, TenantMembership
 
 
-def get_user_tenant(user):
+def get_user_tenant(user, request=None):
     """Resolve the active tenant for a JWT-authenticated user.
 
     For stateless JWT requests there is no session, so we resolve the
     tenant from the user's default TenantMembership.
     """
+    requested_tenant_id = None
+    if request is not None:
+        requested_tenant_id = request.headers.get("X-Tenant-ID") or request.META.get("HTTP_X_TENANT_ID")
+
+    if requested_tenant_id:
+        tenant = Tenant.objects.filter(pk=requested_tenant_id, is_active=True).first()
+        if not tenant:
+            raise PermissionDenied("Tenant selecionado nao encontrado.")
+        if getattr(user, "is_superuser", False):
+            return tenant
+        if TenantMembership.objects.filter(user=user, tenant=tenant, tenant__is_active=True).exists():
+            return tenant
+        raise PermissionDenied("Usuario sem acesso ao tenant selecionado.")
+
     membership = (
         TenantMembership.objects
         .select_related("tenant")
@@ -31,6 +45,9 @@ def get_user_tenant(user):
     if membership:
         return membership.tenant
 
+    if getattr(user, 'is_superuser', False):
+        return None
+
     raise PermissionDenied("Usuário não possui tenant ativo.")
 
 
@@ -47,7 +64,7 @@ class TenantQuerySetMixin:
         tenant = getattr(self.request, "tenant", None)
         if tenant:
             return tenant
-        return get_user_tenant(self.request.user)
+        return get_user_tenant(self.request.user, self.request)
 
     def get_queryset(self):
         qs = super().get_queryset()

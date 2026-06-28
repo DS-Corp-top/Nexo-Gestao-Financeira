@@ -274,12 +274,19 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         invoice = self.get_object()
         tenant = invoice.tenant or self.get_tenant()
         issuer_company = invoice.issuer_company
+        responsible = invoice.user
         return Response({
             "invoice": InvoiceSerializer(invoice).data,
-            "tenant": TenantSerializer(tenant).data if tenant else None,
+            "tenant": TenantSerializer(tenant, context={"request": request}).data if tenant else None,
             "issuer_company": TenantCompanySerializer(issuer_company).data if issuer_company else None,
             "service_code_description": self._service_code_description(invoice),
+            "responsible_name": f"{responsible.first_name} {responsible.last_name}".strip() if responsible else "",
         })
+
+    @action(detail=False, methods=["get"])
+    def service_codes(self, request):
+        """Return the full LC 116 service code list."""
+        return Response([{"code": c, "description": d} for c, d in SERVICE_CODES])
 
     @action(detail=True, methods=["get"])
     def nfse_guide(self, request, pk=None):

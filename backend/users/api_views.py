@@ -29,7 +29,7 @@ class MeView(APIView):
 
     def get(self, request):
         user_data = UserSerializer(request.user).data
-        tenant = get_user_tenant(request.user)
+        tenant = get_user_tenant(request.user, request)
         membership = (
             TenantMembership.objects.filter(user=request.user, tenant=tenant).first()
             if tenant else None
@@ -117,10 +117,65 @@ class LogoutView(APIView):
             )
         return Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
 
+
+class SystemStatsView(APIView):
+    """GET /api/v1/system/stats/ — estatísticas globais do sistema (superuser only)."""
+    permission_classes = [IsSuperuser]
+
+    def get(self, request):
+        from tenants.models import Tenant
+        return Response({
+            "total_users": User.objects.count(),
+            "total_tenants": Tenant.objects.count(),
+            "total_pf": Tenant.objects.filter(person_type="pf").count(),
+            "total_pj": Tenant.objects.filter(person_type="pj").count(),
+        })
+
+
+class SystemAllCompaniesView(APIView):
+    """GET /api/v1/system/all-companies/ — lista todas as empresas de todos os tenants (superuser only)."""
+    permission_classes = [IsSuperuser]
+
+    def get(self, request):
+        from tenants.models import TenantCompany
+        companies = (
+            TenantCompany.objects
+            .select_related("tenant")
+            .order_by("tenant__name", "sequence_number", "name")
+        )
+        return Response([
+            {
+                "id": c.pk,
+                "tenant_id": c.tenant_id,
+                "tenant_name": c.tenant.name,
+                "name": c.name,
+                "document": c.document,
+                "sequence_number": c.sequence_number,
+                "is_default": c.is_default,
+                "is_active": c.is_active,
+            }
+            for c in companies
+        ])
+
+
 import os
 import subprocess
 import tempfile
+import shutil
 from rest_framework.parsers import MultiPartParser
+
+def get_pg_bin(bin_name):
+    # Try finding in PATH first
+    path = shutil.which(bin_name)
+    if path:
+        return path
+    # Windows fallback
+    if os.name == 'nt':
+        import glob
+        matches = glob.glob(r'C:\Program Files\PostgreSQL\*\bin\\' + bin_name + '.exe')
+        if matches:
+            return matches[-1] # Pick the latest version
+    return bin_name
 
 class RestoreBackupView(APIView):
     """POST /api/v1/system/restore-backup/ uploads a postgres backup file and restores it."""
@@ -156,31 +211,49 @@ class RestoreBackupView(APIView):
             if db_password:
                 env["PGPASSWORD"] = db_password
 
-            cmd = [
-                "pg_restore",
-                "--clean",
-                "--if-exists",
-                "--no-owner",
-                "--no-privileges",
-                "-U", db_user,
-                "-h", db_host,
-                "-p", str(db_port),
-                "-d", db_name,
-                "-1",
-                tmp_path
-            ]
-            
-            result = subprocess.run(cmd, env=env, capture_output=True, text=True)
-            if result.returncode != 0 and "input file does not appear to be a valid archive" in result.stderr:
+            is_sql = file_obj.name.lower().endswith('.sql')
+            psql_bin = get_pg_bin('psql')
+            pg_restore_bin = get_pg_bin('pg_restore')
+
+            if is_sql:
                 cmd = [
-                    "psql",
+                    psql_bin,
                     "-U", db_user,
                     "-h", db_host,
                     "-p", str(db_port),
                     "-d", db_name,
                     "-f", tmp_path
                 ]
-                result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+                result = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            else:
+                cmd = [
+                    pg_restore_bin,
+                    "--clean",
+                    "--if-exists",
+                    "--no-owner",
+                    "--no-privileges",
+                    "-U", db_user,
+                    "-h", db_host,
+                    "-p", str(db_port),
+                    "-d", db_name,
+                    "-1",
+                    tmp_path
+                ]
+                result = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                
+                # Fallback to psql se pg_restore falhar e for script puro
+                if result.returncode != 0:
+                    cmd_fallback = [
+                        psql_bin,
+                        "-U", db_user,
+                        "-h", db_host,
+                        "-p", str(db_port),
+                        "-d", db_name,
+                        "-f", tmp_path
+                    ]
+                    result_fallback = subprocess.run(cmd_fallback, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                    if result_fallback.returncode == 0 or "invalid command" not in result_fallback.stderr:
+                        result = result_fallback
             
             if result.returncode == 0:
                 return Response({"detail": "Backup restaurado com sucesso!"}, status=status.HTTP_200_OK)
@@ -194,4 +267,7 @@ class RestoreBackupView(APIView):
             return Response({"detail": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
             if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass

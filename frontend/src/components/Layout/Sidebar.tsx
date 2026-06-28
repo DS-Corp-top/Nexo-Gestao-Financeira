@@ -7,6 +7,7 @@ import {
   FileText,
   ShoppingCart,
   TrendingUp,
+  Settings,
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
@@ -32,12 +33,15 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
   const { user, tenant } = useAuth();
-  const canManageUsers = Boolean(
-    user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin'
+  const canManageTenantSettings = Boolean(
+    user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin',
   );
-  const items = canManageUsers
-    ? [...navItems, { to: '/admin', icon: ShieldCheck, label: 'Administração' }]
-    : navItems;
+  const canManageSystem = Boolean(user?.is_superuser);
+  const items = [
+    ...navItems,
+    ...(canManageTenantSettings ? [{ to: '/settings/company', icon: Settings, label: 'Configurações' }] : []),
+    ...(canManageSystem ? [{ to: '/admin', icon: ShieldCheck, label: 'Administração' }] : []),
+  ];
 
   return (
     <>
@@ -74,7 +78,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
             <NavLink
               key={to}
               to={to}
-              end={to === '/dashboard' || to === '/admin'}
+              end={to === '/dashboard' || to === '/admin' || to === '/settings/company'}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               onClick={onClose}
               title={collapsed ? label : undefined}

@@ -119,7 +119,7 @@ async function main() {
   startProcess(
     'backend',
     pythonCmd,
-    ['manage.py', 'runserver', `${backendPort}`, '--noreload'],
+    ['manage.py', 'runserver', `${backendPort}`],
     { cwd: backendDir }
   );
 

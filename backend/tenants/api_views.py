@@ -48,7 +48,7 @@ class TenantProfileView(generics.RetrieveUpdateAPIView):
     parser_classes = [parsers.MultiPartParser, parsers.JSONParser]
 
     def get_object(self):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         ensure_default_tenant_company(tenant)
         return tenant
 
@@ -65,7 +65,7 @@ class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSe
     serializer_class = TenantMembershipSerializer
 
     def get_queryset(self):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         return (
             TenantMembership.objects
@@ -75,13 +75,13 @@ class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSe
         )
 
     def perform_create(self, serializer):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         serializer.save(tenant=tenant)
 
     @action(detail=True, methods=["patch"], url_path="companies")
     def companies(self, request, pk=None):
-        tenant = get_user_tenant(request.user)
+        tenant = get_user_tenant(request.user, request)
         require_tenant_admin(request.user, tenant)
         membership = self.get_object()
 
@@ -127,7 +127,7 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
     max_companies_per_tenant = 5
 
     def get_queryset(self):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         ensure_default_tenant_company(tenant)
         queryset = TenantCompany.objects.filter(tenant=tenant)
         if is_tenant_admin(self.request.user, tenant):
@@ -138,7 +138,7 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
         return queryset.filter(membership_accesses__membership=membership).distinct()
 
     def perform_create(self, serializer):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         if TenantCompany.objects.filter(tenant=tenant).count() >= self.max_companies_per_tenant:
             raise ValidationError({
@@ -149,7 +149,7 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
         serializer.save(tenant=tenant)
 
     def perform_update(self, serializer):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         if serializer.validated_data.get("is_default"):
             TenantCompany.objects.filter(tenant=tenant, is_default=True).exclude(
@@ -158,7 +158,7 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
-        tenant = get_user_tenant(self.request.user)
+        tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         instance.delete()
 
@@ -172,10 +172,66 @@ class NfseCredentialViewSet(viewsets.ModelViewSet):
     serializer_class = NfseCredentialSerializer
 
     def get_queryset(self):
-        return NfseCredential.objects.filter(tenant=get_user_tenant(self.request.user))
+        return NfseCredential.objects.filter(tenant=get_user_tenant(self.request.user, self.request))
 
     def perform_create(self, serializer):
-        serializer.save(tenant=get_user_tenant(self.request.user))
+        serializer.save(tenant=get_user_tenant(self.request.user, self.request))
+
+
+class TenantInviteUserView(APIView):
+    """POST /api/v1/tenant/invite-user/ — owner/admin cria um usuário e o adiciona ao tenant."""
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        tenant = get_user_tenant(request.user, request)
+        require_tenant_admin(request.user, tenant)
+
+        name = (request.data.get("name") or "").strip()
+        email = (request.data.get("email") or "").strip().lower()
+        password = request.data.get("password") or ""
+        role = request.data.get("role") or TenantMembership.Role.MEMBER
+
+        if not name or not email or not password:
+            return Response({"detail": "Nome, e-mail e senha são obrigatórios."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if role not in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN, TenantMembership.Role.MEMBER):
+            return Response({"detail": "Papel inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if TenantMembership.objects.filter(tenant=tenant).count() >= 5:
+            return Response({"detail": "Limite de 5 usuários por tenant atingido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({"detail": "Já existe um usuário com este e-mail."}, status=status.HTTP_400_BAD_REQUEST)
+
+        parts = name.split()
+        first_name = parts[0][:150]
+        last_name = " ".join(parts[1:])[:150]
+
+        base_username = email.split("@")[0][:140]
+        username = base_username
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base_username}-{counter}"
+            counter += 1
+
+        user = User.objects.create_user(
+            username=username, email=email, password=password,
+            first_name=first_name, last_name=last_name, is_active=True,
+        )
+
+        TenantMembership.objects.filter(user=user, is_default=True).update(is_default=False)
+        membership = TenantMembership.objects.create(
+            tenant=tenant, user=user, role=role, is_default=True,
+        )
+
+        return Response({
+            "id": membership.pk,
+            "user_email": user.email,
+            "user_full_name": f"{user.first_name} {user.last_name}".strip(),
+            "role": membership.role,
+        }, status=status.HTTP_201_CREATED)
 
 
 class CepLookupView(APIView):

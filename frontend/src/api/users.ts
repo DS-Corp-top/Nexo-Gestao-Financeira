@@ -8,6 +8,7 @@ export interface PendingUser {
   last_name: string;
   date_joined: string;
   tenant_name: string | null;
+  tenant_slug: string | null;
   person_type: 'pf' | 'pj' | null;
   person_type_display: string | null;
   document: string | null;
@@ -47,5 +48,17 @@ export async function updateTenantMemberCompanies(id: number, companyIds: number
   const { data } = await api.patch<TenantMember>(`/tenant-memberships/${id}/companies/`, {
     company_ids: companyIds,
   });
+  return data;
+}
+
+export interface SystemStats {
+  total_users: number;
+  total_tenants: number;
+  total_pf: number;
+  total_pj: number;
+}
+
+export async function fetchSystemStats(): Promise<SystemStats> {
+  const { data } = await api.get<SystemStats>('/system/stats/');
   return data;
 }

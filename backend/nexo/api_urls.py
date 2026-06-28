@@ -17,6 +17,7 @@ from tenants.api_views import (
     CepLookupView,
     NfseCredentialViewSet,
     TenantCompanyViewSet,
+    TenantInviteUserView,
     TenantMembershipViewSet,
     TenantProfileView,
 )
@@ -29,6 +30,8 @@ from users.api_views import (
     RateLimitedTokenObtainPairView,
     RegisterAPIView,
     RestoreBackupView,
+    SystemAllCompaniesView,
+    SystemStatsView,
 )
 
 router = DefaultRouter()
@@ -63,12 +66,15 @@ urlpatterns = [
     path("users/pending/", PendingUsersView.as_view(), name="users_pending"),
     path("users/<int:pk>/approve/", ApproveUserView.as_view(), name="users_approve"),
     path("system/restore-backup/", RestoreBackupView.as_view(), name="restore_backup"),
+    path("system/stats/", SystemStatsView.as_view(), name="system_stats"),
+    path("system/all-companies/", SystemAllCompaniesView.as_view(), name="system_all_companies"),
 
     # Dashboard
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
 
     # Tenant profile
     path("tenant/", TenantProfileView.as_view(), name="tenant_profile"),
+    path("tenant/invite-user/", TenantInviteUserView.as_view(), name="tenant_invite_user"),
 
     # CEP lookup
     path("cep/<str:cep>/", CepLookupView.as_view(), name="cep_lookup"),

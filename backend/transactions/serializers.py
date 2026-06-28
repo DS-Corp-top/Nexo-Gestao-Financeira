@@ -64,7 +64,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         if request:
             instance.user = request.user
             from common.api_mixins import get_user_tenant
-            tenant = getattr(request, "tenant", None) or get_user_tenant(request.user)
+            tenant = getattr(request, "tenant", None) or get_user_tenant(request.user, request)
             instance.tenant = tenant
         instance.clean()
         return attrs
