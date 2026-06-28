@@ -53,22 +53,37 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [bellOpen, setBellOpen] = useState(false);
   const [chartsOpen, setChartsOpen] = useState(false);
+  const [scopeVersion, setScopeVersion] = useState(0);
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
 
   const { data: investments } = useQuery({
-    queryKey: ['investments'],
+    queryKey: ['investments', scopeVersion],
     queryFn: fetchInvestments,
   });
 
   useEffect(() => {
+    const handleCompanyChange = () => setScopeVersion((version) => version + 1);
+    window.addEventListener('nexo:company-change', handleCompanyChange);
+    return () => window.removeEventListener('nexo:company-change', handleCompanyChange);
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
     setLoading(true);
     setError(null);
     fetchDashboard(monthParam)
-      .then(setData)
-      .catch((err) => setError(err?.response?.data?.detail || 'Erro ao carregar o dashboard.'))
-      .finally(() => setLoading(false));
-  }, [monthParam]);
+      .then((nextData) => {
+        if (!ignore) setData(nextData);
+      })
+      .catch((err) => {
+        if (!ignore) setError(err?.response?.data?.detail || 'Erro ao carregar o dashboard.');
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => { ignore = true; };
+  }, [monthParam, scopeVersion]);
 
   const navigateMonth = (delta: number) => {
     setSearchParams({ month: shiftMonth(monthParam, delta) });

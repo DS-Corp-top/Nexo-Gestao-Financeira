@@ -21,6 +21,10 @@ api.interceptors.request.use((config) => {
   if (activeTenantId && config.headers && !isAuthRequest) {
     config.headers['X-Tenant-ID'] = activeTenantId;
   }
+  if (config.headers && !isAuthRequest) {
+    config.headers['Cache-Control'] = 'no-store';
+    config.headers.Pragma = 'no-cache';
+  }
   return config;
 });
 
