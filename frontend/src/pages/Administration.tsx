@@ -14,14 +14,18 @@ import {
   approveUser,
   fetchPendingUsers,
   fetchSystemStats,
+  fetchSystemTenants,
+  fetchSystemUsers,
   fetchTenantMembers,
   type PendingUser,
+  type SystemTenant,
+  type SystemUser,
   type TenantMember,
 } from '../api/users';
 import { uploadBackupFile } from '../api/system';
 import { useAuth } from '../contexts/AuthContext';
 
-type Tab = 'dashboard' | 'cadastros' | 'backup';
+type Tab = 'dashboard' | 'listagens' | 'cadastros' | 'backup';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -78,12 +82,25 @@ function DashboardTab({
   pendingUsers,
   isSuperuser,
   systemStats,
+  tenants,
+  users,
+  isLoadingTenants,
+  isLoadingUsers,
+  isLoadingPending,
 }: {
   members: TenantMember[];
   pendingUsers: PendingUser[];
   isSuperuser: boolean;
   systemStats?: { total_users: number; total_tenants: number; total_pf: number; total_pj: number };
+  tenants: SystemTenant[];
+  users: SystemUser[];
+  isLoadingTenants: boolean;
+  isLoadingUsers: boolean;
+  isLoadingPending: boolean;
 }) {
+  const recentTenants = tenants.slice(-5).reverse();
+  const recentUsers = users.slice(-5).reverse();
+
   return (
     <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
       <div
@@ -113,7 +130,56 @@ function DashboardTab({
         )}
       </div>
 
+      {isSuperuser && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
+          <SectionCard
+            icon={Building2}
+            title="Tenants recentes"
+            subtitle="Últimos workspaces cadastrados no sistema."
+            isLoading={isLoadingTenants}
+            isEmpty={recentTenants.length === 0}
+            emptyLabel="Nenhum tenant encontrado"
+          >
+            <div>{recentTenants.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+          </SectionCard>
 
+          <SectionCard
+            icon={Users}
+            title="Usuários recentes"
+            subtitle="Últimos usuários vinculados a tenants."
+            isLoading={isLoadingUsers}
+            isEmpty={recentUsers.length === 0}
+            emptyLabel="Nenhum usuário encontrado"
+          >
+            <div>{recentUsers.map((u) => <UserRow key={`${u.id}-${u.tenant_slug}`} u={u} />)}</div>
+          </SectionCard>
+
+          <SectionCard
+            icon={Shield}
+            title={`Cadastros pendentes (${pendingUsers.length})`}
+            subtitle="Solicitações aguardando aprovação."
+            isLoading={isLoadingPending}
+            isEmpty={pendingUsers.length === 0}
+            emptyLabel="Nenhum cadastro pendente"
+          >
+            <div>
+              {pendingUsers.slice(0, 5).map((u) => (
+                <div key={u.id} style={listRowStyle}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+                        {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
+                      </span>
+                      <PersonBadge type={u.person_type} />
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>{u.email}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </div>
+      )}
     </div>
   );
 }
@@ -495,6 +561,249 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
   );
 }
 
+// ─── Listagens Tab ────────────────────────────────────────────────────────────
+
+const listRowStyle = {
+  display: 'flex', alignItems: 'center', gap: '1rem',
+  padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--color-border)',
+} as const;
+
+function SectionCard({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+  isLoading,
+  isEmpty,
+  emptyLabel,
+}: {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+  isLoading: boolean;
+  isEmpty: boolean;
+  emptyLabel: string;
+}) {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <Icon size={20} style={{ color: 'var(--color-accent)' }} />
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{title}</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>{subtitle}</p>
+        </div>
+      </div>
+      {isLoading ? (
+        <div style={{ padding: 'var(--space-xl)', display: 'flex', justifyContent: 'center' }}><span className="spinner" /></div>
+      ) : isEmpty ? (
+        <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
+          <Icon className="empty-state-icon" />
+          <h3 className="empty-state-title">{emptyLabel}</h3>
+        </div>
+      ) : children}
+    </div>
+  );
+}
+
+function TenantRow({ t }: { t: SystemTenant }) {
+  return (
+    <div style={listRowStyle}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{t.name}</span>
+          <PersonBadge type={t.person_type} />
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span>slug: {t.slug}</span>
+          <span>{t.user_count} usuário{t.user_count !== 1 ? 's' : ''}</span>
+          <span>criado em {formatDate(t.created_at)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserRow({ u }: { u: SystemUser }) {
+  return (
+    <div style={listRowStyle}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+            {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
+          </span>
+          <PersonBadge type={u.person_type} />
+          {!u.is_active && (
+            <span className="badge" style={{ fontSize: '0.68rem', opacity: 0.6 }}>inativo</span>
+          )}
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span>{u.email}</span>
+          <span>tenant: {u.tenant_name}</span>
+          <span>cargo: {u.role}</span>
+          <span>desde {formatDate(u.date_joined)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ListagensTab({
+  tenants,
+  users,
+  pendingUsers,
+  isLoadingTenants,
+  isLoadingUsers,
+  isLoadingPending,
+  isSuperuser,
+  onApprove,
+  isApprovePending,
+}: {
+  tenants: SystemTenant[];
+  users: SystemUser[];
+  pendingUsers: PendingUser[];
+  isLoadingTenants: boolean;
+  isLoadingUsers: boolean;
+  isLoadingPending: boolean;
+  isSuperuser: boolean;
+  onApprove: (id: number) => void;
+  isApprovePending: boolean;
+}) {
+  const [searchTenant, setSearchTenant] = useState('');
+  const [searchUser, setSearchUser] = useState('');
+
+  if (!isSuperuser) {
+    return (
+      <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
+        <Shield className="empty-state-icon" />
+        <h3 className="empty-state-title">Acesso restrito</h3>
+        <p className="empty-state-text">Apenas superadministradores podem visualizar listagens globais.</p>
+      </div>
+    );
+  }
+
+  const filteredTenants = tenants.filter((t) =>
+    !searchTenant || t.name.toLowerCase().includes(searchTenant.toLowerCase()) || t.slug.toLowerCase().includes(searchTenant.toLowerCase())
+  );
+  const pjList = filteredTenants.filter((t) => t.person_type === 'pj');
+  const pfList = filteredTenants.filter((t) => t.person_type === 'pf');
+
+  const filteredUsers = users.filter((u) =>
+    !searchUser ||
+    u.email.toLowerCase().includes(searchUser.toLowerCase()) ||
+    `${u.first_name} ${u.last_name}`.toLowerCase().includes(searchUser.toLowerCase()) ||
+    u.tenant_name.toLowerCase().includes(searchUser.toLowerCase())
+  );
+
+  return (
+    <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
+      {/* Busca */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+        <input
+          className="input"
+          placeholder="Buscar tenant..."
+          value={searchTenant}
+          onChange={(e) => setSearchTenant(e.target.value)}
+        />
+        <input
+          className="input"
+          placeholder="Buscar usuário..."
+          value={searchUser}
+          onChange={(e) => setSearchUser(e.target.value)}
+        />
+      </div>
+
+      {/* Todos os Tenants */}
+      <SectionCard
+        icon={Building2}
+        title={`Todos os Tenants (${filteredTenants.length})`}
+        subtitle="Todos os workspaces cadastrados no sistema."
+        isLoading={isLoadingTenants}
+        isEmpty={filteredTenants.length === 0}
+        emptyLabel="Nenhum tenant encontrado"
+      >
+        <div>{filteredTenants.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+      </SectionCard>
+
+      {/* Pessoa Jurídica */}
+      <SectionCard
+        icon={Building2}
+        title={`Pessoa Jurídica — PJ (${pjList.length})`}
+        subtitle="Tenants do tipo pessoa jurídica (CNPJ)."
+        isLoading={isLoadingTenants}
+        isEmpty={pjList.length === 0}
+        emptyLabel="Nenhum tenant PJ encontrado"
+      >
+        <div>{pjList.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+      </SectionCard>
+
+      {/* Pessoa Física */}
+      <SectionCard
+        icon={Users}
+        title={`Pessoa Física — PF (${pfList.length})`}
+        subtitle="Tenants do tipo pessoa física (CPF)."
+        isLoading={isLoadingTenants}
+        isEmpty={pfList.length === 0}
+        emptyLabel="Nenhum tenant PF encontrado"
+      >
+        <div>{pfList.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+      </SectionCard>
+
+      {/* Todos os Usuários */}
+      <SectionCard
+        icon={Users}
+        title={`Todos os Usuários (${filteredUsers.length})`}
+        subtitle="Todos os usuários com vínculo de tenant."
+        isLoading={isLoadingUsers}
+        isEmpty={filteredUsers.length === 0}
+        emptyLabel="Nenhum usuário encontrado"
+      >
+        <div>{filteredUsers.map((u) => <UserRow key={`${u.id}-${u.tenant_slug}`} u={u} />)}</div>
+      </SectionCard>
+
+      {/* Cadastros Pendentes */}
+      <SectionCard
+        icon={Shield}
+        title={`Cadastros Pendentes (${pendingUsers.length})`}
+        subtitle="Solicitações de acesso aguardando aprovação."
+        isLoading={isLoadingPending}
+        isEmpty={pendingUsers.length === 0}
+        emptyLabel="Nenhum cadastro pendente"
+      >
+        <div>
+          {pendingUsers.map((u) => (
+            <div key={u.id} style={listRowStyle}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+                    {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
+                  </span>
+                  <PersonBadge type={u.person_type} />
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <span>{u.email}</span>
+                  {u.document && <span>{u.person_type === 'pj' ? 'CNPJ' : 'CPF'}: {formatDoc(u.document)}</span>}
+                  {u.tenant_slug && <span>tenant: {u.tenant_slug}</span>}
+                  <span>solicitado em {formatDate(u.date_joined)}</span>
+                </div>
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                onClick={() => onApprove(u.id)}
+                disabled={isApprovePending}
+              >
+                <CheckCircle2 size={16} />
+                Aprovar
+              </button>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Administration() {
@@ -524,6 +833,18 @@ export default function Administration() {
     enabled: Boolean(currentUser?.is_superuser),
   });
 
+  const { data: systemTenants = [], isLoading: tenantsLoading } = useQuery({
+    queryKey: ['system-tenants'],
+    queryFn: fetchSystemTenants,
+    enabled: Boolean(currentUser?.is_superuser),
+  });
+
+  const { data: systemUsers = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['system-users'],
+    queryFn: fetchSystemUsers,
+    enabled: Boolean(currentUser?.is_superuser),
+  });
+
   const approveMutation = useMutation({
     mutationFn: approveUser,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-users'] }),
@@ -533,6 +854,7 @@ export default function Administration() {
 
   const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'listagens', label: 'Listagens', icon: Building2 },
     { key: 'cadastros', label: 'Cadastros Pendentes', icon: Users },
     { key: 'backup', label: 'Backup', icon: Database },
   ];
@@ -602,6 +924,24 @@ export default function Administration() {
           pendingUsers={pendingUsers}
           isSuperuser={isSuperuser}
           systemStats={systemStats}
+          tenants={systemTenants}
+          users={systemUsers}
+          isLoadingTenants={tenantsLoading}
+          isLoadingUsers={usersLoading}
+          isLoadingPending={pendingLoading}
+        />
+      )}
+      {tab === 'listagens' && (
+        <ListagensTab
+          tenants={systemTenants}
+          users={systemUsers}
+          pendingUsers={pendingUsers}
+          isLoadingTenants={tenantsLoading}
+          isLoadingUsers={usersLoading}
+          isLoadingPending={pendingLoading}
+          isSuperuser={isSuperuser}
+          onApprove={(id) => approveMutation.mutate(id)}
+          isApprovePending={approveMutation.isPending}
         />
       )}
       {tab === 'cadastros' && (

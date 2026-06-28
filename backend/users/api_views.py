@@ -176,6 +176,60 @@ class SystemStatsView(APIView):
         })
 
 
+class SystemTenantsView(APIView):
+    """GET /api/v1/system/tenants/ — lista todos os tenants (superuser only)."""
+    permission_classes = [IsSuperuser]
+
+    def get(self, request):
+        from tenants.models import Tenant
+        from django.db.models import Count
+        tenants = (
+            Tenant.objects
+            .annotate(user_count=Count('memberships', distinct=True))
+            .order_by('created_at')
+        )
+        return Response([
+            {
+                "id": t.pk,
+                "name": t.name,
+                "slug": t.slug,
+                "person_type": t.person_type,
+                "user_count": t.user_count,
+                "created_at": t.created_at,
+            }
+            for t in tenants
+        ])
+
+
+class SystemUsersView(APIView):
+    """GET /api/v1/system/users/ — lista todos os usuários com tenant (superuser only)."""
+    permission_classes = [IsSuperuser]
+
+    def get(self, request):
+        from tenants.models import TenantMembership
+        memberships = (
+            TenantMembership.objects
+            .select_related('user', 'tenant')
+            .order_by('user__date_joined')
+        )
+        return Response([
+            {
+                "id": m.user.pk,
+                "email": m.user.email,
+                "first_name": m.user.first_name,
+                "last_name": m.user.last_name,
+                "username": m.user.username,
+                "is_active": m.user.is_active,
+                "date_joined": m.user.date_joined,
+                "tenant_name": m.tenant.name,
+                "tenant_slug": m.tenant.slug,
+                "person_type": m.tenant.person_type,
+                "role": m.role,
+            }
+            for m in memberships
+        ])
+
+
 class SystemAllCompaniesView(APIView):
     """GET /api/v1/system/all-companies/ — lista todas as empresas de todos os tenants (superuser only)."""
     permission_classes = [IsSuperuser]

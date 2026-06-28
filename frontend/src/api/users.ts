@@ -62,3 +62,36 @@ export async function fetchSystemStats(): Promise<SystemStats> {
   const { data } = await api.get<SystemStats>('/system/stats/');
   return data;
 }
+
+export interface SystemTenant {
+  id: number;
+  name: string;
+  slug: string;
+  person_type: 'pf' | 'pj';
+  user_count: number;
+  created_at: string;
+}
+
+export interface SystemUser {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  is_active: boolean;
+  date_joined: string;
+  tenant_name: string;
+  tenant_slug: string;
+  person_type: 'pf' | 'pj';
+  role: string;
+}
+
+export async function fetchSystemTenants(): Promise<SystemTenant[]> {
+  const { data } = await api.get<SystemTenant[]>('/system/tenants/');
+  return data;
+}
+
+export async function fetchSystemUsers(): Promise<SystemUser[]> {
+  const { data } = await api.get<SystemUser[]>('/system/users/');
+  return data;
+}

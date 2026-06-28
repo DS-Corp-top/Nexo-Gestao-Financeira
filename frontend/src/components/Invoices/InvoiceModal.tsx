@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Users, X, Loader2 } from 'lucide-react';
+import { Search, Users, X, Loader2, Trash2, Pencil } from 'lucide-react';
 import {
   createInvoice,
+  deleteClient,
   fetchClients,
   fetchServiceCodes,
   lookupClientCnpj,
+  updateClient,
   updateInvoice,
   type Client,
   type Invoice,
@@ -36,6 +38,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
   // client picker
   const [showClients, setShowClients] = useState(false);
   const [clientQuery, setClientQuery] = useState('');
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [clientForm, setClientForm] = useState<ClientForm>({
     name: invoice?.client_name || '',
     document: invoice?.client_document || '',
@@ -129,6 +133,12 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           c.document.replace(/\D/g, '').includes(clientQuery.replace(/\D/g, ''))
       )
     : clients;
+
+  const isClientAlreadySaved = clients.some((c) => {
+    const docMatch = clientForm.document && c.document.replace(/\D/g, '') === clientForm.document.replace(/\D/g, '');
+    const nameMatch = clientForm.name && c.name.toLowerCase() === clientForm.name.toLowerCase();
+    return docMatch || nameMatch;
+  });
 
   // Close code dropdown on outside click
   useEffect(() => {
@@ -300,40 +310,186 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           {/* ── Cliente ── */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--space-lg)', marginBottom: 'var(--space-sm)' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Cliente</h3>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button type="button" onClick={() => { setShowClients((v) => !v); setClientQuery(''); }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', background: showClients ? 'var(--color-accent-muted)' : 'transparent', color: showClients ? 'var(--color-accent)' : 'var(--color-text-secondary)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
-                <Users size={13} /> Listar clientes
-              </button>
-            </div>
+            <button type="button" onClick={() => { setShowClients(true); setClientQuery(''); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', background: 'transparent', color: 'var(--color-text-secondary)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+              <Users size={13} /> Listar clientes
+            </button>
           </div>
 
-          {showClients && (
-            <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)', marginBottom: 'var(--space-md)', overflow: 'hidden' }}>
-              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                <input type="text" placeholder="Buscar por nome ou CPF/CNPJ..." value={clientQuery} onChange={(e) => setClientQuery(e.target.value)}
-                  style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: '0.82rem', color: 'var(--color-text-primary)' }} autoFocus />
-                {clientQuery && (
-                  <button type="button" onClick={() => setClientQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 0 }}>
-                    <X size={14} />
-                  </button>
-                )}
+          {showClients && createPortal(
+            <div
+              className="modal-overlay"
+              style={{ zIndex: 1100 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShowClients(false); }}
+            >
+              <div className="modal-content" style={{ maxWidth: 480 }}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Clientes salvos</h2>
+                  <button className="btn-ghost btn-icon" type="button" onClick={() => setShowClients(false)}>×</button>
+                </div>
+
+                {/* Busca */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', border: '1px solid var(--color-border)' }}>
+                  <Search size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome ou CPF/CNPJ..."
+                    value={clientQuery}
+                    onChange={(e) => setClientQuery(e.target.value)}
+                    autoFocus
+                    style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: '0.85rem', color: 'var(--color-text-primary)' }}
+                  />
+                  {clientQuery && (
+                    <button type="button" onClick={() => setClientQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 0, display: 'flex' }}>
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Lista */}
+                <div style={{ maxHeight: 360, overflowY: 'auto', margin: '0 calc(-1 * var(--space-lg))' }}>
+                  {filteredClients.length === 0 ? (
+                    <div style={{ padding: '20px 16px', fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                      Nenhum cliente encontrado.
+                    </div>
+                  ) : filteredClients.map((client) => (
+                    <div
+                      key={client.id}
+                      style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--color-border)', padding: '0 var(--space-lg)' }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSelectClient(client)}
+                        style={{ flex: 1, textAlign: 'left', padding: '10px 0', background: 'none', border: 'none', cursor: 'pointer' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                      >
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{client.name}</div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          {client.document}{client.city ? ` · ${client.city}` : ''}{client.email ? ` · ${client.email}` : ''}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        title="Editar cliente"
+                        onClick={() => setEditingClient(client)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: 'var(--color-text-muted)', display: 'flex', flexShrink: 0 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-accent)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Excluir cliente"
+                        onClick={() => setDeletingClient(client)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: 'var(--color-text-muted)', display: 'flex', flexShrink: 0 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-danger)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-                {filteredClients.length === 0 ? (
-                  <div style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Nenhum cliente encontrado.</div>
-                ) : filteredClients.map((client) => (
-                  <button key={client.id} type="button" onClick={() => handleSelectClient(client)}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{client.name}</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: 1 }}>{client.document}{client.city ? ` · ${client.city}` : ''}</div>
+            </div>,
+            document.body
+          )}
+
+          {/* ── Modal de confirmação de exclusão ── */}
+          {deletingClient && createPortal(
+            <div
+              className="modal-overlay"
+              style={{ zIndex: 1200 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setDeletingClient(null); }}
+            >
+              <div className="modal-content" style={{ maxWidth: 380 }}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Excluir cliente</h2>
+                  <button className="btn-ghost btn-icon" type="button" onClick={() => setDeletingClient(null)}>×</button>
+                </div>
+                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)' }}>
+                  Excluir <strong style={{ color: 'var(--color-text-primary)' }}>{deletingClient.name}</strong> da carteira de clientes? Essa ação não pode ser desfeita.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setDeletingClient(null)}>Cancelar</button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={() => {
+                      deleteClient(deletingClient.id).then(() => {
+                        queryClient.invalidateQueries({ queryKey: ['clients'] });
+                        setDeletingClient(null);
+                      });
+                    }}
+                  >
+                    <Trash2 size={14} /> Excluir
                   </button>
-                ))}
+                </div>
               </div>
-            </div>
+            </div>,
+            document.body
+          )}
+
+          {/* ── Modal de edição de cliente ── */}
+          {editingClient && createPortal(
+            <div
+              className="modal-overlay"
+              style={{ zIndex: 1200 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setEditingClient(null); }}
+            >
+              <div className="modal-content" style={{ maxWidth: 440 }}>
+                <div className="modal-header">
+                  <h2 className="modal-title">Editar cliente</h2>
+                  <button className="btn-ghost btn-icon" type="button" onClick={() => setEditingClient(null)}>×</button>
+                </div>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    const payload = Object.fromEntries(fd.entries()) as Partial<Client>;
+                    await updateClient(editingClient.id, payload);
+                    queryClient.invalidateQueries({ queryKey: ['clients'] });
+                    setEditingClient(null);
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
+                    <div>
+                      <label className="label">Razão Social / Nome</label>
+                      <input name="name" className="input" required defaultValue={editingClient.name} />
+                    </div>
+                    <div>
+                      <label className="label">CPF / CNPJ</label>
+                      <input name="document" className="input" defaultValue={editingClient.document} />
+                    </div>
+                    <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)' }}>
+                      <div>
+                        <label className="label">E-mail</label>
+                        <input name="email" type="email" className="input" defaultValue={editingClient.email} />
+                      </div>
+                      <div>
+                        <label className="label">Telefone</label>
+                        <input name="phone" className="input" defaultValue={editingClient.phone} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">Endereço</label>
+                      <input name="address" className="input" defaultValue={editingClient.address} />
+                    </div>
+                    <div>
+                      <label className="label">Cidade</label>
+                      <input name="city" className="input" defaultValue={editingClient.city} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setEditingClient(null)}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary">Salvar</button>
+                  </div>
+                </form>
+              </div>
+            </div>,
+            document.body
           )}
 
           <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
@@ -406,7 +562,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
             </div>
           </div>
 
-          {!invoice && (
+          {!invoice && !isClientAlreadySaved && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-lg)' }}>
               <input type="checkbox" name="save_client" defaultChecked />
               <span style={{ fontSize: '0.85rem' }}>Salvar cliente na carteira para a próxima</span>

@@ -32,6 +32,8 @@ from users.api_views import (
     RestoreBackupView,
     SystemAllCompaniesView,
     SystemStatsView,
+    SystemTenantsView,
+    SystemUsersView,
 )
 
 router = DefaultRouter()
@@ -67,6 +69,8 @@ urlpatterns = [
     path("users/<int:pk>/approve/", ApproveUserView.as_view(), name="users_approve"),
     path("system/restore-backup/", RestoreBackupView.as_view(), name="restore_backup"),
     path("system/stats/", SystemStatsView.as_view(), name="system_stats"),
+    path("system/tenants/", SystemTenantsView.as_view(), name="system_tenants"),
+    path("system/users/", SystemUsersView.as_view(), name="system_users"),
     path("system/all-companies/", SystemAllCompaniesView.as_view(), name="system_all_companies"),
 
     # Dashboard
