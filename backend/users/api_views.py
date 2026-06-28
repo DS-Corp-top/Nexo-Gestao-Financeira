@@ -4,7 +4,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from common.api_mixins import get_user_tenant
@@ -36,20 +35,6 @@ def _set_auth_cookies(response, access: str, refresh: str | None = None):
 def _clear_auth_cookies(response):
     response.delete_cookie(_ACCESS_COOKIE)
     response.delete_cookie(_REFRESH_COOKIE)
-
-
-class CookieJWTAuthentication(JWTAuthentication):
-    """JWTAuthentication that falls back to reading the access token from an httpOnly cookie."""
-
-    def authenticate(self, request):
-        # Prefer Authorization header when present
-        if self.get_header(request) is not None:
-            return super().authenticate(request)
-        raw_token = request.COOKIES.get(_ACCESS_COOKIE)
-        if raw_token is None:
-            return None
-        validated_token = self.get_validated_token(raw_token)
-        return self.get_user(validated_token), validated_token
 
 
 class IsSuperuser(permissions.BasePermission):
