@@ -391,7 +391,7 @@ export default function CompanySettings() {
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{m.user_email}</div>
                   </div>
                   <span className={m.role === 'owner' ? 'badge badge-success' : m.role === 'admin' ? 'badge badge-info' : 'badge'} style={{ fontSize: '0.7rem' }}>
-                    {m.role}
+                    {m.role === 'member' ? 'Usuário' : 'Administrador'}
                   </span>
                 </div>
               ))
@@ -417,8 +417,8 @@ export default function CompanySettings() {
               <div>
                 <label className="label">Papel</label>
                 <select name="role" className="input">
-                  <option value="member">Membro</option>
-                  <option value="admin">Admin</option>
+                  <option value="member">Usuário</option>
+                  <option value="admin">Administrador</option>
                 </select>
               </div>
             </div>

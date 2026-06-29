@@ -371,7 +371,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 textTransform: 'uppercase',
                 color: 'var(--color-text-secondary)',
               }}>
-                Tenant {tenantNumber}
+                {tenantNumber !== 'Não informado' ? `Tenant ${tenantNumber}` : (isSuperuser ? 'Administrador Global' : 'Sem Tenant')}
               </div>
 
               <div style={{
