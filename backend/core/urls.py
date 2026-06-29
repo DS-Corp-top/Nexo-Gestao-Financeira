@@ -3,12 +3,12 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.generic import RedirectView
 
-from nexo.spa import ReactAppView
+from core.spa import ReactAppView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("favicon.ico", RedirectView.as_view(url=f"{settings.STATIC_URL}icons/favicon.png", permanent=False), name="favicon"),
-    path("api/v1/", include("nexo.api_urls")),
+    path("api/v1/", include("core.api_urls")),
 ]
 
 if settings.RUNSERVER:

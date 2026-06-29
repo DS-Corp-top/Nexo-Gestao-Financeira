@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "investments.apps.InvestmentsConfig",
     "invoices.apps.InvoicesConfig",
     "todos.apps.TodosConfig",
+    "notes.apps.NotesConfig",
 ] + (["django_browser_reload"] if RUNSERVER else [])
 
 MIDDLEWARE = [
@@ -116,11 +117,11 @@ MIDDLEWARE = [
     "tenants.middleware.CurrentTenantMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "nexo.middleware.ApiOriginMiddleware",
-    "nexo.middleware.ContentSecurityPolicyMiddleware",
+    "core.middleware.ApiOriginMiddleware",
+    "core.middleware.ContentSecurityPolicyMiddleware",
 ] + (["django_browser_reload.middleware.BrowserReloadMiddleware"] if RUNSERVER else [])
 
-ROOT_URLCONF = "nexo.urls"
+ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
     {
@@ -138,7 +139,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "nexo.wsgi.application"
+WSGI_APPLICATION = "core.wsgi.application"
 
 
 use_sqlite = env_bool("USE_SQLITE", default=False)

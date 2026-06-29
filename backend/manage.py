@@ -11,7 +11,7 @@ def main():
     if env_file.exists():
         from dotenv import load_dotenv
         load_dotenv(env_file)
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nexo.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

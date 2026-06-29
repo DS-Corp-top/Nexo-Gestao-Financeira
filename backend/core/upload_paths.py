@@ -4,7 +4,7 @@ Upload paths centralizados para o bucket S3.
 Todos os arquivos são organizados sob tenants/{slug}/{subdir}/{unique}.{ext}.
 
 Uso:
-    from nexo.upload_paths import TenantPath
+    from core.upload_paths import TenantPath
 
     # Em um model com FK para Tenant:
     arquivo = models.FileField(upload_to=TenantPath("transacoes/comprovantes"))
@@ -38,4 +38,4 @@ class TenantPath:
         kwargs = {}
         if self.self_is_tenant:
             kwargs["self_is_tenant"] = True
-        return ("nexo.upload_paths.TenantPath", [self.subdir], kwargs)
+        return ("core.upload_paths.TenantPath", [self.subdir], kwargs)

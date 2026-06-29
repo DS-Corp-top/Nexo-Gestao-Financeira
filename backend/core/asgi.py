@@ -18,6 +18,6 @@ if env_file.exists():
 
     load_dotenv(env_file)
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nexo.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 application = get_asgi_application()

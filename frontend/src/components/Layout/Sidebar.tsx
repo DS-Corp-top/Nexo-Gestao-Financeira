@@ -12,6 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CheckSquare,
+  StickyNote,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/shopping', icon: ShoppingCart, label: 'Compras' },
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
+  { to: '/notes', icon: StickyNote, label: 'Anotações' },
 ];
 
 interface SidebarProps {

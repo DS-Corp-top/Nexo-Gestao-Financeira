@@ -4,7 +4,7 @@ from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponseServerError
 from django.views import View
 
-from nexo.react_build import find_react_index, react_build_missing_message
+from core.react_build import find_react_index, react_build_missing_message
 
 
 class ReactAppView(View):

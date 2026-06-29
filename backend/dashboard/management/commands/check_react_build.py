@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from nexo.react_build import find_react_index, react_build_missing_message
+from core.react_build import find_react_index, react_build_missing_message
 
 
 class Command(BaseCommand):
