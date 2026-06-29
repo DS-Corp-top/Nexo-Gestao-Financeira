@@ -200,6 +200,7 @@ class SystemTenantsView(APIView):
                 "user_count": t.user_count,
                 "company_count": t.company_count,
                 "created_at": t.created_at,
+                "is_active": t.is_active,
             }
             for t in tenants
         ])
@@ -362,3 +363,64 @@ class RestoreBackupView(APIView):
                     os.unlink(tmp_path)
                 except:
                     pass
+
+class SystemTenantDetailView(APIView):
+    """PATCH/DELETE /api/v1/system/tenants/<id>/ - gerencia um tenant específico."""
+    permission_classes = [IsSuperuser]
+
+    def patch(self, request, pk):
+        from tenants.models import Tenant
+        tenant = get_object_or_404(Tenant, pk=pk)
+        is_active = request.data.get('is_active')
+        if is_active is not None:
+            tenant.is_active = is_active
+            tenant.save(update_fields=['is_active'])
+        return Response({'id': tenant.id, 'is_active': tenant.is_active})
+
+    def delete(self, request, pk):
+        from tenants.models import Tenant
+        tenant = get_object_or_404(Tenant, pk=pk)
+        tenant.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SystemCompanyDetailView(APIView):
+    """PATCH/DELETE /api/v1/system/companies/<id>/ - gerencia uma empresa específica."""
+    permission_classes = [IsSuperuser]
+
+    def patch(self, request, pk):
+        from tenants.models import TenantCompany
+        company = get_object_or_404(TenantCompany, pk=pk)
+        is_active = request.data.get('is_active')
+        if is_active is not None:
+            company.is_active = is_active
+            company.save(update_fields=['is_active'])
+        return Response({'id': company.id, 'is_active': company.is_active})
+
+    def delete(self, request, pk):
+        from tenants.models import TenantCompany
+        company = get_object_or_404(TenantCompany, pk=pk)
+        company.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SystemUserDetailView(APIView):
+    """PATCH/DELETE /api/v1/system/users/<id>/ - gerencia um usuário específico."""
+    permission_classes = [IsSuperuser]
+
+    def patch(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        if user.is_superuser:
+            return Response({'detail': 'Não é possível inativar superusuários.'}, status=status.HTTP_400_BAD_REQUEST)
+        is_active = request.data.get('is_active')
+        if is_active is not None:
+            user.is_active = is_active
+            user.save(update_fields=['is_active'])
+        return Response({'id': user.id, 'is_active': user.is_active})
+
+    def delete(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        if user.is_superuser:
+            return Response({'detail': 'Não é possível excluir superusuários.'}, status=status.HTTP_400_BAD_REQUEST)
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

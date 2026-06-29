@@ -24,8 +24,9 @@ import {
 } from '../api/users';
 import { uploadBackupFile } from '../api/system';
 import { useAuth } from '../contexts/AuthContext';
+import { GerenciamentoTab } from './GerenciamentoTab';
 
-type Tab = 'dashboard' | 'listagens' | 'cadastros' | 'backup';
+type Tab = 'dashboard' | 'listagens' | 'cadastros' | 'backup' | 'gerenciamento';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -898,6 +899,7 @@ export default function Administration() {
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'listagens', label: 'Listagens', icon: Building2 },
     { key: 'cadastros', label: 'Cadastros Pendentes', icon: Users },
+    { key: 'gerenciamento', label: 'Gerenciamento', icon: Shield },
     { key: 'backup', label: 'Backup', icon: Database },
   ];
 
@@ -997,6 +999,9 @@ export default function Administration() {
       )}
       {tab === 'backup' && (
         <BackupTab isSuperuser={isSuperuser} />
+      )}
+      {tab === 'gerenciamento' && (
+        <GerenciamentoTab />
       )}
       {false && <EmpresasTab companies={companies} />}
     </div>

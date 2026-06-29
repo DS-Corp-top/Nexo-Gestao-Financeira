@@ -34,8 +34,11 @@ from users.api_views import (
     RegisterAPIView,
     RestoreBackupView,
     SystemAllCompaniesView,
+    SystemCompanyDetailView,
     SystemStatsView,
+    SystemTenantDetailView,
     SystemTenantsView,
+    SystemUserDetailView,
     SystemUsersView,
 )
 
@@ -78,8 +81,11 @@ urlpatterns = [
     path("system/restore-backup/", RestoreBackupView.as_view(), name="restore_backup"),
     path("system/stats/", SystemStatsView.as_view(), name="system_stats"),
     path("system/tenants/", SystemTenantsView.as_view(), name="system_tenants"),
+    path("system/tenants/<int:pk>/", SystemTenantDetailView.as_view(), name="system_tenant_detail"),
     path("system/users/", SystemUsersView.as_view(), name="system_users"),
+    path("system/users/<int:pk>/", SystemUserDetailView.as_view(), name="system_user_detail"),
     path("system/all-companies/", SystemAllCompaniesView.as_view(), name="system_all_companies"),
+    path("system/companies/<int:pk>/", SystemCompanyDetailView.as_view(), name="system_company_detail"),
 
     # Dashboard
     path("dashboard/", DashboardView.as_view(), name="dashboard"),

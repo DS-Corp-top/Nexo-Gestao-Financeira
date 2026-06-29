@@ -28,3 +28,24 @@ export async function uploadBackupFile(file: File): Promise<{ detail: string }> 
   });
   return data;
 }
+
+export async function toggleTenantStatus(id: number, is_active: boolean): Promise<void> {
+  await api.patch(`/system/tenants/${id}/`, { is_active });
+}
+export async function deleteTenant(id: number): Promise<void> {
+  await api.delete(`/system/tenants/${id}/`);
+}
+
+export async function toggleCompanyStatus(id: number, is_active: boolean): Promise<void> {
+  await api.patch(`/system/companies/${id}/`, { is_active });
+}
+export async function deleteCompany(id: number): Promise<void> {
+  await api.delete(`/system/companies/${id}/`);
+}
+
+export async function toggleUserStatus(id: number, is_active: boolean): Promise<void> {
+  await api.patch(`/system/users/${id}/`, { is_active });
+}
+export async function deleteUser(id: number): Promise<void> {
+  await api.delete(`/system/users/${id}/`);
+}

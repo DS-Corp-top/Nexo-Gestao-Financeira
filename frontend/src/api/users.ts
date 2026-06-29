@@ -72,6 +72,7 @@ export interface SystemTenant {
   user_count: number;
   company_count: number;
   created_at: string;
+  is_active: boolean;
 }
 
 export interface SystemUser {
