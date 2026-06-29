@@ -647,7 +647,7 @@ function UserRow({ u }: { u: SystemUser }) {
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span>{u.email}</span>
           <span>Tenant: {u.tenant_id}</span>
-          <span>cargo: {u.role}</span>
+          <span>cargo: {u.is_superuser ? 'Superuser' : u.role === 'owner' ? 'Administrador' : u.role === 'admin' ? 'Administrador' : u.role === 'member' ? 'Usuário' : u.role}</span>
           <span>desde {formatDate(u.date_joined)}</span>
         </div>
       </div>

@@ -13,6 +13,11 @@ class Account(models.Model):
         CASH = "cash", "Dinheiro"
         CARD = "card", "Cartão"
 
+    class Currency(models.TextChoices):
+        BRL = "BRL", "Real"
+        USD = "USD", "Dólar"
+        EUR = "EUR", "Euro"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -31,6 +36,12 @@ class Account(models.Model):
         max_length=20,
         choices=AccountType.choices,
         default=AccountType.BANK,
+    )
+    currency = models.CharField(
+        "Moeda",
+        max_length=3,
+        choices=Currency.choices,
+        default=Currency.BRL,
     )
     initial_balance = models.DecimalField(
         "Saldo inicial",

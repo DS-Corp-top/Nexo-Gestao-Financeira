@@ -4,6 +4,7 @@ export interface Account {
   id: number;
   name: string;
   account_type: 'bank' | 'cash' | 'card';
+  currency: 'BRL' | 'USD' | 'EUR';
   initial_balance: string;
   credit_limit: string | null;
   include_in_balance: boolean;

@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical, Trash2 } from 'lucide-react';
 
 import {
   cancelInvoice,
+  deleteInvoice,
   emitInvoiceNfse,
   fetchInvoiceNfseGuide,
   fetchInvoiceNfseStatus,
@@ -233,7 +234,7 @@ function buildPrintHtml(data: InvoicePrintData): string {
 </html>`;
 }
 
-function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, onEmitNfse, onCancel }: {
+function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, onEmitNfse, onCancel, onDelete }: {
   invoice: Invoice;
   onEdit: () => void;
   onPay: () => void;
@@ -242,6 +243,7 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
   onStatus: () => void;
   onEmitNfse: () => void;
   onCancel: () => void;
+  onDelete: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -346,6 +348,9 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
               {item('Cancelar', <Ban size={14} />, onCancel, true)}
             </div>
           )}
+          <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
+            {item('Excluir', <Trash2 size={14} />, onDelete, true)}
+          </div>
         </div>,
         document.body
       )}
@@ -374,6 +379,7 @@ export default function Invoices() {
   const [guideData, setGuideData] = useState<InvoiceNfseGuide | null>(null);
   const [statusData, setStatusData] = useState<{ invoice: Invoice; status: InvoiceNfseStatus } | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [filters, setFilters] = useState<InvoiceFilters>({
@@ -425,6 +431,17 @@ export default function Invoices() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       setStatusData({ invoice, status: { nfse_status: invoice.nfse_status, nfse_error: invoice.nfse_error, nfse_requested_at: invoice.nfse_requested_at } });
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteInvoice,
+    onSuccess: () => {
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+    onError: () => {
+      alert('Erro ao excluir a fatura.');
+    }
   });
 
   const handleOpenNew = () => { setEditingInvoice(null); setModalOpen(true); };
@@ -616,6 +633,7 @@ export default function Invoices() {
                         onStatus={() => handleStatus(inv)}
                         onEmitNfse={() => emitNfseMutation.mutate(inv.id)}
                         onCancel={() => setCancelTarget(inv)}
+                        onDelete={() => setDeleteTarget(inv)}
                       />
                     </td>
                   </tr>
@@ -713,6 +731,40 @@ export default function Invoices() {
                 <RefreshCw size={16} /> Atualizar
               </button>
             )}
+          </div>
+        </DataModal>
+      )}
+
+      {deleteTarget && (
+        <DataModal title="Excluir fatura" onClose={() => setDeleteTarget(null)}>
+          <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
+            <div>
+              <p style={{ color: 'var(--color-text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
+                Tem certeza que deseja excluir a fatura {deleteTarget.number_display}?
+              </p>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 6 }}>
+                Essa ação não pode ser desfeita e removerá definitivamente este registro.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 size={16} />
+                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir fatura'}
+              </button>
+            </div>
           </div>
         </DataModal>
       )}

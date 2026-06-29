@@ -18,12 +18,12 @@ import { useAuth } from '../../contexts/AuthContext';
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
+  { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
   { to: '/invoices', icon: FileText, label: 'Fatura de Serviços' },
   { to: '/shopping', icon: ShoppingCart, label: 'Lista de Compras' },
-  { to: '/drive', icon: CloudUpload, label: 'Drive' },
-  { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
   { to: '/notes', icon: StickyNote, label: 'Anotações' },
+  { to: '/drive', icon: CloudUpload, label: 'Drive' },
 ];
 
 interface SidebarProps {

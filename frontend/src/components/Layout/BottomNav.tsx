@@ -57,17 +57,13 @@ export default function BottomNav() {
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 7h14"/><path d="M5 12h14"/><path d="M5 17h14"/></svg></span>
               Financeiro
             </Link>
-            <Link to="/invoices" className={`txn-more-link ${location.pathname.startsWith('/invoices') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
-              <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg></span>
-              Fatura de Serviços
-            </Link>
-            <Link to="/drive" className={`txn-more-link ${location.pathname.startsWith('/drive') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
-              <span className="txn-more-icon"><CloudUpload size={20} /></span>
-              Drive
-            </Link>
             <Link to="/investments" className={`txn-more-link ${location.pathname.startsWith('/investments') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 14l4-5 4 3 4-6"/></svg></span>
               Investimentos
+            </Link>
+            <Link to="/invoices" className={`txn-more-link ${location.pathname.startsWith('/invoices') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
+              <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg></span>
+              Fatura de Serviços
             </Link>
             <Link to="/shopping" className={`txn-more-link ${location.pathname.startsWith('/shopping') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h2l2.2 10h10.8l2-7H8.2"/><circle cx="10" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg></span>
@@ -80,6 +76,10 @@ export default function BottomNav() {
             <Link to="/notes" className={`txn-more-link ${location.pathname.startsWith('/notes') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><polyline points="15 3 15 9 21 9"/></svg></span>
               Anotações
+            </Link>
+            <Link to="/drive" className={`txn-more-link ${location.pathname.startsWith('/drive') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
+              <span className="txn-more-icon"><CloudUpload size={20} /></span>
+              Drive
             </Link>
             {canManageTenantSettings && (
               <Link to="/settings/company" className={`txn-more-link ${location.pathname.startsWith('/settings') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>

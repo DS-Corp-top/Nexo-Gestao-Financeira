@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Menu, Building2, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, Building2, ChevronDown, LogOut, ArrowLeft } from 'lucide-react';
 import { fetchTenantCompanies } from '../../api/tenant';
 import { fetchAllCompanies, type AllCompanyItem } from '../../api/system';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +28,8 @@ function getCompanyTenantId(company: HeaderCompany | null | undefined) {
 }
 
 export default function Header({ title, onMenuClick, isMobile = false }: HeaderProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, tenant, logout, refresh } = useAuth();
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -224,7 +227,19 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
         </button>
       )}
 
-      <h1 style={{ fontSize: '1.125rem', fontWeight: 700, flex: 1, minWidth: 0 }}>{title}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: 1, minWidth: 0 }}>
+        {isMobile && (location.pathname.startsWith('/accounts') || location.pathname.startsWith('/categories')) && (
+          <button 
+            className="btn-ghost btn-icon" 
+            onClick={() => navigate('/transactions')}
+            style={{ padding: '0.25rem', marginLeft: '-0.25rem', marginRight: '0.25rem' }}
+            aria-label="Voltar"
+          >
+            <ArrowLeft size={20} />
+          </button>
+        )}
+        <h1 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h1>
+      </div>
 
       {user && (
         <div ref={tenantMenuRef} style={{ position: 'relative', marginRight: '0.75rem' }}>

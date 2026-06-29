@@ -14,6 +14,7 @@ class AccountSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "account_type",
+            "currency",
             "initial_balance",
             "credit_limit",
             "include_in_balance",

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { type Account, type CreateAccountPayload } from '../../api/accounts';
 
 interface AccountModalProps {
@@ -17,6 +18,9 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
   const [accountType, setAccountType] = useState<'bank' | 'cash' | 'card'>(
     account?.account_type || 'bank'
   );
+  const [currency, setCurrency] = useState<'BRL' | 'USD' | 'EUR'>(
+    account?.currency || 'BRL'
+  );
   const [initialBalance, setInitialBalance] = useState(account?.initial_balance || '0.00');
   const [creditLimit, setCreditLimit] = useState(account?.credit_limit || '');
   const [includeInBalance, setIncludeInBalance] = useState(
@@ -34,6 +38,7 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
       await onSave({
         name,
         account_type: accountType,
+        currency,
         initial_balance: initialBalance,
         credit_limit: accountType === 'card' ? creditLimit || null : null,
         include_in_balance: includeInBalance,
@@ -47,7 +52,7 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
     }
   };
 
-  return (
+  const modal = (
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
@@ -82,8 +87,8 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
             />
           </div>
 
-          <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-            <div>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-md)', width: '100%' }}>
+            <div style={{ flex: 1 }}>
               <label className="label">Tipo</label>
               <select
                 className="select"
@@ -96,7 +101,22 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
               </select>
             </div>
 
-            <div>
+            <div style={{ flex: 1 }}>
+              <label className="label">Moeda</label>
+              <select
+                className="select"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as any)}
+              >
+                <option value="BRL">Real (BRL)</option>
+                <option value="USD">Dólar (USD)</option>
+                <option value="EUR">Euro (EUR)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-md)', width: '100%' }}>
+            <div style={{ flex: 1 }}>
               <label className="label">Saldo Inicial</label>
               <input
                 type="number"
@@ -108,20 +128,20 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
                 disabled={!!account} // Não permite alterar após criação
               />
             </div>
-          </div>
 
-          {accountType === 'card' && (
-            <div style={{ marginBottom: 'var(--space-md)' }}>
-              <label className="label">Limite do Cartão</label>
-              <input
-                type="number"
-                step="0.01"
-                className="input"
-                value={creditLimit}
-                onChange={(e) => setCreditLimit(e.target.value)}
-              />
-            </div>
-          )}
+            {accountType === 'card' && (
+              <div style={{ flex: 1 }}>
+                <label className="label">Limite do Cartão</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  value={creditLimit}
+                  onChange={(e) => setCreditLimit(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-lg)' }}>
             <input
@@ -147,4 +167,6 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

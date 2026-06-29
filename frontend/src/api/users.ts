@@ -81,6 +81,7 @@ export interface SystemUser {
   last_name: string;
   username: string;
   is_active: boolean;
+  is_superuser: boolean;
   date_joined: string;
   tenant_id: number;
   tenant_name: string;

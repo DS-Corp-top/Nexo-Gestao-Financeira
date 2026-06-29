@@ -160,8 +160,18 @@ export default function Transactions() {
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
         </div>
 
-        {/* Nova transação e atalhos — só no desktop (mobile usa FAB) */}
-        <div className="txn-desktop-new-btn" style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+        {/* Atalhos para Contas e Categorias */}
+        <div 
+          style={{ 
+            display: 'flex', 
+            gap: 'var(--space-sm)', 
+            overflowX: 'auto', 
+            paddingBottom: '4px',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+          className="hide-scrollbar"
+        >
           <button className="btn btn-primary" onClick={() => navigate('/transactions/new')}>
             + Nova transação
           </button>

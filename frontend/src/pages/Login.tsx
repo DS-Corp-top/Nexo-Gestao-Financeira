@@ -9,8 +9,9 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
   const navigate = useNavigate();
-  const { refresh } = useAuth();
+  const { refresh, user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,17 +21,47 @@ export default function Login() {
     try {
       await login({ username, password });
       await refresh();
-      navigate('/dashboard');
+      setShowSplash(true);
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2500);
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError('E-mail ou senha incorretos.');
       } else {
         setError('Erro ao fazer login. Tente novamente.');
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  if (showSplash) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} className="animate-fade-in">
+        <div style={{ width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-xl)', animation: 'pulse 2s infinite', background: 'white' }}>
+           <img src="/icons/icon-512.png" alt="Nexo Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
+        </div>
+        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 'var(--space-sm)', color: 'var(--color-text-primary)' }}>
+          Bem-vindo, {user?.first_name || 'Usuário'}!
+        </h2>
+        <p style={{ color: 'var(--color-text-muted)' }}>Preparando o seu ambiente...</p>
+        <div style={{ marginTop: 'var(--space-xl)', width: 200, height: 4, background: 'var(--color-bg-secondary)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', background: 'var(--color-accent)', width: '100%', animation: 'progress 2.5s ease-in-out' }} />
+        </div>
+        <style>{`
+          @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); transform: scale(1); }
+            50% { box-shadow: 0 0 0 20px rgba(52, 211, 153, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); transform: scale(1); }
+          }
+          @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 440, margin: '0 auto', paddingTop: '8vh', paddingInline: 'var(--space-lg)' }} className="animate-fade-in">

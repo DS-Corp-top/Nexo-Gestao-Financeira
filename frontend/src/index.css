@@ -2838,3 +2838,4 @@ input[type="radio"] {
   border-color: var(--mono-border-strong) !important;
   color: var(--mono-text) !important;
 }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
