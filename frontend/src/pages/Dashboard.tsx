@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useViewMode } from '../contexts/ViewModeContext';
-import { fetchInvestments } from '../api/investments';
 import ChartsModal from '../components/Dashboard/ChartsModal';
+import { fetchInvestmentEntries } from '../api/investments';
 import {
   ChevronLeft,
   ChevronRight,
@@ -57,10 +57,27 @@ export default function Dashboard() {
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
 
-  const { data: investments } = useQuery({
-    queryKey: ['investments', scopeVersion],
-    queryFn: fetchInvestments,
+  const { data: investmentEntries } = useQuery({
+    queryKey: ['investment-entries', monthParam, scopeVersion],
+    queryFn: fetchInvestmentEntries,
   });
+
+  const investmentMonthTotals = useMemo(() => {
+    if (!investmentEntries) return null;
+
+    return investmentEntries
+      .filter((entry) => entry.date.slice(0, 7) === monthParam)
+      .reduce(
+        (totals, entry) => {
+          const amount = parseFloat(entry.amount) || 0;
+          if (entry.entry_type === 'deposit') totals.deposited += amount;
+          if (entry.entry_type === 'withdrawal') totals.withdrawn += amount;
+          if (entry.entry_type === 'dividend' || entry.entry_type === 'yield') totals.earnings += amount;
+          return totals;
+        },
+        { deposited: 0, withdrawn: 0, earnings: 0 },
+      );
+  }, [investmentEntries, monthParam]);
 
   useEffect(() => {
     const handleCompanyChange = () => setScopeVersion((version) => version + 1);
@@ -114,6 +131,10 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const monthlyInvested = investmentMonthTotals?.deposited ?? data.kpis.investments_month_deposited;
+  const monthlyWithdrawn = investmentMonthTotals?.withdrawn ?? data.kpis.investments_month_withdrawn;
+  const monthlyInvestmentEarnings = investmentMonthTotals?.earnings ?? data.kpis.investments_month_earnings;
 
   const combinedTrend = data.expense_trend.map((p, i) => ({
     label: p.label,
@@ -464,20 +485,20 @@ export default function Dashboard() {
               <PiggyBank size={16} />
             </button>
           </div>
-          {!investments?.length ? (
-            <div style={{ padding: 'var(--space-md) 0', textAlign: 'center' }}>
-              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Nenhum investimento ativo</p>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>Adicione um investimento para acompanhar no dashboard.</p>
-              <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => navigate('/investments')}>Adicionar</button>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Aplicado no mês</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-accent)', whiteSpace: 'nowrap' }}>{formatCurrency(monthlyInvested)}</span>
             </div>
-          ) : (
-            investments.map((inv) => (
-              <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
-                <span>{inv.name}</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(inv.net_invested)}</span>
-              </div>
-            ))
-          )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Resgatado no mês</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>{formatCurrency(monthlyWithdrawn)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--color-text-secondary)' }}>Rend./Dividendos no mês</span>
+              <span style={{ fontWeight: 600, color: 'var(--color-success)', whiteSpace: 'nowrap' }}>{formatCurrency(monthlyInvestmentEarnings)}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

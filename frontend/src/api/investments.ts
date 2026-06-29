@@ -36,6 +36,11 @@ export async function fetchInvestment(id: number): Promise<Investment> {
   return data;
 }
 
+export async function fetchInvestmentEntries(): Promise<InvestmentEntry[]> {
+  const { data } = await api.get<any>('/investment-entries/');
+  return data.results !== undefined ? data.results : data;
+}
+
 export async function createInvestment(payload: CreateInvestmentPayload): Promise<Investment> {
   const { data } = await api.post<Investment>('/investments/', payload);
   return data;

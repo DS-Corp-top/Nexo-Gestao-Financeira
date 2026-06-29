@@ -1109,9 +1109,24 @@ select.select option:checked {
   justify-content: center;
   height: 2.3rem;
   width: 2.3rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: #cbd5e1;
+  cursor: pointer;
   font-size: 2rem;
   text-decoration: none;
+  appearance: none;
+  -webkit-appearance: none;
+  line-height: 1;
+  padding: 0;
+}
+
+.txn-month-arrow:hover,
+.txn-month-arrow:focus-visible {
+  background: transparent;
+  color: #ffffff;
+  outline: none;
 }
 
 .txn-month-arrow-disabled {

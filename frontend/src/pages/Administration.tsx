@@ -154,6 +154,7 @@ function DashboardTab({
             <div>{recentUsers.map((u) => <UserRow key={`${u.id}-${u.tenant_slug}`} u={u} />)}</div>
           </SectionCard>
 
+          {false && (
           <SectionCard
             icon={Shield}
             title={`Cadastros pendentes (${pendingUsers.length})`}
@@ -178,6 +179,7 @@ function DashboardTab({
               ))}
             </div>
           </SectionCard>
+          )}
         </div>
       )}
     </div>
@@ -278,9 +280,9 @@ function CadastrosTab({
                       {u.person_type === 'pj' ? 'CNPJ' : 'CPF'}: {formatDoc(u.document)}
                     </span>
                   )}
-                  {u.tenant_slug && (
+                  {u.tenant_id && (
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      Tenant: {u.tenant_slug}
+                      Tenant: {u.tenant_id}
                     </span>
                   )}
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -607,6 +609,10 @@ function SectionCard({
 }
 
 function TenantRow({ t }: { t: SystemTenant }) {
+  const companyLabel = t.person_type === 'pj'
+    ? `empresa${t.company_count !== 1 ? 's' : ''}`
+    : `pessoa física${t.company_count !== 1 ? 's' : ''}`;
+
   return (
     <div style={listRowStyle}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -615,8 +621,9 @@ function TenantRow({ t }: { t: SystemTenant }) {
           <PersonBadge type={t.person_type} />
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span>slug: {t.slug}</span>
+          <span>Tenant: {t.id}</span>
           <span>{t.user_count} usuário{t.user_count !== 1 ? 's' : ''}</span>
+          <span>{t.company_count} {companyLabel}</span>
           <span>criado em {formatDate(t.created_at)}</span>
         </div>
       </div>
@@ -639,7 +646,7 @@ function UserRow({ u }: { u: SystemUser }) {
         </div>
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span>{u.email}</span>
-          <span>tenant: {u.tenant_name}</span>
+          <span>Tenant: {u.tenant_id}</span>
           <span>cargo: {u.role}</span>
           <span>desde {formatDate(u.date_joined)}</span>
         </div>
@@ -669,8 +676,8 @@ function ListagensTab({
   onApprove: (id: number) => void;
   isApprovePending: boolean;
 }) {
-  const [searchTenant, setSearchTenant] = useState('');
-  const [searchUser, setSearchUser] = useState('');
+  const [searchType, setSearchType] = useState<'tenant' | 'empresa' | 'usuario'>('tenant');
+  const [searchTerm, setSearchTerm] = useState('');
 
   if (!isSuperuser) {
     return (
@@ -682,42 +689,76 @@ function ListagensTab({
     );
   }
 
-  const filteredTenants = tenants.filter((t) =>
-    !searchTenant || t.name.toLowerCase().includes(searchTenant.toLowerCase()) || t.slug.toLowerCase().includes(searchTenant.toLowerCase())
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const tenantMatches = (t: SystemTenant) => (
+    String(t.id).includes(normalizedSearch) ||
+    t.name.toLowerCase().includes(normalizedSearch) ||
+    t.slug.toLowerCase().includes(normalizedSearch)
   );
+  const userMatches = (u: SystemUser) => (
+    String(u.id).includes(normalizedSearch) ||
+    String(u.tenant_id).includes(normalizedSearch) ||
+    u.email.toLowerCase().includes(normalizedSearch) ||
+    u.username.toLowerCase().includes(normalizedSearch) ||
+    `${u.first_name} ${u.last_name}`.toLowerCase().includes(normalizedSearch) ||
+    u.tenant_name.toLowerCase().includes(normalizedSearch)
+  );
+
+  const filteredTenants = tenants.filter((t) => (
+    !normalizedSearch ||
+    searchType === 'usuario' ||
+    tenantMatches(t)
+  ));
   const pjList = filteredTenants.filter((t) => t.person_type === 'pj');
   const pfList = filteredTenants.filter((t) => t.person_type === 'pf');
 
-  const filteredUsers = users.filter((u) =>
-    !searchUser ||
-    u.email.toLowerCase().includes(searchUser.toLowerCase()) ||
-    `${u.first_name} ${u.last_name}`.toLowerCase().includes(searchUser.toLowerCase()) ||
-    u.tenant_name.toLowerCase().includes(searchUser.toLowerCase())
-  );
+  const filteredUsers = users.filter((u) => (
+    !normalizedSearch ||
+    (searchType === 'usuario' ? userMatches(u) : (
+      String(u.tenant_id).includes(normalizedSearch) ||
+      u.tenant_name.toLowerCase().includes(normalizedSearch)
+    ))
+  ));
+  const foundCount = searchType === 'usuario' ? filteredUsers.length : filteredTenants.length;
+  const foundLabel = searchType === 'usuario'
+    ? `usuário${foundCount !== 1 ? 's' : ''}`
+    : searchType === 'empresa'
+      ? `empresa${foundCount !== 1 ? 's' : ''}`
+      : `tenant${foundCount !== 1 ? 's' : ''}`;
 
   return (
     <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
       {/* Busca */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)' }}>
+      <div style={{ display: 'grid', gap: '0.35rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, 180px) 1fr', gap: 'var(--space-sm)' }}>
+        <select
+          className="input"
+          value={searchType}
+          onChange={(e) => setSearchType(e.target.value as 'tenant' | 'empresa' | 'usuario')}
+        >
+          <option value="tenant">Tenant</option>
+          <option value="empresa">Empresa</option>
+          <option value="usuario">Usuário</option>
+        </select>
         <input
           className="input"
-          placeholder="Buscar tenant..."
-          value={searchTenant}
-          onChange={(e) => setSearchTenant(e.target.value)}
+          placeholder={`Buscar ${searchType}...`}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <input
-          className="input"
-          placeholder="Buscar usuário..."
-          value={searchUser}
-          onChange={(e) => setSearchUser(e.target.value)}
-        />
+      </div>
+        {normalizedSearch && (
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+            {foundCount} {foundLabel} encontrado{foundCount !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {/* Todos os Tenants */}
       <SectionCard
         icon={Building2}
         title={`Todos os Tenants (${filteredTenants.length})`}
-        subtitle="Todos os workspaces cadastrados no sistema."
+        subtitle={`PJ: ${pjList.length} · PF: ${pfList.length}`}
         isLoading={isLoadingTenants}
         isEmpty={filteredTenants.length === 0}
         emptyLabel="Nenhum tenant encontrado"
@@ -761,7 +802,7 @@ function ListagensTab({
         <div>{filteredUsers.map((u) => <UserRow key={`${u.id}-${u.tenant_slug}`} u={u} />)}</div>
       </SectionCard>
 
-      {/* Cadastros Pendentes */}
+      {false && (
       <SectionCard
         icon={Shield}
         title={`Cadastros Pendentes (${pendingUsers.length})`}
@@ -783,7 +824,7 @@ function ListagensTab({
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <span>{u.email}</span>
                   {u.document && <span>{u.person_type === 'pj' ? 'CNPJ' : 'CPF'}: {formatDoc(u.document)}</span>}
-                  {u.tenant_slug && <span>tenant: {u.tenant_slug}</span>}
+                  {u.tenant_id && <span>Tenant: {u.tenant_id}</span>}
                   <span>solicitado em {formatDate(u.date_joined)}</span>
                 </div>
               </div>
@@ -800,6 +841,7 @@ function ListagensTab({
           ))}
         </div>
       </SectionCard>
+      )}
     </div>
   );
 }

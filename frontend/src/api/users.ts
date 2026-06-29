@@ -7,6 +7,7 @@ export interface PendingUser {
   first_name: string;
   last_name: string;
   date_joined: string;
+  tenant_id: number | null;
   tenant_name: string | null;
   tenant_slug: string | null;
   person_type: 'pf' | 'pj' | null;
@@ -69,6 +70,7 @@ export interface SystemTenant {
   slug: string;
   person_type: 'pf' | 'pj';
   user_count: number;
+  company_count: number;
   created_at: string;
 }
 
@@ -80,6 +82,7 @@ export interface SystemUser {
   username: string;
   is_active: boolean;
   date_joined: string;
+  tenant_id: number;
   tenant_name: string;
   tenant_slug: string;
   person_type: 'pf' | 'pj';

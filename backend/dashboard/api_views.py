@@ -112,11 +112,18 @@ class DashboardView(APIView):
         inv_withdrawn = inv_entries.filter(
             entry_type=InvestmentEntry.EntryType.WITHDRAWAL
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-        inv_earnings = InvestmentEntry.objects.filter(
-            tenant=tenant,
-            entry_type__in=[InvestmentEntry.EntryType.DIVIDEND, InvestmentEntry.EntryType.YIELD],
+        monthly_inv_entries = inv_entries.filter(
             date__gte=month_start,
             date__lt=next_month_start,
+        )
+        monthly_inv_deposited = monthly_inv_entries.filter(
+            entry_type=InvestmentEntry.EntryType.DEPOSIT
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        monthly_inv_withdrawn = monthly_inv_entries.filter(
+            entry_type=InvestmentEntry.EntryType.WITHDRAWAL
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        inv_earnings = monthly_inv_entries.filter(
+            entry_type__in=[InvestmentEntry.EntryType.DIVIDEND, InvestmentEntry.EntryType.YIELD],
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
         net_invested = inv_deposited - inv_withdrawn
 
@@ -225,6 +232,9 @@ class DashboardView(APIView):
                 "credit_available": str(credit_available),
                 "investments_total": str(investments_total),
                 "investments_earnings": str(inv_earnings),
+                "investments_month_deposited": str(monthly_inv_deposited),
+                "investments_month_withdrawn": str(monthly_inv_withdrawn),
+                "investments_month_earnings": str(inv_earnings),
             },
             "alerts": {
                 "pending_expense_count": pending_expense_count,

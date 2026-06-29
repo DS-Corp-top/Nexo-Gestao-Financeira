@@ -24,6 +24,7 @@ class PendingUserSerializer(serializers.ModelSerializer):
     """Serializer for pending users — includes tenant info for the approval screen."""
 
     tenant_name = serializers.SerializerMethodField()
+    tenant_id = serializers.SerializerMethodField()
     tenant_slug = serializers.SerializerMethodField()
     person_type = serializers.SerializerMethodField()
     person_type_display = serializers.SerializerMethodField()
@@ -34,7 +35,7 @@ class PendingUserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id", "username", "email", "first_name", "last_name",
-            "date_joined", "tenant_name", "tenant_slug", "person_type", "person_type_display", "document",
+            "date_joined", "tenant_id", "tenant_name", "tenant_slug", "person_type", "person_type_display", "document",
         )
         read_only_fields = fields
 
@@ -48,6 +49,10 @@ class PendingUserSerializer(serializers.ModelSerializer):
     def get_tenant_name(self, user):
         m = self._membership(user)
         return m.tenant.name if m else None
+
+    def get_tenant_id(self, user):
+        m = self._membership(user)
+        return m.tenant_id if m else None
 
     def get_tenant_slug(self, user):
         m = self._membership(user)

@@ -185,7 +185,10 @@ class SystemTenantsView(APIView):
         from django.db.models import Count
         tenants = (
             Tenant.objects
-            .annotate(user_count=Count('memberships', distinct=True))
+            .annotate(
+                user_count=Count('memberships', distinct=True),
+                company_count=Count('companies', distinct=True),
+            )
             .order_by('created_at')
         )
         return Response([
@@ -195,6 +198,7 @@ class SystemTenantsView(APIView):
                 "slug": t.slug,
                 "person_type": t.person_type,
                 "user_count": t.user_count,
+                "company_count": t.company_count,
                 "created_at": t.created_at,
             }
             for t in tenants
@@ -221,6 +225,7 @@ class SystemUsersView(APIView):
                 "username": m.user.username,
                 "is_active": m.user.is_active,
                 "date_joined": m.user.date_joined,
+                "tenant_id": m.tenant_id,
                 "tenant_name": m.tenant.name,
                 "tenant_slug": m.tenant.slug,
                 "person_type": m.tenant.person_type,
@@ -246,7 +251,7 @@ class SystemAllCompaniesView(APIView):
                 "id": c.pk,
                 "tenant_id": c.tenant_id,
                 "tenant_name": c.tenant.name,
-                "tenant_code": c.tenant.created_at.strftime("%d%m%Y"),
+                "tenant_code": str(c.tenant_id),
                 "name": c.name,
                 "document": c.document,
                 "sequence_number": c.sequence_number,

@@ -214,9 +214,9 @@ export default function PendingUsers() {
                           {user.person_type === 'pj' ? 'CNPJ' : 'CPF'}: {formatDoc(user.document)}
                         </span>
                       )}
-                      {user.tenant_name && (
+                      {user.tenant_id && (
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          Ambiente: {user.tenant_name}
+                          Tenant: {user.tenant_id}
                         </span>
                       )}
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>

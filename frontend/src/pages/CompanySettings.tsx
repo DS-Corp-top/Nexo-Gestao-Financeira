@@ -31,16 +31,6 @@ function workspaceIdLabel(documentValue?: string) {
   return 'ID';
 }
 
-function formatTenantCreatedAt(value?: string) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${day}${month}${year}`;
-}
-
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return createPortal(
     <div
@@ -251,7 +241,7 @@ export default function CompanySettings() {
             {workspaceIdLabel(profile?.document)}: {formatWorkspaceId(profile?.document) || 'Não informado'}
           </p>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', marginTop: 2 }}>
-            Tenant: {formatTenantCreatedAt(profile?.created_at) || '—'}
+            Tenant: {profile?.id || '—'}
           </p>
         </div>
       </div>

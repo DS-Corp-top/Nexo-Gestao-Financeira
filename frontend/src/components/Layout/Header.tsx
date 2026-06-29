@@ -67,14 +67,14 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
   });
 
   // Group all companies by tenant for superuser view
-  const allCompaniesByTenant: { tenant_name: string; tenant_code: string; companies: AllCompanyItem[] }[] = isSuperuser
+  const allCompaniesByTenant: { tenant_id: number; tenant_name: string; companies: AllCompanyItem[] }[] = isSuperuser
     ? Object.values(
-        allCompanies.reduce<Record<number, { tenant_name: string; tenant_code: string; companies: AllCompanyItem[] }>>(
+        allCompanies.reduce<Record<number, { tenant_id: number; tenant_name: string; companies: AllCompanyItem[] }>>(
           (acc, c) => {
             if (!acc[c.tenant_id]) {
               acc[c.tenant_id] = {
+                tenant_id: c.tenant_id,
                 tenant_name: c.tenant_name,
-                tenant_code: c.tenant_code || String(c.tenant_id),
                 companies: [],
               };
             }
@@ -83,7 +83,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
           },
           {}
         )
-      ).sort((a, b) => a.tenant_code.localeCompare(b.tenant_code, 'pt-BR', { numeric: true }))
+      ).sort((a, b) => a.tenant_id - b.tenant_id)
     : [];
   const userDisplayName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email || user.username
@@ -113,15 +113,8 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     return 'Sem nível';
   }
 
-  function tenantCodeFromValue(value?: string) {
-    if (!value) return tenant?.id ? `#${String(tenant.id).padStart(4, '0')}` : 'Não informado';
-    if (/^\d{8}$/.test(value)) return value;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return tenant?.id ? `#${String(tenant.id).padStart(4, '0')}` : 'Não informado';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}${month}${year}`;
+  function formatTenantNumber(value?: number | null) {
+    return value ? String(value) : 'Não informado';
   }
 
   const availableCompanies = isSuperuser ? allCompanies : tenantCompanies;
@@ -133,9 +126,9 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     availableCompanies.find((company) => company.is_default) ||
     availableCompanies[0];
   const activeCompanyName = displayName(activeCompany?.name || tenant?.name || 'Sem empresa');
-  const tenantCode = isSuperuser
-    ? tenantCodeFromValue(allCompanies.find((company) => getCompanyTenantId(company) === activeTenantId)?.tenant_code)
-    : tenantCodeFromValue(tenant?.created_at);
+  const tenantNumber = isSuperuser
+    ? formatTenantNumber(allCompanies.find((company) => getCompanyTenantId(company) === activeTenantId)?.tenant_id || activeTenantId)
+    : formatTenantNumber(tenant?.id);
 
   function selectCompany(company: HeaderCompany) {
     const tenantId = getCompanyTenantId(company) || tenant?.id || null;
@@ -255,9 +248,9 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                   {allCompaniesByTenant.length === 0 ? (
                     <div className="tenant-dropdown-empty">Nenhuma empresa cadastrada.</div>
                   ) : allCompaniesByTenant.map((group) => (
-                    <div key={group.tenant_name}>
+                    <div key={group.tenant_id}>
                       <div className="tenant-dropdown-group">
-                        Tenant {group.tenant_code}
+                        Tenant {group.tenant_id}
                       </div>
                       {group.companies.map((company) => (
                         <button
@@ -363,7 +356,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 textTransform: 'uppercase',
                 color: 'var(--color-text-secondary)',
               }}>
-                Tenant {tenantCode}
+                Tenant {tenantNumber}
               </div>
 
               <div style={{

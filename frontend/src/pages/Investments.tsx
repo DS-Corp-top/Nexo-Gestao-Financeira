@@ -25,7 +25,7 @@ export default function Investments() {
 
   const queryClient = useQueryClient();
 
-  const { data: investments, isLoading: invsLoading } = useQuery({
+  const { data: investments = [], isLoading: invsLoading, isError: invsError } = useQuery({
     queryKey: ['investments'],
     queryFn: fetchInvestments,
   });
@@ -116,6 +116,30 @@ export default function Investments() {
       if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
     }
   };
+
+  const typeLabels: Record<string, string> = {
+    stocks: 'Acoes', fii: 'FII', fixed_income: 'Renda Fixa',
+    crypto: 'Cripto', savings: 'Poupanca', emergency: 'Reserva', other: 'Outros',
+  };
+
+  const investmentList = Array.isArray(investments) ? investments : [];
+
+  const filtered = useMemo(() => {
+    return investmentList.filter((inv) => {
+      const name = inv.name || '';
+      const broker = inv.broker || '';
+      if (filterStatus === 'active' && !inv.is_active) return false;
+      if (filterStatus === 'inactive' && inv.is_active) return false;
+      if (filterType && inv.investment_type !== filterType) return false;
+      if (search && !name.toLowerCase().includes(search.toLowerCase()) && !broker.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [investmentList, filterStatus, filterType, search]);
+
+  const totalInvested  = filtered.reduce((s, i) => s + parseFloat(i.total_invested  || '0'), 0);
+  const totalWithdrawn = filtered.reduce((s, i) => s + parseFloat(i.total_withdrawn || '0'), 0);
+  const totalEarnings  = filtered.reduce((s, i) => s + parseFloat(i.total_earnings  || '0'), 0);
+  const totalNet       = filtered.reduce((s, i) => s + parseFloat(i.net_invested     || '0'), 0);
 
   if (selectedInvId) {
     // Detail View
@@ -238,26 +262,11 @@ export default function Investments() {
     );
   }
 
-  const typeLabels: Record<string, string> = {
+  const typeLabelsDuplicate: Record<string, string> = {
     stocks: 'Ações', fii: 'FII', fixed_income: 'Renda Fixa',
     crypto: 'Cripto', savings: 'Poupança', emergency: 'Reserva', other: 'Outros',
   };
-
-  // List View
-  const filtered = useMemo(() => {
-    return (investments ?? []).filter((inv) => {
-      if (filterStatus === 'active' && !inv.is_active) return false;
-      if (filterStatus === 'inactive' && inv.is_active) return false;
-      if (filterType && inv.investment_type !== filterType) return false;
-      if (search && !inv.name.toLowerCase().includes(search.toLowerCase()) && !inv.broker.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [investments, filterStatus, filterType, search]);
-
-  const totalInvested  = filtered.reduce((s, i) => s + parseFloat(i.total_invested  || '0'), 0);
-  const totalWithdrawn = filtered.reduce((s, i) => s + parseFloat(i.total_withdrawn || '0'), 0);
-  const totalEarnings  = filtered.reduce((s, i) => s + parseFloat(i.total_earnings  || '0'), 0);
-  const totalNet       = filtered.reduce((s, i) => s + parseFloat(i.net_invested     || '0'), 0);
+  void typeLabelsDuplicate;
 
   return (
     <div className="animate-fade-in investments-page">
@@ -346,7 +355,13 @@ export default function Investments() {
         )}
       </div>
 
-      {invsLoading ? (
+      {invsError ? (
+        <div className="empty-state">
+          <TrendingUp className="empty-state-icon" />
+          <h3 className="empty-state-title">Erro ao carregar investimentos</h3>
+          <p className="empty-state-text">Recarregue a pagina ou verifique sua conexao.</p>
+        </div>
+      ) : invsLoading ? (
         <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 160 }} />)}
         </div>

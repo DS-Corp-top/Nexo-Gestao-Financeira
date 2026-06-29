@@ -8,6 +8,9 @@ export interface DashboardKPIs {
   credit_available: string;
   investments_total: string;
   investments_earnings: string;
+  investments_month_deposited: string;
+  investments_month_withdrawn: string;
+  investments_month_earnings: string;
 }
 
 export interface CategoryBreakdown {
