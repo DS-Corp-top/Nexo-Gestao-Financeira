@@ -35,7 +35,7 @@ interface ChartsModalProps {
 export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps) {
   const [tab, setTab] = useState<Tab>('ranking');
   const [month, setMonth] = useState(initialMonth);
-  const [mode, setMode] = useState<'expense' | 'income'>('expense');
+  const [mode, setMode] = useState<'expense' | 'income' | 'unified'>('expense');
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-charts', month],
@@ -66,8 +66,24 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
     isCurrent: p.is_current,
   }));
 
-  const activeCategories = mode === 'expense' ? expenseCategories : incomeCategories;
-  const activeTrend = mode === 'expense' ? expenseTrend : incomeTrend;
+  const unifiedCategories = [
+    { name: 'Receitas', value: incomeCategories.reduce((s, c) => s + c.value, 0), fill: '#22c55e' },
+    { name: 'Despesas', value: expenseCategories.reduce((s, c) => s + c.value, 0), fill: '#fb7185' },
+  ].filter(c => c.value > 0);
+
+  const unifiedTrend = expenseTrend.map((e, i) => {
+    const inc = incomeTrend[i] || { label: e.label, total: 0, isCurrent: e.isCurrent };
+    return {
+      label: e.label,
+      expense: e.total,
+      income: inc.total,
+      total: inc.total - e.total, // Balance
+      isCurrent: e.isCurrent
+    };
+  });
+
+  const activeCategories = mode === 'expense' ? expenseCategories : mode === 'income' ? incomeCategories : unifiedCategories;
+  const activeTrend = mode === 'expense' ? expenseTrend : mode === 'income' ? incomeTrend : unifiedTrend;
 
   const ranking = [...activeCategories].sort((a, b) => b.value - a.value);
   const rankingTotal = ranking.reduce((s, c) => s + c.value, 0);
@@ -75,7 +91,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
   const currentMonth = activeTrend.find((p) => p.isCurrent);
   const trendAvg = activeTrend.length ? activeTrend.reduce((s, p) => s + p.total, 0) / activeTrend.length : 0;
   const trendPeak = activeTrend.length ? activeTrend.reduce((max, p) => p.total > max.total ? p : max, activeTrend[0]) : null;
-  const hasData = activeTrend.some((p) => p.total > 0);
+  const hasData = activeTrend.some((p) => p.total !== 0 || (p as any).income > 0 || (p as any).expense > 0);
   const tooltipStyle = { background: '#111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: '0.8rem' };
   const tooltipLabelStyle = { color: '#fff', fontWeight: 700, marginBottom: 2 };
   const tooltipItemStyle = { color: 'rgba(255,255,255,0.7)' };
@@ -123,6 +139,18 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
             }}
           >
             Receitas
+          </button>
+          <button
+            onClick={() => setMode('unified')}
+            style={{
+              flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: '0.8rem',
+              background: mode === 'unified' ? '#3b82f6' : 'transparent',
+              color: mode === 'unified' ? '#fff' : 'var(--color-text-muted)',
+              border: `1px solid ${mode === 'unified' ? '#3b82f6' : 'var(--color-border)'}`,
+              cursor: 'pointer'
+            }}
+          >
+            Unificadas
           </button>
         </div>
 
@@ -195,9 +223,9 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 'var(--space-lg)' }}>
               {[
-                { label: 'Mês atual', value: formatCurrency(currentMonth?.total ?? 0), sub: 'Sem variação' },
+                { label: mode === 'unified' ? 'Saldo Atual' : 'Mês atual', value: formatCurrency(currentMonth?.total ?? 0), sub: 'Sem variação' },
                 { label: 'Média', value: formatCurrency(trendAvg), sub: '6 meses' },
-                { label: 'Pico', value: formatCurrency(trendPeak?.total ?? 0), sub: trendPeak?.label ?? '-' },
+                { label: mode === 'unified' ? 'Maior Saldo' : 'Pico', value: formatCurrency(trendPeak?.total ?? 0), sub: trendPeak?.label ?? '-' },
               ].map((card) => (
                 <div key={card.label} style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', padding: '10px 8px', border: '1px solid var(--color-border)', minWidth: 0, overflow: 'hidden' }}>
                   <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{card.label}</div>
@@ -213,13 +241,20 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                 <ResponsiveContainer width="100%" height={150}>
                   <BarChart data={activeTrend} barCategoryGap="25%">
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
-                    <YAxis hide domain={[0, 'dataMax']} />
+                    <YAxis hide />
                     <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-                    <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={3}>
-                      {activeTrend.map((e, i) => (
-                        <Cell key={i} fill={e.isCurrent ? (mode === 'expense' ? '#fb7185' : '#22c55e') : (mode === 'expense' ? '#2b2f3a' : '#14532d')} />
-                      ))}
-                    </Bar>
+                    {mode === 'unified' ? (
+                      <>
+                        <Bar dataKey="income" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="expense" name="Despesas" fill="#fb7185" radius={[4, 4, 0, 0]} />
+                      </>
+                    ) : (
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]} minPointSize={3}>
+                        {activeTrend.map((e, i) => (
+                          <Cell key={i} fill={e.isCurrent ? (mode === 'expense' ? '#fb7185' : '#22c55e') : (mode === 'expense' ? '#2b2f3a' : '#14532d')} />
+                        ))}
+                      </Bar>
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
                 <div style={{ marginTop: 'var(--space-md)' }}>
@@ -228,7 +263,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                       <YAxis hide />
                       <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-                      <Line type="monotone" dataKey="total" stroke={mode === 'expense' ? '#22d3ee' : '#34d399'} strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="total" name={mode === 'unified' ? "Saldo" : "Total"} stroke={mode === 'expense' ? '#22d3ee' : mode === 'income' ? '#34d399' : '#3b82f6'} strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -243,7 +278,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
           ) : (
             <div>
               <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Ranking de {mode === 'expense' ? 'maiores despesas' : 'maiores receitas'}
+                Ranking de {mode === 'expense' ? 'maiores despesas' : mode === 'income' ? 'maiores receitas' : 'Receitas vs Despesas'}
               </p>
               {ranking.map((cat, i) => {
                 const pct = rankingTotal > 0 ? (cat.value / rankingTotal) * 100 : 0;
