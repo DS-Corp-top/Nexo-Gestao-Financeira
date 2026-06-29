@@ -220,6 +220,7 @@ export default function Notes() {
   const handleTogglePin = (note: Note) => updateMutation.mutate({ id: note.id, payload: { is_pinned: !note.is_pinned } });
 
   return (
+    <>
     <div className="animate-fade-in" style={{ display: 'grid', gap: 'var(--space-lg)' }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -345,7 +346,8 @@ export default function Notes() {
         </div>
       )}
 
-      {/* Delete confirmation modal */}
+    </div>
+
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
@@ -372,6 +374,6 @@ export default function Notes() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
