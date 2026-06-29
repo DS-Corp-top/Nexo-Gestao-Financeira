@@ -6,7 +6,7 @@ interface AuthContextType {
   tenant: MeResponse['tenant'] | null;
   isLoading: boolean;
   isLoggedIn: boolean;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<boolean>;
   logout: () => void;
 }
 
@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextType>({
   tenant: null,
   isLoading: true,
   isLoggedIn: false,
-  refresh: async () => {},
+  refresh: async () => false,
   logout: () => {},
 });
 
@@ -29,9 +29,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await fetchMe();
       setUser(data.user);
       setTenant(data.tenant);
+      return true;
     } catch {
       setUser(null);
       setTenant(null);
+      return false;
     } finally {
       setIsLoading(false);
     }

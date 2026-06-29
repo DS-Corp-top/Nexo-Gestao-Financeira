@@ -24,16 +24,26 @@ export default function Login() {
 
     try {
       await login({ username, password });
-      await refresh();
+      const success = await refresh();
+      
+      if (!success) {
+        throw new Error('Não foi possível carregar os dados. Verifique sua conexão.');
+      }
+
       setShowSplash(true);
       setTimeout(() => {
         navigate('/dashboard');
       }, 2500);
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setError('E-mail ou senha incorretos.');
+        const detail = err.response?.data?.detail;
+        if (detail && detail.toLowerCase().includes('active')) {
+          setError('Sua conta ainda está pendente de aprovação.');
+        } else {
+          setError('E-mail ou senha incorretos.');
+        }
       } else {
-        setError('Erro ao fazer login. Tente novamente.');
+        setError(err.message || 'Erro ao fazer login. Tente novamente.');
       }
       setLoading(false);
     }
