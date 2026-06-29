@@ -442,10 +442,15 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
         {/* Accounts */}
         <div className="card">
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
-            <Wallet size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-            Contas
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              <Wallet size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              Contas
+            </h3>
+            <button className="btn-ghost btn-icon" onClick={() => navigate('/accounts')} title="Ver contas">
+              <Wallet size={16} />
+            </button>
+          </div>
           {data.accounts.map((acct) => (
             <div
               key={acct.id}
