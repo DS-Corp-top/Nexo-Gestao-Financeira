@@ -18,6 +18,7 @@ import Invoices from './pages/Invoices';
 import Administration from './pages/Administration';
 import Todos from './pages/Todos';
 import Notes from './pages/Notes';
+import Drive from './pages/Drive';
 
 
 const queryClient = new QueryClient({
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="categories" element={<Categories />} />
               <Route path="invoices" element={<Invoices />} />
               <Route path="shopping" element={<Shopping />} />
+              <Route path="drive" element={<Drive />} />
               <Route path="investments" element={<Investments />} />
               <Route path="todos" element={<Todos />} />
               <Route path="notes" element={<Notes />} />

@@ -22,6 +22,7 @@ from tenants.api_views import (
     TenantProfileView,
 )
 from notes.api_views import NoteViewSet
+from drive.api_views import DocumentViewSet, FolderViewSet
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoItemViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
 from users.api_views import (
@@ -56,6 +57,8 @@ router.register("nfse-credentials", NfseCredentialViewSet, basename="nfse-creden
 router.register("todo-projects", ProjectViewSet, basename="todo-project")
 router.register("todos", TodoItemViewSet, basename="todo")
 router.register("notes", NoteViewSet, basename="note")
+router.register("drive/folders", FolderViewSet, basename="folder")
+router.register("drive/documents", DocumentViewSet, basename="document")
 
 app_name = "api"
 

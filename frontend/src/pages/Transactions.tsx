@@ -15,6 +15,7 @@ import {
 import { fetchAccounts } from '../api/accounts';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
 import { useNavigate } from 'react-router-dom';
+import { Wallet, Tags } from 'lucide-react';
 
 function formatCurrency(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -159,10 +160,16 @@ export default function Transactions() {
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
         </div>
 
-        {/* Nova transação — só no desktop (mobile usa FAB) */}
-        <div className="txn-desktop-new-btn">
+        {/* Nova transação e atalhos — só no desktop (mobile usa FAB) */}
+        <div className="txn-desktop-new-btn" style={{ display: 'flex', gap: 'var(--space-sm)' }}>
           <button className="btn btn-primary" onClick={() => navigate('/transactions/new')}>
             + Nova transação
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/accounts')}>
+            <Wallet size={16} /> Contas
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/categories')}>
+            <Tags size={16} /> Categorias
           </button>
         </div>
         {/* Balance */}

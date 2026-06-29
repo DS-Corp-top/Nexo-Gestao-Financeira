@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     "invoices.apps.InvoicesConfig",
     "todos.apps.TodosConfig",
     "notes.apps.NotesConfig",
+    "drive.apps.DriveConfig",
 ] + (["django_browser_reload"] if RUNSERVER else [])
 
 MIDDLEWARE = [

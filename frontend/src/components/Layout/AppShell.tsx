@@ -11,8 +11,9 @@ const pageTitles: Record<string, string> = {
   '/transactions/new': 'Nova Transação',
   '/accounts': 'Contas',
   '/categories': 'Categorias',
-  '/invoices': 'Faturas',
-  '/shopping': 'Compras',
+  '/invoices': 'Fatura de Serviços',
+  '/shopping': 'Lista de Compras',
+  '/drive': 'Drive',
   '/investments': 'Investimentos',
   '/settings/company': 'Configurações',
   '/todos': 'Tarefas',
@@ -52,7 +53,7 @@ export default function AppShell() {
   const toggleCollapse = () => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
-      try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0'); } catch {}
+      try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0'); } catch { }
       return next;
     });
   };
@@ -60,7 +61,7 @@ export default function AppShell() {
   const toggleViewMode = () => {
     setViewMode((prev) => {
       const next = prev === 'desktop' ? 'mobile' : 'desktop';
-      try { localStorage.setItem('view-mode', next); } catch {}
+      try { localStorage.setItem('view-mode', next); } catch { }
       return next;
     });
   };

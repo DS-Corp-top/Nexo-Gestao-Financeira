@@ -2,8 +2,6 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   ArrowLeftRight,
-  Wallet,
-  Tags,
   FileText,
   ShoppingCart,
   TrendingUp,
@@ -13,16 +11,16 @@ import {
   PanelLeftOpen,
   CheckSquare,
   StickyNote,
+  CloudUpload,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
-  { to: '/accounts', icon: Wallet, label: 'Contas' },
-  { to: '/categories', icon: Tags, label: 'Categorias' },
-  { to: '/invoices', icon: FileText, label: 'Faturas' },
-  { to: '/shopping', icon: ShoppingCart, label: 'Compras' },
+  { to: '/invoices', icon: FileText, label: 'Fatura de Serviços' },
+  { to: '/shopping', icon: ShoppingCart, label: 'Lista de Compras' },
+  { to: '/drive', icon: CloudUpload, label: 'Drive' },
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
   { to: '/notes', icon: StickyNote, label: 'Anotações' },
