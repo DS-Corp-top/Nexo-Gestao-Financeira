@@ -19,6 +19,8 @@ export default function Investments() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInv, setEditingInv] = useState<Investment | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [entryFormOpen, setEntryFormOpen] = useState(false);
+  const [entryHistoryOpen, setEntryHistoryOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('active');
@@ -139,11 +141,20 @@ export default function Investments() {
   const totalInvested  = filtered.reduce((s, i) => s + parseFloat(i.total_invested  || '0'), 0);
   const totalWithdrawn = filtered.reduce((s, i) => s + parseFloat(i.total_withdrawn || '0'), 0);
   const totalEarnings  = filtered.reduce((s, i) => s + parseFloat(i.total_earnings  || '0'), 0);
-  const totalNet       = filtered.reduce((s, i) => s + parseFloat(i.net_invested     || '0'), 0);
+  const totalNet       = filtered.reduce((s, i) => (
+    s +
+    parseFloat(i.total_invested || '0') -
+    parseFloat(i.total_withdrawn || '0') +
+    parseFloat(i.total_earnings || '0')
+  ), 0);
 
   if (selectedInvId) {
     // Detail View
     if (invLoading) return <div className="page-header"><span className="spinner"/></div>;
+    const currentTotalInvested = parseFloat(currentInv?.total_invested || '0');
+    const currentTotalWithdrawn = parseFloat(currentInv?.total_withdrawn || '0');
+    const currentTotalEarnings = parseFloat(currentInv?.total_earnings || '0');
+    const currentLiquidBalance = currentTotalInvested - currentTotalWithdrawn + currentTotalEarnings;
     
     return (
       <div className="animate-slide-in investments-page">
@@ -180,14 +191,35 @@ export default function Investments() {
             <div className="kpi-value positive">{formatCurrency(currentInv?.total_earnings || 0)}</div>
           </div>
           <div className="kpi-card">
-            <div className="kpi-label">Saldo Líquido (Aportes)</div>
-            <div className="kpi-value accent">{formatCurrency(currentInv?.net_invested || 0)}</div>
+            <div className="kpi-label">Saldo Líquido</div>
+            <div className="kpi-value accent">{formatCurrency(currentLiquidBalance)}</div>
           </div>
         </div>
 
-        <div className="card">
+        <div className="card investment-entry-card">
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-md)' }}>Novo Lançamento</h3>
-          <form className="investment-entry-form" onSubmit={handleCreateEntry} style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-xl)' }}>
+          <button
+            type="button"
+            onClick={() => setEntryFormOpen((open) => !open)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--space-sm)',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--color-text-primary)',
+              padding: 0,
+              marginBottom: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '1rem', fontWeight: 600 }}>Novo lançamento</span>
+            {entryFormOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+          {entryFormOpen && (
+          <form className="investment-entry-form" onSubmit={handleCreateEntry} style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
             <select name="entry_type" className="select" style={{ width: 140 }} required>
               <option value="deposit">Aporte</option>
               <option value="withdrawal">Resgate</option>
@@ -201,8 +233,33 @@ export default function Investments() {
               Adicionar
             </button>
           </form>
+          )}
 
+        </div>
+
+        <div className="card investment-history-card">
+          <button
+            type="button"
+            onClick={() => setEntryHistoryOpen((open) => !open)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--space-sm)',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--color-text-primary)',
+              padding: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '1rem', fontWeight: 600 }}>Histórico de lançamentos</span>
+            {entryHistoryOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-md)' }}>Histórico de Lançamentos</h3>
+          {entryHistoryOpen && (
+          <>
           {currentInv?.entries?.length === 0 ? (
             <div className="empty-state" style={{ padding: 'var(--space-lg)' }}>
               <p className="empty-state-text">Nenhum lançamento registrado.</p>
@@ -246,6 +303,8 @@ export default function Investments() {
                 </tbody>
               </table>
             </div>
+          )}
+          </>
           )}
         </div>
         
@@ -373,7 +432,12 @@ export default function Investments() {
         </div>
       ) : (
         <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
-          {filtered.map((inv) => (
+          {filtered.map((inv) => {
+            const liquidBalance =
+              parseFloat(inv.total_invested || '0') -
+              parseFloat(inv.total_withdrawn || '0') +
+              parseFloat(inv.total_earnings || '0');
+            return (
             <div 
               key={inv.id} 
               className="card" 
@@ -401,11 +465,12 @@ export default function Investments() {
                 </div>
                 <div className="investment-card-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Líquido</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(inv.net_invested)}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(liquidBalance)}</span>
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

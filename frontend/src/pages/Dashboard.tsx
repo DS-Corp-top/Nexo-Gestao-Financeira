@@ -170,14 +170,75 @@ export default function Dashboard() {
             <button className="btn btn-ghost btn-icon" onClick={() => setChartsOpen(true)} title="Gráficos">
               <BarChart2 size={20} />
             </button>
-            <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
-              <Bell size={20} />
-              {data.due_notifications.count > 0 && (
-                <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)', color: '#fff', fontSize: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', lineHeight: 1 }}>
-                  {data.due_notifications.count}
-                </span>
+            <div style={{ position: 'relative' }}>
+              <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
+                <Bell size={20} />
+                {data.due_notifications.count > 0 && (
+                  <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)', color: '#fff', fontSize: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', lineHeight: 1 }}>
+                    {data.due_notifications.count}
+                  </span>
+                )}
+              </button>
+              {bellOpen && (
+                <div className="card animate-fade-in" style={{ position: 'absolute', top: 'calc(100% + 0.5rem)', right: 0, width: 'min(320px, calc(100vw - 2rem))', maxHeight: 'min(400px, calc(100vh - 10rem))', overflowY: 'auto', zIndex: 50 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
+                    <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Bell size={14} />
+                      Vencimentos do Mês
+                      {data.due_notifications.overdue_count > 0 && (
+                        <span className="badge badge-expense" style={{ fontSize: '0.65rem' }}>
+                          {data.due_notifications.overdue_count} em atraso
+                        </span>
+                      )}
+                    </h3>
+                    <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen(false)} style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      ✕
+                    </button>
+                  </div>
+                  {data.due_notifications.items.length === 0 ? (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-md) 0' }}>
+                      Nenhum vencimento pendente
+                    </p>
+                  ) : (
+                    <div>
+                      {data.due_notifications.items.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 0',
+                            borderBottom: '1px solid var(--color-border)',
+                            fontSize: '0.85rem',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: item.overdue ? 'var(--color-danger)' : 'var(--color-text-primary)' }}>
+                              {item.description}
+                            </p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                              {new Date(item.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                              {item.category && ` · ${item.category}`}
+                              {item.account && ` · ${item.account}`}
+                              {item.overdue && <span style={{ color: 'var(--color-danger)', marginLeft: 4 }}>• Em atraso</span>}
+                            </p>
+                          </div>
+                          <span style={{ fontWeight: 700, color: 'var(--color-danger)', marginLeft: 12, whiteSpace: 'nowrap' }}>
+                            {formatCurrency(item.amount)}
+                          </span>
+                        </div>
+                      ))}
+                      {data.due_notifications.count > data.due_notifications.items.length && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-sm)' }}>
+                          +{data.due_notifications.count - data.due_notifications.items.length} mais
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
 
@@ -212,85 +273,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Vencimentos panel */}
-      {bellOpen && (
-        <div className="card animate-fade-in" style={{ marginBottom: 'var(--space-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
-            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Bell size={14} />
-              Vencimentos do Mês
-              {data.due_notifications.overdue_count > 0 && (
-                <span className="badge badge-expense" style={{ fontSize: '0.65rem' }}>
-                  {data.due_notifications.overdue_count} em atraso
-                </span>
-              )}
-            </h3>
-            <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen(false)} style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-              ✕
-            </button>
-          </div>
-
-          {data.due_notifications.items.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: 'var(--space-md) 0' }}>
-              Nenhum vencimento pendente
-            </p>
-          ) : (
-            <div>
-              {data.due_notifications.items.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom: '1px solid var(--color-border)',
-                    fontSize: '0.85rem',
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: item.overdue ? 'var(--color-danger)' : 'var(--color-text-primary)' }}>
-                      {item.description}
-                    </p>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                      {new Date(item.date + 'T00:00:00').toLocaleDateString('pt-BR')}
-                      {item.category && ` · ${item.category}`}
-                      {item.account && ` · ${item.account}`}
-                      {item.overdue && <span style={{ color: 'var(--color-danger)', marginLeft: 4 }}>• Em atraso</span>}
-                    </p>
-                  </div>
-                  <span style={{ fontWeight: 700, color: 'var(--color-danger)', marginLeft: 12, whiteSpace: 'nowrap' }}>
-                    {formatCurrency(item.amount)}
-                  </span>
-                </div>
-              ))}
-              {data.due_notifications.count > data.due_notifications.items.length && (
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-sm)' }}>
-                  +{data.due_notifications.count - data.due_notifications.items.length} mais
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Pendências e alertas */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-md)' }}>
           Pendências e alertas
         </h3>
         <div className="kpi-grid">
-          {/* Total cartão */}
-          <div className="kpi-card" style={{ position: 'relative' }}>
-            {data.alerts.credit_card_month_count > 0 && (
-              <span style={{ position: 'absolute', top: 10, right: 10, background: '#3b82f6', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
-                {data.alerts.credit_card_month_count}
-              </span>
-            )}
-            <div className="kpi-label">Total cartão</div>
-            <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_month_total)}</div>
-          </div>
-
           {/* Despesas pendentes */}
           <div className="kpi-card" style={{ position: 'relative' }}>
             {data.alerts.pending_expense_count > 0 && (
@@ -313,10 +301,15 @@ export default function Dashboard() {
             <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_open_total)}</div>
           </div>
 
-          {/* Limite do cartão */}
-          <div className="kpi-card">
-            <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite do cartão</div>
-            <div className="kpi-value accent">{formatCurrency(data.alerts.credit_card_limit)}</div>
+          {/* Total cartão */}
+          <div className="kpi-card" style={{ position: 'relative' }}>
+            {data.alerts.credit_card_month_count > 0 && (
+              <span style={{ position: 'absolute', top: 10, right: 10, background: '#3b82f6', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
+                {data.alerts.credit_card_month_count}
+              </span>
+            )}
+            <div className="kpi-label">Total cartão</div>
+            <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_month_total)}</div>
           </div>
 
           {/* Balanço consolidado */}
@@ -327,16 +320,22 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Total investido */}
+          {/* Limite do cartão */}
           <div className="kpi-card">
-            <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Total investido</div>
-            <div className="kpi-value accent">{formatCurrency(data.kpis.investments_total)}</div>
+            <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite do cartão</div>
+            <div className="kpi-value accent">{formatCurrency(data.alerts.credit_card_limit)}</div>
           </div>
 
           {/* Rendimentos */}
           <div className="kpi-card">
             <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Rendimentos</div>
             <div className="kpi-value positive">{formatCurrency(data.kpis.investments_earnings)}</div>
+          </div>
+
+          {/* Total investido */}
+          <div className="kpi-card">
+            <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Total investido</div>
+            <div className="kpi-value accent">{formatCurrency(data.kpis.investments_total)}</div>
           </div>
 
           {/* Faturas emitidas */}

@@ -300,8 +300,10 @@ select.select option:checked {
 
 .btn-ghost {
   background: transparent;
+  border: none;
   color: var(--color-text-secondary);
   padding: 8px 12px;
+  cursor: pointer;
 }
 
 .btn-ghost:hover:not(:disabled) {
@@ -320,9 +322,47 @@ select.select option:checked {
 }
 
 .btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px;
   width: 36px;
   height: 36px;
+}
+
+.btn-ghost.btn-icon {
+  background: transparent;
+  border: none;
+}
+
+.investment-entry-card > h3:first-child {
+  display: none;
+}
+
+.investment-history-card > h3 {
+  display: none;
+}
+
+.investment-entry-card,
+.investment-history-card {
+  margin-bottom: var(--space-lg);
+  padding: 0;
+  overflow: hidden;
+}
+
+.investment-entry-card > button,
+.investment-history-card > button {
+  min-height: 58px;
+  padding: 0 var(--space-lg) !important;
+}
+
+.investment-entry-card > form {
+  padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.investment-history-card > .empty-state,
+.investment-history-card > .table-wrapper {
+  margin: 0 var(--space-lg) var(--space-lg);
 }
 
 /* ============================================
