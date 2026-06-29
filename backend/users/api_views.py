@@ -379,8 +379,20 @@ class SystemTenantDetailView(APIView):
 
     def delete(self, request, pk):
         from tenants.models import Tenant
+        from django.contrib.auth import get_user_model
+        
         tenant = get_object_or_404(Tenant, pk=pk)
         tenant.delete()
+        
+        # Limpa os usuários que ficaram sem nenhum tenant após a exclusão
+        User = get_user_model()
+        orphaned_users = User.objects.filter(
+            tenant_memberships__isnull=True,
+            is_superuser=False,
+            is_staff=False
+        )
+        orphaned_users.delete()
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

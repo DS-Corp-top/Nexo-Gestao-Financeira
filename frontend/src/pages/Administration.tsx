@@ -857,6 +857,7 @@ export default function Administration() {
   const { data: members = [] } = useQuery({
     queryKey: ['tenant-members'],
     queryFn: fetchTenantMembers,
+    refetchInterval: 15000,
   });
 
   const { data: companies = [] } = useQuery({
@@ -868,29 +869,38 @@ export default function Administration() {
     queryKey: ['pending-users'],
     queryFn: fetchPendingUsers,
     enabled: Boolean(currentUser?.is_superuser),
+    refetchInterval: 15000,
   });
 
   const { data: systemStats } = useQuery({
     queryKey: ['system-stats'],
     queryFn: fetchSystemStats,
     enabled: Boolean(currentUser?.is_superuser),
+    refetchInterval: 15000,
   });
 
   const { data: systemTenants = [], isLoading: tenantsLoading } = useQuery({
     queryKey: ['system-tenants'],
     queryFn: fetchSystemTenants,
     enabled: Boolean(currentUser?.is_superuser),
+    refetchInterval: 15000,
   });
 
   const { data: systemUsers = [], isLoading: usersLoading } = useQuery({
     queryKey: ['system-users'],
     queryFn: fetchSystemUsers,
     enabled: Boolean(currentUser?.is_superuser),
+    refetchInterval: 15000,
   });
 
   const approveMutation = useMutation({
     mutationFn: approveUser,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-users'] });
+      queryClient.invalidateQueries({ queryKey: ['system-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['system-users'] });
+      queryClient.invalidateQueries({ queryKey: ['system-tenants'] });
+    },
   });
 
   const isSuperuser = Boolean(currentUser?.is_superuser);

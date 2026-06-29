@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -15,7 +15,7 @@ import {
 import { fetchAccounts } from '../api/accounts';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Tags } from 'lucide-react';
+import { Wallet, Tags, ChevronDown } from 'lucide-react';
 
 function formatCurrency(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -48,7 +48,19 @@ export default function Transactions() {
   const [orderBy, setOrderBy] = useState('-date');
   const navigate = useNavigate();
   const [clearingTx, setClearingTx] = useState<Transaction | null>(null);
-  
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const queryClient = useQueryClient();
 
   const { data: transactions, isLoading } = useQuery({
@@ -165,27 +177,40 @@ export default function Transactions() {
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
         </div>
 
-        {/* Atalhos para Contas e Categorias */}
-        <div 
-          style={{ 
-            display: 'flex', 
-            gap: 'var(--space-sm)', 
-            overflowX: 'auto', 
-            paddingBottom: '4px',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-          className="hide-scrollbar"
-        >
+        {/* Menu de Ações Rápidas */}
+        <div ref={menuRef} style={{ position: 'relative', display: 'flex' }}>
           <button className="btn btn-primary" onClick={() => navigate('/transactions/new')}>
             + Nova transação
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/accounts')}>
-            <Wallet size={16} /> Contas
+          <button className="btn btn-secondary" style={{ marginLeft: 'var(--space-sm)' }} onClick={() => setShowMenu(!showMenu)}>
+            Mais <ChevronDown size={16} />
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/categories')}>
-            <Tags size={16} /> Categorias
-          </button>
+          
+          {showMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: '0.5rem',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              zIndex: 50,
+              minWidth: '200px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+            }}>
+              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { navigate('/accounts'); setShowMenu(false); }}>
+                <Wallet size={16} /> Contas
+              </button>
+              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { navigate('/categories'); setShowMenu(false); }}>
+                <Tags size={16} /> Categorias
+              </button>
+            </div>
+          )}
         </div>
         {/* Balance */}
         <div id="statement-balance">
