@@ -1306,7 +1306,7 @@ select.select option:checked {
 
 .txn-month-totals-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .txn-month-total-item {
@@ -1314,7 +1314,7 @@ select.select option:checked {
   padding: 0.5rem 0.65rem 0.6rem;
 }
 
-.txn-month-total-item:first-child {
+.txn-month-total-item:not(:last-child) {
   border-right: 1px solid rgba(148, 163, 184, 0.18);
 }
 

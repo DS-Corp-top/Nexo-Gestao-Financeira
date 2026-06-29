@@ -11,8 +11,8 @@ class InvestmentEntryInline(admin.TabularInline):
 
 @admin.register(Investment)
 class InvestmentAdmin(admin.ModelAdmin):
-    list_display = ("name", "investment_type", "broker", "is_active", "user")
-    list_filter = ("investment_type", "is_active")
+    list_display = ("name", "investment_type", "currency", "broker", "is_active", "user")
+    list_filter = ("investment_type", "currency", "is_active")
     search_fields = ("name", "broker")
     inlines = [InvestmentEntryInline]
 

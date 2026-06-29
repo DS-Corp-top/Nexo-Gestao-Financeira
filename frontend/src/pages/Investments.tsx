@@ -3,15 +3,41 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { 
-  fetchInvestments, fetchInvestment, createInvestment, updateInvestment, deleteInvestment,
-  createInvestmentEntry, deleteInvestmentEntry, type Investment 
+  fetchInvestments, fetchInvestment, fetchInvestmentExchangeRates, createInvestment, updateInvestment, deleteInvestment,
+  createInvestmentEntry, deleteInvestmentEntry, type Currency, type Investment
 } from '../api/investments';
 import InvestmentModal from '../components/Investments/InvestmentModal';
 
-function formatCurrency(value: string | number): string {
+const currencyOrder: Currency[] = ['BRL', 'USD', 'EUR'];
+const currencyLabels: Record<Currency, string> = {
+  BRL: 'Real',
+  USD: 'Dolar',
+  EUR: 'Euro',
+};
+
+function getCurrency(currency?: Currency | null): Currency {
+  return currency || 'BRL';
+}
+
+function formatCurrency(value: string | number, currency: Currency = 'BRL'): string {
   if (value == null) return '';
   const num = typeof value === 'string' ? parseFloat(value) : value;
-  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return num.toLocaleString('pt-BR', { style: 'currency', currency });
+}
+
+function parseAmount(value: string | number): number {
+  return typeof value === 'string' ? parseFloat(value || '0') : value;
+}
+
+function getCurrencyTotals(items: Investment[], getValue: (investment: Investment) => number): Record<Currency, number> {
+  return items.reduce<Record<Currency, number>>(
+    (totals, investment) => {
+      const currency = getCurrency(investment.currency);
+      totals[currency] += getValue(investment);
+      return totals;
+    },
+    { BRL: 0, USD: 0, EUR: 0 }
+  );
 }
 
 export default function Investments() {
@@ -22,7 +48,8 @@ export default function Investments() {
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [entryHistoryOpen, setEntryHistoryOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('');
+  const [filterType, setFilterType] = useState<Investment['investment_type'] | ''>('');
+  const [filterCurrency, setFilterCurrency] = useState('');
   const [filterStatus, setFilterStatus] = useState('active');
 
   const queryClient = useQueryClient();
@@ -119,9 +146,14 @@ export default function Investments() {
     }
   };
 
-  const typeLabels: Record<string, string> = {
-    stocks: 'Acoes', fii: 'FII', fixed_income: 'Renda Fixa',
-    crypto: 'Cripto', savings: 'Poupanca', emergency: 'Reserva', other: 'Outros',
+  const typeLabels: Record<Investment['investment_type'], string> = {
+    stocks: 'Acoes',
+    fii: 'FII',
+    fixed_income: 'Renda Fixa',
+    crypto: 'Cripto',
+    savings: 'Poupanca',
+    emergency: 'Reserva',
+    other: 'Outros',
   };
 
   const investmentList = Array.isArray(investments) ? investments : [];
@@ -133,24 +165,93 @@ export default function Investments() {
       if (filterStatus === 'active' && !inv.is_active) return false;
       if (filterStatus === 'inactive' && inv.is_active) return false;
       if (filterType && inv.investment_type !== filterType) return false;
+      if (filterCurrency && inv.currency !== filterCurrency) return false;
       if (search && !name.toLowerCase().includes(search.toLowerCase()) && !broker.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [investmentList, filterStatus, filterType, search]);
+  }, [investmentList, filterStatus, filterType, filterCurrency, search]);
 
-  const totalInvested  = filtered.reduce((s, i) => s + parseFloat(i.total_invested  || '0'), 0);
-  const totalWithdrawn = filtered.reduce((s, i) => s + parseFloat(i.total_withdrawn || '0'), 0);
-  const totalEarnings  = filtered.reduce((s, i) => s + parseFloat(i.total_earnings  || '0'), 0);
-  const totalNet       = filtered.reduce((s, i) => (
-    s +
+  const totalInvested = getCurrencyTotals(filtered, (i) => parseFloat(i.total_invested || '0'));
+  const totalWithdrawn = getCurrencyTotals(filtered, (i) => parseFloat(i.total_withdrawn || '0'));
+  const totalEarnings = getCurrencyTotals(filtered, (i) => parseFloat(i.total_earnings || '0'));
+  const totalNet = getCurrencyTotals(filtered, (i) => (
     parseFloat(i.total_invested || '0') -
     parseFloat(i.total_withdrawn || '0') +
     parseFloat(i.total_earnings || '0')
-  ), 0);
+  ));
+
+  const hasForeignCurrency = filtered.some((investment) => getCurrency(investment.currency) !== 'BRL');
+  const {
+    data: exchangeRates,
+    isLoading: exchangeRatesLoading,
+    isError: exchangeRatesError,
+  } = useQuery({
+    queryKey: ['investment-exchange-rates'],
+    queryFn: fetchInvestmentExchangeRates,
+    enabled: hasForeignCurrency,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const canConvertTotals = !hasForeignCurrency || !!exchangeRates;
+  const convertTotalsToBrl = (totals: Record<Currency, number>) => currencyOrder.reduce((sum, currency) => {
+    const rate = currency === 'BRL' ? 1 : parseAmount(exchangeRates?.rates[currency] || 0);
+    return sum + totals[currency] * rate;
+  }, 0);
+  const consolidatedWithdrawnBrl = convertTotalsToBrl(totalWithdrawn);
+  const consolidatedEarningsBrl = convertTotalsToBrl(totalEarnings);
+  const consolidatedNetBrl = convertTotalsToBrl(totalNet);
+
+  const renderCurrencyTotals = (totals: Record<Currency, number>, color: string) => {
+    const visibleCurrencies = currencyOrder.filter((currency) => totals[currency] !== 0);
+    const currencies: Currency[] = visibleCurrencies.length > 0 ? visibleCurrencies : ['BRL'];
+    return (
+      <div style={{ display: 'grid', gap: 2 }}>
+        {currencies.map((currency) => (
+          <div key={currency} style={{ fontSize: '1.3rem', fontWeight: 800, color }}>
+            {formatCurrency(totals[currency], currency)}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderForeignInvestedTotal = (currency: Currency) => (
+    <div style={{ display: 'grid', gap: 2 }}>
+      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+        {formatCurrency(totalInvested[currency], currency)}
+      </div>
+    </div>
+  );
+
+  const renderConvertedBrlTotal = (value: number, color: string) => {
+    if (!canConvertTotals) {
+      return (
+        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+          {exchangeRatesLoading ? 'Carregando cotacao...' : exchangeRatesError ? 'Cotacao indisponivel' : 'Aguardando cotacao'}
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'grid', gap: 2 }}>
+        <div style={{ fontSize: '1.3rem', fontWeight: 800, color }}>
+          {formatCurrency(value, 'BRL')}
+        </div>
+        {hasForeignCurrency && exchangeRates && (
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+            USD {Number(exchangeRates.rates.USD).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} - EUR {Number(exchangeRates.rates.EUR).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderConsolidatedNet = () => renderConvertedBrlTotal(consolidatedNetBrl, 'var(--color-accent)');
 
   if (selectedInvId) {
     // Detail View
     if (invLoading) return <div className="page-header"><span className="spinner"/></div>;
+    const currentCurrency = getCurrency(currentInv?.currency);
     const currentTotalInvested = parseFloat(currentInv?.total_invested || '0');
     const currentTotalWithdrawn = parseFloat(currentInv?.total_withdrawn || '0');
     const currentTotalEarnings = parseFloat(currentInv?.total_earnings || '0');
@@ -169,9 +270,12 @@ export default function Investments() {
                 <button className="btn-ghost btn-icon" style={{ width: 24, height: 24, padding: 4 }} onClick={() => handleOpenEdit(currentInv!)}>
                   <Edit2 size={14} />
                 </button>
+                <span className="badge" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
+                  {currentCurrency}
+                </span>
               </h2>
               <div className="investment-detail-meta" style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                {currentInv?.broker} • {currentInv?.investment_type}
+                {[currentInv?.broker, currentInv ? typeLabels[currentInv.investment_type] : null].filter(Boolean).join(' - ')}
               </div>
             </div>
           </div>
@@ -180,19 +284,19 @@ export default function Investments() {
         <div className="kpi-grid" style={{ marginBottom: 'var(--space-lg)' }}>
           <div className="kpi-card">
             <div className="kpi-label">Aportes (Total)</div>
-            <div className="kpi-value">{formatCurrency(currentInv?.total_invested || 0)}</div>
+            <div className="kpi-value">{formatCurrency(currentInv?.total_invested || 0, currentCurrency)}</div>
           </div>
           <div className="kpi-card">
             <div className="kpi-label">Resgates (Total)</div>
-            <div className="kpi-value negative">{formatCurrency(currentInv?.total_withdrawn || 0)}</div>
+            <div className="kpi-value negative">{formatCurrency(currentInv?.total_withdrawn || 0, currentCurrency)}</div>
           </div>
           <div className="kpi-card">
             <div className="kpi-label">Rendimentos / Div.</div>
-            <div className="kpi-value positive">{formatCurrency(currentInv?.total_earnings || 0)}</div>
+            <div className="kpi-value positive">{formatCurrency(currentInv?.total_earnings || 0, currentCurrency)}</div>
           </div>
           <div className="kpi-card">
             <div className="kpi-label">Saldo Líquido</div>
-            <div className="kpi-value accent">{formatCurrency(currentLiquidBalance)}</div>
+            <div className="kpi-value accent">{formatCurrency(currentLiquidBalance, currentCurrency)}</div>
           </div>
         </div>
 
@@ -227,7 +331,7 @@ export default function Investments() {
               <option value="yield">Rendimento</option>
             </select>
             <input type="date" name="date" className="input" defaultValue={new Date().toISOString().split('T')[0]} style={{ width: 140 }} required />
-            <input type="number" step="0.01" min="0.01" name="amount" className="input" placeholder="Valor (R$)" style={{ width: 140 }} required />
+            <input type="number" step="0.01" min="0.01" name="amount" className="input" placeholder={`Valor (${currentCurrency})`} style={{ width: 140 }} required />
             <input type="text" name="description" className="input" placeholder="Descrição (opcional)" style={{ flex: 1, minWidth: 200 }} />
             <button type="submit" className="btn btn-primary" disabled={createEntryMutation.isPending}>
               Adicionar
@@ -288,7 +392,7 @@ export default function Investments() {
                       </td>
                       <td>{entry.description || '-'}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600, color: entry.entry_type === 'withdrawal' ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                        {entry.entry_type === 'withdrawal' ? '-' : '+'}{formatCurrency(entry.amount)}
+                        {entry.entry_type === 'withdrawal' ? '-' : '+'}{formatCurrency(entry.amount, currentCurrency)}
                       </td>
                       <td>
                         <button 
@@ -338,19 +442,27 @@ export default function Investments() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Aportado</div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{formatCurrency(totalInvested)}</div>
+          {renderCurrencyTotals(totalInvested, 'var(--color-text-primary)')}
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Investido USD</div>
+          {renderForeignInvestedTotal('USD')}
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Investido EUR</div>
+          {renderForeignInvestedTotal('EUR')}
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Resgates</div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-danger)' }}>{formatCurrency(totalWithdrawn)}</div>
+          {renderConvertedBrlTotal(consolidatedWithdrawnBrl, 'var(--color-danger)')}
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos</div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalEarnings)}</div>
+          {renderConvertedBrlTotal(consolidatedEarningsBrl, 'var(--color-success)')}
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Patrimônio Líquido</div>
-          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-accent)' }}>{formatCurrency(totalNet)}</div>
+          {renderConsolidatedNet()}
         </div>
       </div>
 
@@ -367,6 +479,7 @@ export default function Investments() {
               {[
                 filterStatus === 'active' ? 'Ativos' : filterStatus === 'inactive' ? 'Inativos' : 'Todos',
                 filterType ? typeLabels[filterType] : '',
+                filterCurrency ? `${currencyLabels[filterCurrency as Currency]} (${filterCurrency})` : '',
                 search ? `"${search}"` : '',
               ].filter(Boolean).join(' · ')}
             </div>
@@ -389,9 +502,17 @@ export default function Investments() {
                 />
               </div>
               <div>
-                <select className="input" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                <select className="input" value={filterType} onChange={(e) => setFilterType(e.target.value as Investment['investment_type'] | '')}>
                   <option value="">Todos os tipos</option>
                   {Object.entries(typeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <select className="input" value={filterCurrency} onChange={(e) => setFilterCurrency(e.target.value)}>
+                  <option value="">Todas as moedas</option>
+                  {currencyOrder.map((currency) => (
+                    <option key={currency} value={currency}>{currencyLabels[currency]} ({currency})</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -406,7 +527,7 @@ export default function Investments() {
               type="button"
               className="btn btn-secondary"
               style={{ width: '100%' }}
-              onClick={() => { setSearch(''); setFilterType(''); setFilterStatus('active'); }}
+              onClick={() => { setSearch(''); setFilterType(''); setFilterCurrency(''); setFilterStatus('active'); }}
             >
               Limpar
             </button>
@@ -433,6 +554,7 @@ export default function Investments() {
       ) : (
         <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
           {filtered.map((inv) => {
+            const invCurrency = getCurrency(inv.currency);
             const liquidBalance =
               parseFloat(inv.total_invested || '0') -
               parseFloat(inv.total_withdrawn || '0') +
@@ -448,24 +570,33 @@ export default function Investments() {
                 <div>
                   <h3 className="investment-card-title" style={{ fontSize: '1.1rem', fontWeight: 600 }}>{inv.name}</h3>
                   <div className="investment-card-meta" style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                    {inv.broker} • {inv.investment_type}
+                    {[inv.broker, typeLabels[inv.investment_type]].filter(Boolean).join(' - ')}
                   </div>
                 </div>
-                <PiggyBank style={{ color: 'var(--color-accent)', opacity: 0.5 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="badge" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
+                    {invCurrency}
+                  </span>
+                  <PiggyBank style={{ color: 'var(--color-accent)', opacity: 0.5 }} />
+                </div>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginTop: 'var(--space-md)' }}>
                 <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Total Aportado</span>
-                  <span>{formatCurrency(inv.total_invested)}</span>
+                  <span>{formatCurrency(inv.total_invested, invCurrency)}</span>
+                </div>
+                <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Resgates</span>
+                  <span style={{ color: 'var(--color-danger)' }}>{formatCurrency(inv.total_withdrawn, invCurrency)}</span>
                 </div>
                 <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Rendimentos</span>
-                  <span className="positive">{formatCurrency(inv.total_earnings)}</span>
+                  <span style={{ color: 'var(--color-success)' }}>{formatCurrency(inv.total_earnings, invCurrency)}</span>
                 </div>
                 <div className="investment-card-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Líquido</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(liquidBalance)}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(liquidBalance, invCurrency)}</span>
                 </div>
               </div>
             </div>

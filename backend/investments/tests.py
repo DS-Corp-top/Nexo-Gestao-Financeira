@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -57,6 +58,7 @@ class InvestmentApiTests(TestCase):
             investment_type=Investment.InvestmentType.STOCKS,
         )
         self.client = APIClient()
+        self.client.defaults["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest"
         self.client.force_authenticate(self.user)
 
     def test_investment_api_create_assigns_user_and_tenant(self):
@@ -65,6 +67,7 @@ class InvestmentApiTests(TestCase):
             {
                 "name": "Reserva API",
                 "investment_type": Investment.InvestmentType.EMERGENCY,
+                "currency": Investment.Currency.USD,
                 "broker": "Banco Reserva",
                 "is_active": True,
             },
@@ -75,6 +78,7 @@ class InvestmentApiTests(TestCase):
         investment = Investment.objects.get(name="Reserva API")
         self.assertEqual(investment.user, self.user)
         self.assertEqual(investment.tenant, self.tenant)
+        self.assertEqual(investment.currency, Investment.Currency.USD)
 
     def test_investment_api_list_is_limited_to_current_tenant(self):
         response = self.client.get("/api/v1/investments/")
@@ -134,3 +138,38 @@ class InvestmentApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    @patch("investments.api_views.fetch_brl_exchange_rates")
+    def test_exchange_rates_endpoint_returns_brl_rates(self, fetch_rates):
+        fetch_rates.return_value = {
+            "base": "BRL",
+            "rates": {
+                "BRL": Decimal("1"),
+                "USD": Decimal("5.4321"),
+                "EUR": Decimal("6.1234"),
+            },
+            "updated_at": "2026-06-29 10:30:00",
+            "source": "AwesomeAPI",
+        }
+
+        response = self.client.get("/api/v1/investments/exchange-rates/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["base"], "BRL")
+        self.assertEqual(response.data["rates"]["USD"], "5.4321")
+        self.assertEqual(response.data["rates"]["EUR"], "6.1234")
+
+    @patch("investments.api_views.fetch_bacen_banks")
+    def test_bacen_banks_endpoint_returns_bank_suggestions(self, fetch_banks):
+        fetch_banks.return_value = [
+            {
+                "cnpj": "28195667",
+                "name": "BANCO ABC BRASIL S.A.",
+                "segment": "Banco Multiplo",
+            }
+        ]
+
+        response = self.client.get("/api/v1/investments/bacen-banks/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"][0]["name"], "BANCO ABC BRASIL S.A.")

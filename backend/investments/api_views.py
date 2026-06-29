@@ -2,9 +2,12 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from common.api_mixins import TenantQuerySetMixin
+from investments.bacen import BacenBanksError, fetch_bacen_banks
+from investments.exchange_rates import ExchangeRateError, fetch_brl_exchange_rates
 from investments.models import Investment, InvestmentEntry
 from investments.serializers import (
     InvestmentEntrySerializer,
@@ -60,3 +63,28 @@ class InvestmentEntryViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             serializer.save(user=self.request.user, tenant=self.get_tenant())
         except DjangoValidationError as exc:
             raise ValidationError(exc.message_dict) from exc
+
+
+class InvestmentExchangeRatesView(APIView):
+    def get(self, request):
+        try:
+            data = fetch_brl_exchange_rates()
+        except ExchangeRateError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({
+            "base": data["base"],
+            "rates": {currency: str(rate) for currency, rate in data["rates"].items()},
+            "updated_at": data["updated_at"],
+            "source": data["source"],
+        })
+
+
+class BacenBanksView(APIView):
+    def get(self, request):
+        try:
+            banks = fetch_bacen_banks()
+        except BacenBanksError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({"results": banks})

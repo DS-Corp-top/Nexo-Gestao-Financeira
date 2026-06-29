@@ -10,7 +10,7 @@ from users.api_views import CookieTokenRefreshView as TokenRefreshView
 from accounts.api_views import AccountViewSet, CardMonthlyLimitViewSet
 from categories.api_views import CategoryViewSet
 from dashboard.api_views import DashboardView
-from investments.api_views import InvestmentEntryViewSet, InvestmentViewSet
+from investments.api_views import BacenBanksView, InvestmentEntryViewSet, InvestmentExchangeRatesView, InvestmentViewSet
 from invoices.api_views import ClientViewSet, InvoiceViewSet
 from shopping.api_views import ShoppingItemViewSet, ShoppingListViewSet
 from tenants.api_views import (
@@ -83,6 +83,8 @@ urlpatterns = [
 
     # Dashboard
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path("investments/exchange-rates/", InvestmentExchangeRatesView.as_view(), name="investment_exchange_rates"),
+    path("investments/bacen-banks/", BacenBanksView.as_view(), name="investment_bacen_banks"),
 
     # Tenant profile
     path("tenant/", TenantProfileView.as_view(), name="tenant_profile"),

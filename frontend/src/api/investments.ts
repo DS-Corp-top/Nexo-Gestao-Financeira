@@ -1,5 +1,20 @@
 import api from './client';
 
+export type Currency = 'BRL' | 'USD' | 'EUR';
+
+export interface ExchangeRates {
+  base: 'BRL';
+  rates: Record<Currency, string>;
+  updated_at: string | null;
+  source: string;
+}
+
+export interface BacenBank {
+  cnpj: string;
+  name: string;
+  segment: string;
+}
+
 export interface InvestmentEntry {
   id: number;
   investment: number;
@@ -14,6 +29,7 @@ export interface Investment {
   id: number;
   name: string;
   investment_type: 'stocks' | 'fii' | 'fixed_income' | 'crypto' | 'savings' | 'emergency' | 'other';
+  currency: Currency;
   broker: string;
   is_active: boolean;
   total_invested: string;
@@ -23,7 +39,7 @@ export interface Investment {
   entries?: InvestmentEntry[];
 }
 
-export type CreateInvestmentPayload = Pick<Investment, 'name' | 'investment_type' | 'broker' | 'is_active'>;
+export type CreateInvestmentPayload = Pick<Investment, 'name' | 'investment_type' | 'currency' | 'broker' | 'is_active'>;
 export type CreateInvestmentEntryPayload = Pick<InvestmentEntry, 'investment' | 'entry_type' | 'amount' | 'date' | 'description'>;
 
 export async function fetchInvestments(): Promise<Investment[]> {
@@ -39,6 +55,16 @@ export async function fetchInvestment(id: number): Promise<Investment> {
 export async function fetchInvestmentEntries(): Promise<InvestmentEntry[]> {
   const { data } = await api.get<any>('/investment-entries/');
   return data.results !== undefined ? data.results : data;
+}
+
+export async function fetchInvestmentExchangeRates(): Promise<ExchangeRates> {
+  const { data } = await api.get<ExchangeRates>('/investments/exchange-rates/');
+  return data;
+}
+
+export async function fetchBacenBanks(): Promise<BacenBank[]> {
+  const { data } = await api.get<{ results: BacenBank[] }>('/investments/bacen-banks/');
+  return data.results;
 }
 
 export async function createInvestment(payload: CreateInvestmentPayload): Promise<Investment> {

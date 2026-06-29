@@ -135,6 +135,11 @@ export default function Transactions() {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }, [monthParam]);
 
+  const monthResult = (
+    parseFloat(summary?.monthly_income_total || '0') -
+    parseFloat(summary?.monthly_expense_total || '0')
+  );
+
   const groupedTransactions = useMemo(() => {
     if (!transactions) return [];
     const groups: { date: string; items: Transaction[] }[] = [];
@@ -226,6 +231,12 @@ export default function Transactions() {
                 <div className="txn-month-total-item">
                   <span className="txn-balance-label">Despesas</span>
                   <strong className="txn-month-total-value txn-month-total-expense">{formatCurrency(summary?.monthly_expense_total || '0')}</strong>
+                </div>
+                <div className="txn-month-total-item">
+                  <span className="txn-balance-label">Resultado</span>
+                  <strong className={`txn-month-total-value ${monthResult < 0 ? 'txn-month-total-expense' : 'txn-month-total-income'}`}>
+                    {formatCurrency(monthResult)}
+                  </strong>
                 </div>
               </div>
             </div>

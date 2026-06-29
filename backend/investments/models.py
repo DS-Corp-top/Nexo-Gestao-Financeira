@@ -20,6 +20,11 @@ class Investment(models.Model):
         EMERGENCY = "emergency", "Reserva de Emergência"
         OTHER = "other", "Outro"
 
+    class Currency(models.TextChoices):
+        BRL = "BRL", "Real"
+        USD = "USD", "Dolar"
+        EUR = "EUR", "Euro"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -38,6 +43,12 @@ class Investment(models.Model):
         max_length=20,
         choices=InvestmentType.choices,
         default=InvestmentType.OTHER,
+    )
+    currency = models.CharField(
+        "Moeda",
+        max_length=3,
+        choices=Currency.choices,
+        default=Currency.BRL,
     )
     broker = models.CharField("Corretora / Banco", max_length=120, blank=True)
     is_active = models.BooleanField("Ativo", default=True)
