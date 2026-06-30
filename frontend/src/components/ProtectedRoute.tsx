@@ -2,8 +2,16 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import type { ReactNode } from 'react';
 
-export default function ProtectedRoute({ children, requireSuperuser = false }: { children: ReactNode; requireSuperuser?: boolean }) {
-  const { isLoggedIn, isLoading, user } = useAuth();
+export default function ProtectedRoute({
+  children,
+  requireSuperuser = false,
+  requireAdmin = false,
+}: {
+  children: ReactNode;
+  requireSuperuser?: boolean;
+  requireAdmin?: boolean;
+}) {
+  const { isLoggedIn, isLoading, user, tenant } = useAuth();
 
   if (isLoading) {
     return (
@@ -18,6 +26,11 @@ export default function ProtectedRoute({ children, requireSuperuser = false }: {
   }
 
   if (requireSuperuser && !user?.is_superuser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const isAdmin = user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin';
+  if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

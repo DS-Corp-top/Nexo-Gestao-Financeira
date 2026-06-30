@@ -4,8 +4,10 @@ import { Plus, Edit2, Tags, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchCategories, createCategory, updateCategory, deleteCategory, type Category } from '../api/categories';
 import CategoryModal from '../components/Categories/CategoryModal';
 import { useViewMode } from '../contexts/ViewModeContext';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 
 export default function Categories() {
+  const isAdmin = useIsAdmin();
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const [modalOpen, setModalOpen] = useState(false);
@@ -85,12 +87,14 @@ export default function Categories() {
               className="hover-bg"
             >
               <span>{cat.name}</span>
-              <button
-                className="btn-ghost btn-icon"
-                onClick={() => handleOpenEdit(cat)}
-              >
-                <Edit2 size={16} />
-              </button>
+              {isAdmin && (
+                <button
+                  className="btn-ghost btn-icon"
+                  onClick={() => handleOpenEdit(cat)}
+                >
+                  <Edit2 size={16} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -104,9 +108,11 @@ export default function Categories() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <button className="btn btn-primary" onClick={handleOpenNew}>
-          <Plus size={18} /> Nova Categoria
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={handleOpenNew}>
+            <Plus size={18} /> Nova Categoria
+          </button>
+        )}
       </div>
 
       {isLoading ? (

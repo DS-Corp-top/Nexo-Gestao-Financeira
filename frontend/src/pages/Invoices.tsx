@@ -21,6 +21,7 @@ import {
 } from '../api/invoices';
 import { fetchAccounts } from '../api/accounts';
 import InvoiceModal from '../components/Invoices/InvoiceModal';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 
 function formatCurrency(value: string | number): string {
   if (value == null) return '';
@@ -234,7 +235,7 @@ function buildPrintHtml(data: InvoicePrintData): string {
 </html>`;
 }
 
-function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, onEmitNfse, onCancel, onDelete }: {
+function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, onEmitNfse, onCancel, onDelete, isAdmin }: {
   invoice: Invoice;
   onEdit: () => void;
   onPay: () => void;
@@ -244,6 +245,7 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
   onEmitNfse: () => void;
   onCancel: () => void;
   onDelete: () => void;
+  isAdmin: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -335,22 +337,24 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
           boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           overflowY: 'auto',
         }}>
-          {invoice.status === 'issued' && item('Marcar como Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
-          {item('Editar', <Edit2 size={14} />, onEdit)}
+          {isAdmin && invoice.status === 'issued' && item('Marcar como Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
+          {isAdmin && item('Editar', <Edit2 size={14} />, onEdit)}
           {item('Imprimir', <Printer size={14} />, onPrint)}
           {invoice.status === 'issued' && item('Guia NFS-e', <ReceiptText size={14} />, onGuide)}
           {invoice.status === 'issued' && invoice.nfse_status && invoice.nfse_status !== 'nfse_issued' &&
             item('Status NFS-e', <RefreshCw size={14} />, onStatus)}
-          {invoice.status === 'issued' && invoice.nfse_status !== 'nfse_issued' &&
+          {isAdmin && invoice.status === 'issued' && invoice.nfse_status !== 'nfse_issued' &&
             item('Emitir NFS-e', <Send size={14} style={{ color: 'var(--color-info)' }} />, onEmitNfse)}
-          {invoice.status !== 'cancelled' && (
+          {isAdmin && invoice.status !== 'cancelled' && (
             <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
               {item('Cancelar', <Ban size={14} />, onCancel, true)}
             </div>
           )}
-          <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
-            {item('Excluir', <Trash2 size={14} />, onDelete, true)}
-          </div>
+          {isAdmin && (
+            <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
+              {item('Excluir', <Trash2 size={14} />, onDelete, true)}
+            </div>
+          )}
         </div>,
         document.body
       )}
@@ -374,6 +378,7 @@ function DataModal({ title, onClose, children }: { title: string; onClose: () =>
 }
 
 export default function Invoices() {
+  const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [guideData, setGuideData] = useState<InvoiceNfseGuide | null>(null);
@@ -489,9 +494,11 @@ export default function Invoices() {
     <div className="animate-fade-in">
       <style>{`input[type="date"]::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1); cursor: pointer; }`}</style>
       <div className="page-header">
-        <button className="btn btn-primary" onClick={handleOpenNew}>
-          <Plus size={18} /> Nova Fatura
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={handleOpenNew}>
+            <Plus size={18} /> Nova Fatura
+          </button>
+        )}
       </div>
 
       {/* ── Cards de resumo ── */}
@@ -626,6 +633,7 @@ export default function Invoices() {
                     <td style={{ textAlign: 'center' }}>
                       <ActionsDropdown
                         invoice={inv}
+                        isAdmin={isAdmin}
                         onEdit={() => handleOpenEdit(inv)}
                         onPay={() => handlePay(inv)}
                         onPrint={() => handlePrint(inv)}

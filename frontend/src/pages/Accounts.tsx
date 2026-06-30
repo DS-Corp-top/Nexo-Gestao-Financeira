@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Wallet } from 'lucide-react';
 import { fetchAccounts, createAccount, updateAccount, type Account } from '../api/accounts';
 import AccountModal from '../components/Accounts/AccountModal';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 
 function formatCurrency(value: string | number, currency: string = 'BRL'): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -10,9 +11,10 @@ function formatCurrency(value: string | number, currency: string = 'BRL'): strin
 }
 
 export default function Accounts() {
+  const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  
+
   const queryClient = useQueryClient();
 
   const { data: accounts, isLoading } = useQuery({
@@ -53,9 +55,11 @@ export default function Accounts() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <button className="btn btn-primary" onClick={handleOpenNew}>
-          <Plus size={18} /> Nova Conta
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={handleOpenNew}>
+            <Plus size={18} /> Nova Conta
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -86,13 +90,15 @@ export default function Accounts() {
                     )}
                   </div>
                 </div>
-                <button
-                  className="btn-ghost btn-icon"
-                  onClick={() => handleOpenEdit(account)}
-                  title="Editar Conta"
-                >
-                  <Edit2 size={16} />
-                </button>
+                {isAdmin && (
+                  <button
+                    className="btn-ghost btn-icon"
+                    onClick={() => handleOpenEdit(account)}
+                    title="Editar Conta"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                )}
 
               </div>
 
