@@ -545,6 +545,12 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange, 
             {item.completed_subtask_count}/{item.subtask_count} subtarefas
           </span>
         )}
+        {item.assigned_to_name && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: 'var(--color-text-muted)', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-full)', padding: '1px 7px' }}>
+            {item.assigned_to_name[0].toUpperCase()}
+            <span>{item.assigned_to_name}</span>
+          </span>
+        )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '1.5rem' }}>
         <select className="input" value={status} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onChange={(e) => onStatusChange(e.target.value as TodoStatus)} style={{ minHeight: 30, padding: '0.25rem 0.45rem', fontSize: '0.72rem' }}>
