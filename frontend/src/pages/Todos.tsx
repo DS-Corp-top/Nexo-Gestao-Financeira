@@ -264,7 +264,6 @@ function TodoDetailsModal({
   onToggleSubtask: (subtaskId: number) => void;
   onDeleteSubtask: (subtaskId: number) => void;
   isSaving: boolean;
-  isDeleting: boolean;
   isCreatingSubtask: boolean;
   isUpdatingSubtasks: boolean;
 }) {
