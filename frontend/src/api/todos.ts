@@ -26,6 +26,23 @@ export interface Project {
   updated_at: string;
 }
 
+export interface TodoSubtask {
+  id: number;
+  title: string;
+  description: string;
+  is_done: boolean;
+  status: TodoStatus;
+  priority: Priority;
+  due_date: string | null;
+  done_at: string | null;
+  project: number | null;
+  parent: number | null;
+  assigned_to: number | null;
+  assigned_to_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TodoItem {
   id: number;
   title: string;
@@ -36,8 +53,12 @@ export interface TodoItem {
   due_date: string | null;
   done_at: string | null;
   project: number | null;
+  parent: number | null;
   assigned_to: number | null;
   assigned_to_name: string | null;
+  subtasks: TodoSubtask[];
+  subtask_count: number;
+  completed_subtask_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -66,12 +87,12 @@ export async function fetchTodos(params?: { is_done?: boolean; priority?: Priori
   return data;
 }
 
-export async function createTodo(payload: { title: string; description?: string; priority?: Priority; status?: TodoStatus; due_date?: string | null; project?: number | null; assigned_to?: number | null }): Promise<TodoItem> {
+export async function createTodo(payload: { title: string; description?: string; priority?: Priority; status?: TodoStatus; due_date?: string | null; project?: number | null; parent?: number | null; assigned_to?: number | null }): Promise<TodoItem> {
   const { data } = await api.post<TodoItem>('/todos/', payload);
   return data;
 }
 
-export async function updateTodo(id: number, payload: Partial<Pick<TodoItem, 'title' | 'description' | 'priority' | 'status' | 'due_date' | 'is_done' | 'project' | 'assigned_to'>>): Promise<TodoItem> {
+export async function updateTodo(id: number, payload: Partial<Pick<TodoItem, 'title' | 'description' | 'priority' | 'status' | 'due_date' | 'is_done' | 'project' | 'parent' | 'assigned_to'>>): Promise<TodoItem> {
   const { data } = await api.patch<TodoItem>(`/todos/${id}/`, payload);
   return data;
 }

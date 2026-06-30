@@ -76,6 +76,13 @@ class TodoItem(models.Model):
         null=True,
         blank=True,
     )
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        related_name="subtasks",
+        null=True,
+        blank=True,
+    )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -121,6 +128,8 @@ class TodoItem(models.Model):
 
     def save(self, *args, **kwargs):
         assign_tenant(self)
+        if self.parent_id:
+            self.project = self.parent.project
         if self.status == self.Status.DONE:
             self.is_done = True
         elif self.is_done:

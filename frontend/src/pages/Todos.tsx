@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,
@@ -29,6 +30,7 @@ import {
   type Project,
   type TenantMember,
   type TodoItem,
+  type TodoSubtask,
   type TodoStatus,
 } from '../api/todos';
 
@@ -64,10 +66,11 @@ type TodoPayload = {
   status: TodoStatus;
   due_date: string | null;
   project: number | null;
+  parent: number | null;
   assigned_to: number | null;
 };
 
-function getTodoStatus(item: TodoItem): TodoStatus {
+function getTodoStatus(item: TodoItem | TodoSubtask): TodoStatus {
   return item.status ?? (item.is_done ? 'done' : 'pending');
 }
 
@@ -82,6 +85,12 @@ function formatDue(iso: string | null) {
   if (diff === 0) return { label: 'Hoje', overdue: false };
   if (diff === 1) return { label: 'Amanha', overdue: false };
   return { label, overdue: false };
+}
+
+function formatPriorityLabel(priority: Priority) {
+  if (priority === 'high') return 'Alta';
+  if (priority === 'low') return 'Baixa';
+  return 'Media';
 }
 
 // ─── Project Form ─────────────────────────────────────────────────────────────
@@ -147,6 +156,7 @@ function ProjectForm({
 function TodoForm({
   initial,
   projectId,
+  parentId = null,
   members,
   onSubmit,
   onCancel,
@@ -154,6 +164,7 @@ function TodoForm({
 }: {
   initial?: Partial<TodoItem>;
   projectId: number | null;
+  parentId?: number | null;
   members: TenantMember[];
   onSubmit: (v: TodoPayload) => void;
   onCancel: () => void;
@@ -171,7 +182,16 @@ function TodoForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!title.trim()) return;
-        onSubmit({ title: title.trim(), description: description.trim(), priority, status, due_date: dueDate || null, project: projectId, assigned_to: assignedTo });
+        onSubmit({
+          title: title.trim(),
+          description: description.trim(),
+          priority,
+          status,
+          due_date: dueDate || null,
+          project: projectId,
+          parent: initial?.parent ?? parentId,
+          assigned_to: assignedTo,
+        });
       }}
       style={{ display: 'grid', gap: '0.85rem' }}
     >
@@ -231,18 +251,214 @@ function TodoForm({
   );
 }
 
+function TodoDetailsModal({
+  item,
+  projectId,
+  members,
+  onClose,
+  onSubmit,
+  onDelete,
+  onCreateSubtask,
+  onToggleSubtask,
+  onDeleteSubtask,
+  isSaving,
+  isDeleting,
+  isCreatingSubtask,
+  isUpdatingSubtasks,
+}: {
+  item: TodoItem;
+  projectId: number | null;
+  members: TenantMember[];
+  onClose: () => void;
+  onSubmit: (value: TodoPayload) => void;
+  onDelete: () => void;
+  onCreateSubtask: (title: string) => void;
+  onToggleSubtask: (subtaskId: number) => void;
+  onDeleteSubtask: (subtaskId: number) => void;
+  isSaving: boolean;
+  isDeleting: boolean;
+  isCreatingSubtask: boolean;
+  isUpdatingSubtasks: boolean;
+}) {
+  const [subtaskTitle, setSubtaskTitle] = useState('');
+  const status = getTodoStatus(item);
+  const due = formatDue(item.due_date);
+  const subtasks = item.subtasks ?? [];
+
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
+        <div className="modal-header">
+          <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+            <h3 className="modal-title" style={{ wordBreak: 'break-word' }}>{item.title}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.72rem', color: STATUS_COLOR[status], fontWeight: 800 }}>{STATUS_LABEL[status]}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                <Flag size={12} style={{ color: PRIORITY_COLOR[item.priority] }} />
+                {formatPriorityLabel(item.priority)}
+              </span>
+              {due && (
+                <span style={{ fontSize: '0.72rem', color: due.overdue ? '#ef4444' : 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={12} />
+                  {due.label}
+                </span>
+              )}
+              {item.subtask_count > 0 && (
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  {item.completed_subtask_count}/{item.subtask_count} subtarefas
+                </span>
+              )}
+            </div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Fechar modal">
+            <X size={18} />
+          </button>
+        </div>
+
+        <TodoForm
+          projectId={projectId}
+          members={members}
+          initial={item}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+          isLoading={isSaving}
+        />
+
+        <div style={{ marginTop: '1rem', display: 'grid', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Subtarefas</h4>
+              <p style={{ marginTop: 2, fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                Quebre esta tarefa em passos menores.
+              </p>
+            </div>
+            {item.subtask_count > 0 && (
+              <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
+                {item.completed_subtask_count} de {item.subtask_count} concluidas
+              </span>
+            )}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const title = subtaskTitle.trim();
+              if (!title) return;
+              onCreateSubtask(title);
+              setSubtaskTitle('');
+            }}
+            style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}
+          >
+            <input
+              className="input"
+              placeholder="Adicionar subtarefa"
+              value={subtaskTitle}
+              onChange={(e) => setSubtaskTitle(e.target.value)}
+            />
+            <button type="submit" className="btn btn-primary" disabled={isCreatingSubtask || !subtaskTitle.trim()}>
+              {isCreatingSubtask ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <Plus size={15} />}
+            </button>
+          </form>
+
+          <div style={{ display: 'grid', gap: '0.5rem' }}>
+            {subtasks.length === 0 ? (
+              <div style={{ border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                Nenhuma subtarefa criada ainda.
+              </div>
+            ) : subtasks.map((subtask) => {
+              const subtaskStatus = getTodoStatus(subtask);
+              const isDone = subtaskStatus === 'done';
+
+              return (
+                <div
+                  key={subtask.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.65rem',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.75rem 0.85rem',
+                    opacity: isDone ? 0.62 : 1,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onToggleSubtask(subtask.id)}
+                    disabled={isUpdatingSubtasks}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 1, color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
+                    aria-label={isDone ? 'Reabrir subtarefa' : 'Concluir subtarefa'}
+                  >
+                    {isDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.88rem', textDecoration: isDone ? 'line-through' : 'none' }}>
+                        {subtask.title}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: STATUS_COLOR[subtaskStatus], fontWeight: 800 }}>
+                        {STATUS_LABEL[subtaskStatus]}
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                        <Flag size={11} style={{ color: PRIORITY_COLOR[subtask.priority] }} />
+                        {formatPriorityLabel(subtask.priority)}
+                      </span>
+                    </div>
+                    {subtask.description && (
+                      <p style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap' }}>
+                        {subtask.description}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteSubtask(subtask.id)}
+                    disabled={isUpdatingSubtasks}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}
+                    aria-label="Excluir subtarefa"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.75rem' }}>
+          <button type="button" className="btn btn-danger" onClick={onDelete} disabled={isDeleting}>
+            {isDeleting ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Excluir tarefa'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ─── Todo Row ─────────────────────────────────────────────────────────────────
 
-function TodoRow({ item, onToggle, onEdit, onDelete }: {
-  item: TodoItem; onToggle: () => void; onEdit: () => void; onDelete: () => void;
+function TodoRow({ item, onOpen, onToggle, onEdit, onDelete }: {
+  item: TodoItem; onOpen: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   const due = formatDue(item.due_date);
   const status = getTodoStatus(item);
   const isDone = status === 'done';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.9rem 1.25rem', borderBottom: '1px solid var(--color-border)', opacity: isDone ? 0.55 : 1 }}>
-      <button type="button" onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2, flexShrink: 0, color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.9rem 1.25rem', borderBottom: '1px solid var(--color-border)', opacity: isDone ? 0.55 : 1, cursor: 'pointer' }}
+    >
+      <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 2, flexShrink: 0, color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
         {isDone ? <CheckCircle2 size={20} /> : <Circle size={20} />}
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -261,12 +477,17 @@ function TodoRow({ item, onToggle, onEdit, onDelete }: {
               <span>{item.assigned_to_name}</span>
             </span>
           )}
+          {item.subtask_count > 0 && (
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+              {item.completed_subtask_count}/{item.subtask_count} subtarefas
+            </span>
+          )}
         </div>
         {item.description && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, whiteSpace: 'pre-wrap' }}>{item.description}</p>}
       </div>
       <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
-        <button type="button" onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Pencil size={15} /></button>
-        <button type="button" onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Trash2 size={15} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Pencil size={15} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Trash2 size={15} /></button>
       </div>
     </div>
   );
@@ -274,8 +495,8 @@ function TodoRow({ item, onToggle, onEdit, onDelete }: {
 
 // ─── Kanban Card ──────────────────────────────────────────────────────────────
 
-function KanbanCard({ item, onToggle, onEdit, onDelete, onStatusChange }: {
-  item: TodoItem; onToggle: () => void; onEdit: () => void; onDelete: () => void;
+function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange }: {
+  item: TodoItem; onOpen: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void;
   onStatusChange: (s: TodoStatus) => void;
 }) {
   const due = formatDue(item.due_date);
@@ -283,9 +504,20 @@ function KanbanCard({ item, onToggle, onEdit, onDelete, onStatusChange }: {
   const isDone = status === 'done';
 
   return (
-    <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.85rem', opacity: isDone ? 0.55 : 1, display: 'grid', gap: '0.5rem' }}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.85rem', opacity: isDone ? 0.55 : 1, display: 'grid', gap: '0.5rem', cursor: 'pointer' }}
+    >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-        <button type="button" onClick={onToggle} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginTop: 1, color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginTop: 1, color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
           {isDone ? <CheckCircle2 size={16} /> : <Circle size={16} />}
         </button>
         <span style={{ fontWeight: 600, fontSize: '0.88rem', flex: 1, textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.4 }}>{item.title}</span>
@@ -298,15 +530,20 @@ function KanbanCard({ item, onToggle, onEdit, onDelete, onStatusChange }: {
             <Calendar size={10} />{due.label}
           </span>
         )}
+        {item.subtask_count > 0 && (
+          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+            {item.completed_subtask_count}/{item.subtask_count} subtarefas
+          </span>
+        )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '1.5rem' }}>
-        <select className="input" value={status} onChange={(e) => onStatusChange(e.target.value as TodoStatus)} style={{ minHeight: 30, padding: '0.25rem 0.45rem', fontSize: '0.72rem' }}>
+        <select className="input" value={status} onClick={(e) => e.stopPropagation()} onChange={(e) => onStatusChange(e.target.value as TodoStatus)} style={{ minHeight: 30, padding: '0.25rem 0.45rem', fontSize: '0.72rem' }}>
           <option value="pending">Pendente</option>
           <option value="in_progress">Em andamento</option>
           <option value="done">Finalizado</option>
         </select>
-        <button type="button" onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Pencil size={13} /></button>
-        <button type="button" onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Trash2 size={13} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Pencil size={13} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Trash2 size={13} /></button>
       </div>
     </div>
   );
@@ -314,11 +551,10 @@ function KanbanCard({ item, onToggle, onEdit, onDelete, onStatusChange }: {
 
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, items, projectId, members, editingId, onToggle, onEdit, onEditSubmit, onEditCancel, onDelete, onStatusChange, isUpdating }: {
-  status: TodoStatus; items: TodoItem[]; projectId: number | null; members: TenantMember[]; editingId: number | null;
-  onToggle: (id: number) => void; onEdit: (item: TodoItem) => void;
-  onEditSubmit: (id: number, v: TodoPayload) => void; onEditCancel: () => void;
-  onDelete: (id: number) => void; onStatusChange: (id: number, s: TodoStatus) => void; isUpdating: boolean;
+function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onStatusChange }: {
+  status: TodoStatus; items: TodoItem[];
+  onOpen: (item: TodoItem) => void; onToggle: (id: number) => void; onEdit: (item: TodoItem) => void;
+  onDelete: (id: number) => void; onStatusChange: (id: number, s: TodoStatus) => void;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 0 }}>
@@ -330,15 +566,9 @@ function KanbanColumn({ status, items, projectId, members, editingId, onToggle, 
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {items.map((item) =>
-          editingId === item.id ? (
-            <div key={item.id} className="card" style={{ padding: '0.85rem' }}>
-              <TodoForm projectId={projectId} members={members} initial={item} onSubmit={(v) => onEditSubmit(item.id, v)} onCancel={onEditCancel} isLoading={isUpdating} />
-            </div>
-          ) : (
-            <KanbanCard key={item.id} item={item} onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)} onStatusChange={(s) => onStatusChange(item.id, s)} />
-          )
-        )}
+        {items.map((item) => (
+          <KanbanCard key={item.id} item={item} onOpen={() => onOpen(item)} onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)} onStatusChange={(s) => onStatusChange(item.id, s)} />
+        ))}
         {items.length === 0 && (
           <div style={{ border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '1.5rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
             Nenhuma tarefa
@@ -353,9 +583,9 @@ function KanbanColumn({ status, items, projectId, members, editingId, onToggle, 
 
 function TaskView({ projectId, projectColor }: { projectId: number | null; projectColor?: string }) {
   const qc = useQueryClient();
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [showForm, setShowForm] = useState(false);
-  const [editingItem, setEditingItem] = useState<TodoItem | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
 
@@ -377,12 +607,21 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
   };
 
   const createMutation = useMutation({ mutationFn: createTodo, onSuccess: () => { invalidate(); setShowForm(false); } });
+  const createSubtaskMutation = useMutation({ mutationFn: createTodo, onSuccess: invalidate });
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateTodo>[1] }) => updateTodo(id, payload),
-    onSuccess: () => { invalidate(); setEditingItem(null); },
+    onSuccess: () => { invalidate(); setSelectedItemId(null); },
   });
   const toggleMutation = useMutation({ mutationFn: toggleTodo, onSuccess: invalidate });
-  const deleteMutation = useMutation({ mutationFn: deleteTodo, onSuccess: invalidate });
+  const toggleSubtaskMutation = useMutation({ mutationFn: toggleTodo, onSuccess: invalidate });
+  const deleteMutation = useMutation({
+    mutationFn: deleteTodo,
+    onSuccess: (_, deletedId) => {
+      invalidate();
+      setSelectedItemId((current) => current === deletedId ? null : current);
+    },
+  });
+  const deleteSubtaskMutation = useMutation({ mutationFn: deleteTodo, onSuccess: invalidate });
 
   const filtered = todos.filter((item) => {
     const status = getTodoStatus(item);
@@ -394,8 +633,10 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
 
   const pendingCount = todos.filter((t) => getTodoStatus(t) !== 'done').length;
   const doneCount = todos.filter((t) => getTodoStatus(t) === 'done').length;
+  const selectedItem = selectedItemId === null ? null : todos.find((item) => item.id === selectedItemId) ?? null;
 
-  const handleEdit = (item: TodoItem) => { setEditingItem(item); setShowForm(false); };
+  const handleEdit = (item: TodoItem) => { setSelectedItemId(item.id); setShowForm(false); };
+  const handleOpen = (item: TodoItem) => { setSelectedItemId(item.id); setShowForm(false); };
   const handleEditSubmit = (id: number, value: TodoPayload) => updateMutation.mutate({ id, payload: value });
   const handleStatusChange = (id: number, status: TodoStatus) => updateMutation.mutate({ id, payload: { status } });
 
@@ -423,7 +664,7 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => { setShowForm(true); setEditingItem(null); }}
+          onClick={() => { setShowForm(true); setSelectedItemId(null); }}
           style={{ height: 34, padding: '0 1rem', fontSize: '0.8rem', background: accentColor, color: accentColor === '#ffffff' ? '#000' : undefined, flexShrink: 0 }}
         >
           <Plus size={15} /> Nova tarefa
@@ -454,15 +695,9 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
             </div>
           ) : (
             <div>
-              {filtered.map((item) =>
-                editingItem?.id === item.id ? (
-                  <div key={item.id} style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border)' }}>
-                    <TodoForm projectId={projectId} members={members} initial={item} onSubmit={(v) => handleEditSubmit(item.id, v)} onCancel={() => setEditingItem(null)} isLoading={updateMutation.isPending} />
-                  </div>
-                ) : (
-                  <TodoRow key={item.id} item={item} onToggle={() => toggleMutation.mutate(item.id)} onEdit={() => handleEdit(item)} onDelete={() => deleteMutation.mutate(item.id)} />
-                )
-              )}
+              {filtered.map((item) => (
+                <TodoRow key={item.id} item={item} onOpen={() => handleOpen(item)} onToggle={() => toggleMutation.mutate(item.id)} onEdit={() => handleEdit(item)} onDelete={() => deleteMutation.mutate(item.id)} />
+              ))}
             </div>
           )}
         </div>
@@ -479,20 +714,43 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
                 key={s}
                 status={s}
                 items={filtered.filter((item) => getTodoStatus(item) === s)}
-                projectId={projectId}
-                members={members}
-                editingId={editingItem?.id ?? null}
+                onOpen={handleOpen}
                 onToggle={(id) => toggleMutation.mutate(id)}
                 onEdit={handleEdit}
-                onEditSubmit={handleEditSubmit}
-                onEditCancel={() => setEditingItem(null)}
                 onDelete={(id) => deleteMutation.mutate(id)}
                 onStatusChange={handleStatusChange}
-                isUpdating={updateMutation.isPending}
               />
             ))}
           </div>
         )
+      )}
+
+      {selectedItem && (
+        <TodoDetailsModal
+          key={selectedItem.id}
+          item={selectedItem}
+          projectId={projectId}
+          members={members}
+          onClose={() => setSelectedItemId(null)}
+          onSubmit={(value) => handleEditSubmit(selectedItem.id, value)}
+          onDelete={() => deleteMutation.mutate(selectedItem.id)}
+          onCreateSubtask={(title) => createSubtaskMutation.mutate({
+            title,
+            description: '',
+            priority: 'medium',
+            status: 'pending',
+            due_date: null,
+            project: selectedItem.project ?? projectId,
+            parent: selectedItem.id,
+            assigned_to: null,
+          })}
+          onToggleSubtask={(subtaskId) => toggleSubtaskMutation.mutate(subtaskId)}
+          onDeleteSubtask={(subtaskId) => deleteSubtaskMutation.mutate(subtaskId)}
+          isSaving={updateMutation.isPending}
+          isDeleting={deleteMutation.isPending}
+          isCreatingSubtask={createSubtaskMutation.isPending}
+          isUpdatingSubtasks={toggleSubtaskMutation.isPending || deleteSubtaskMutation.isPending}
+        />
       )}
     </div>
   );
@@ -650,7 +908,7 @@ function ProjectsList({
       )}
 
       {/* Delete confirmation modal */}
-      {confirmDelete && (
+      {confirmDelete && createPortal(
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
             <div className="modal-header">
@@ -673,11 +931,12 @@ function ProjectsList({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Finished projects modal */}
-      {showFinished && (
+      {showFinished && createPortal(
         <div className="modal-overlay" onClick={() => setShowFinished(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header" style={{ flexShrink: 0 }}>
@@ -737,7 +996,8 @@ function ProjectsList({
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

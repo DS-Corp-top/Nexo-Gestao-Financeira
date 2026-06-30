@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -40,17 +41,28 @@ class ProjectViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
 
 class TodoItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
-    queryset = TodoItem.objects.select_related("assigned_to")
+    queryset = TodoItem.objects.select_related("assigned_to", "parent").prefetch_related(
+        Prefetch(
+            "subtasks",
+            queryset=TodoItem.objects.select_related("assigned_to").order_by("is_done", "-created_at"),
+        )
+    )
     serializer_class = TodoItemSerializer
-    filterset_fields = ("is_done", "priority", "status", "project", "assigned_to")
+    filterset_fields = ("is_done", "priority", "status", "project", "assigned_to", "parent")
     search_fields = ("title", "description")
     ordering_fields = ("created_at", "due_date", "priority", "title")
     ordering = ("is_done", "-created_at")
     pagination_class = None
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == "list" and "parent" not in self.request.query_params:
+            queryset = queryset.filter(parent__isnull=True)
+        return queryset
+
     @action(detail=True, methods=["post"])
     def toggle(self, request, pk=None):
         item = self.get_object()
         item.toggle()
-        item.save(update_fields=["is_done", "done_at", "updated_at"])
+        item.save(update_fields=["status", "is_done", "done_at", "updated_at"])
         return Response(TodoItemSerializer(item).data, status=status.HTTP_200_OK)
