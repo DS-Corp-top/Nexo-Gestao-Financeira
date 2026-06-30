@@ -52,6 +52,10 @@ export async function fetchMe(): Promise<MeResponse> {
   return data;
 }
 
+export async function refreshToken(): Promise<void> {
+  await api.post('/auth/token/refresh/', {});
+}
+
 export async function logout(): Promise<void> {
   try {
     await api.post('/auth/logout/');

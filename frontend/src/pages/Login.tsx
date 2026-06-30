@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { login } from '../api/auth';
@@ -11,7 +11,13 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const navigate = useNavigate();
-  const { refresh, user } = useAuth();
+  const { refresh, user, isLoading: isAuthLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthLoading && user && !loading && !showSplash) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthLoading, loading, navigate, showSplash, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
