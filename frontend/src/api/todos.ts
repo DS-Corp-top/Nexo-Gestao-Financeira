@@ -82,7 +82,7 @@ export async function deleteProject(id: number): Promise<void> {
   await api.delete(`/todo-projects/${id}/`);
 }
 
-export async function fetchTodos(params?: { is_done?: boolean; priority?: Priority; status?: TodoStatus; project?: number | '' }): Promise<TodoItem[]> {
+export async function fetchTodos(params?: { is_done?: boolean; priority?: Priority; status?: TodoStatus; project?: number | ''; assigned_to?: number | '' }): Promise<TodoItem[]> {
   const { data } = await api.get<TodoItem[]>('/todos/', { params });
   return data;
 }

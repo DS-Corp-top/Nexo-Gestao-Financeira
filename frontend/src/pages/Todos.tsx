@@ -53,12 +53,6 @@ const STATUS_COLOR: Record<TodoStatus, string> = {
   done: 'var(--color-success)',
 };
 const STATUSES: TodoStatus[] = ['pending', 'in_progress', 'done'];
-const PROJECT_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
-  '#f59e0b', '#10b981', '#06b6d4', '#3b82f6',
-  '#64748b', '#ffffff',
-];
-
 type TodoPayload = {
   title: string;
   description: string;
@@ -93,6 +87,8 @@ function formatPriorityLabel(priority: Priority) {
   return 'Media';
 }
 
+const DEFAULT_PROJECT_COLOR = '#ffffff';
+
 // ─── Project Form ─────────────────────────────────────────────────────────────
 
 function ProjectForm({
@@ -108,7 +104,7 @@ function ProjectForm({
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [color, setColor] = useState(initial?.color ?? '#6366f1');
+  const color = DEFAULT_PROJECT_COLOR;
 
   return (
     <form
@@ -124,23 +120,6 @@ function ProjectForm({
         rows={2}
         style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: '0.9rem' }}
       />
-      <div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: '0.4rem' }}>Cor</div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {PROJECT_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              style={{
-                width: 24, height: 24, borderRadius: '50%', background: c, cursor: 'pointer', flexShrink: 0,
-                border: color === c ? '2px solid var(--color-text-primary)' : '2px solid transparent',
-                outline: color === c ? '1px solid var(--color-border)' : 'none',
-              }}
-            />
-          ))}
-        </div>
-      </div>
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
         <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
         <button type="submit" className="btn btn-primary" disabled={isLoading || !name.trim()}>
@@ -581,13 +560,14 @@ function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onSta
 
 // ─── Task View (inside a project or "no project") ─────────────────────────────
 
-function TaskView({ projectId, projectColor }: { projectId: number | null; projectColor?: string }) {
+function TaskView({ projectId }: { projectId: number | null }) {
   const qc = useQueryClient();
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [showForm, setShowForm] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
+  const [assignedFilter, setAssignedFilter] = useState<number | 'all'>('all');
 
   const { data: members = [] } = useQuery({
     queryKey: ['tenant-members'],
@@ -595,9 +575,12 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
     staleTime: 5 * 60 * 1000,
   });
 
-  const queryParams = projectId !== null ? { project: projectId } : { project: '' as const };
+  const queryParams = {
+    ...(projectId !== null ? { project: projectId } : { project: '' as const }),
+    ...(assignedFilter !== 'all' ? { assigned_to: assignedFilter } : {}),
+  };
   const { data: todos = [], isLoading } = useQuery({
-    queryKey: ['todos', projectId],
+    queryKey: ['todos', projectId, assignedFilter],
     queryFn: () => fetchTodos(queryParams),
   });
 
@@ -640,7 +623,7 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
   const handleEditSubmit = (id: number, value: TodoPayload) => updateMutation.mutate({ id, payload: value });
   const handleStatusChange = (id: number, status: TodoStatus) => updateMutation.mutate({ id, payload: { status } });
 
-  const accentColor = projectColor ?? 'var(--color-accent)';
+  const accentColor = DEFAULT_PROJECT_COLOR;
 
   return (
     <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
@@ -656,6 +639,12 @@ function TaskView({ projectId, projectColor }: { projectId: number | null; proje
           <option value="high">Alta</option>
           <option value="medium">Media</option>
           <option value="low">Baixa</option>
+        </select>
+        <select className="input" value={assignedFilter === 'all' ? 'all' : String(assignedFilter)} onChange={(e) => setAssignedFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} style={{ flex: '1 1 160px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+          <option value="all">Todos usuarios</option>
+          {members.map((member) => (
+            <option key={member.id} value={member.id}>{member.name}</option>
+          ))}
         </select>
         <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban')} style={{ flex: '1 1 100px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
           <option value="list">Lista</option>
@@ -855,14 +844,14 @@ function ProjectsList({
               style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
             >
               {/* Color bar */}
-              <div style={{ height: 4, background: p.color }} />
+              <div style={{ height: 4, background: DEFAULT_PROJECT_COLOR }} />
               <button
                 type="button"
                 onClick={() => onSelect(p)}
                 style={{ flex: 1, padding: '1rem 1.25rem 0.85rem', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                  <FolderOpen size={15} style={{ color: p.color, flexShrink: 0 }} />
+                  <FolderOpen size={15} style={{ color: DEFAULT_PROJECT_COLOR, flexShrink: 0 }} />
                   <span style={{ fontWeight: 700, fontSize: '0.92rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                 </div>
                 {p.description && (
@@ -918,7 +907,7 @@ function ProjectsList({
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
-              <span style={{ width: 12, height: 12, borderRadius: '50%', background: confirmDelete.color, flexShrink: 0 }} />
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: DEFAULT_PROJECT_COLOR, flexShrink: 0 }} />
               <span style={{ fontWeight: 700 }}>{confirmDelete.name}</span>
             </div>
             <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)', lineHeight: 1.55 }}>
@@ -963,7 +952,7 @@ function ProjectsList({
                   key={p.id}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: '1px solid var(--color-border)' }}
                 >
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: DEFAULT_PROJECT_COLOR, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.75 }}>{p.name}</div>
                     {p.finished_at && (
@@ -1024,7 +1013,7 @@ export default function Todos() {
     );
   }
 
-  const color = activeProject?.color;
+  const color = DEFAULT_PROJECT_COLOR;
   const label = activeProject ? activeProject.name : 'Sem projeto';
 
   return (
@@ -1046,7 +1035,7 @@ export default function Todos() {
         )}
       </div>
 
-      <TaskView projectId={activeProject?.id ?? null} projectColor={color} />
+      <TaskView projectId={activeProject?.id ?? null} />
     </div>
   );
 }
