@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -12,6 +12,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react';
@@ -478,9 +479,31 @@ function TodoRow({ item, onOpen, onToggle, onEdit, onDelete }: {
 
 // ─── Kanban Card ──────────────────────────────────────────────────────────────
 
-function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange }: {
+function DragGhost({ item, x, y, offsetX, offsetY, width }: { item: TodoItem; x: number; y: number; offsetX: number; offsetY: number; width: number }) {
+  const due = formatDue(item.due_date);
+  const st = getTodoStatus(item);
+  const isDone = st === 'done';
+  return (
+    <div style={{ position: 'fixed', left: x - offsetX, top: y - offsetY, width, zIndex: 9999, pointerEvents: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.6)', borderRadius: 'var(--radius-md)', transform: 'rotate(1.5deg)' }}>
+      <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-accent)', borderRadius: 'var(--radius-md)', padding: '0.85rem', display: 'grid', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+          <span style={{ color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)', flexShrink: 0, marginTop: 1 }}>{isDone ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
+          <span style={{ fontWeight: 600, fontSize: '0.88rem', flex: 1, textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.4 }}>{item.title}</span>
+        </div>
+        {item.description && <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', margin: 0, whiteSpace: 'pre-wrap', paddingLeft: '1.5rem' }}>{item.description}</p>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '1.5rem' }}>
+          <Flag size={12} style={{ color: PRIORITY_COLOR[item.priority] }} />
+          {due && <span style={{ fontSize: '0.7rem', color: due.overdue ? '#ef4444' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 2 }}><Calendar size={10} />{due.label}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange, onMouseDown, isDragging }: {
   item: TodoItem; onOpen: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void;
   onStatusChange: (s: TodoStatus) => void;
+  onMouseDown: (e: React.MouseEvent) => void; isDragging: boolean;
 }) {
   const due = formatDue(item.due_date);
   const status = getTodoStatus(item);
@@ -491,13 +514,11 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange }
       role="button"
       tabIndex={0}
       onClick={onOpen}
+      onMouseDown={onMouseDown}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen();
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); }
       }}
-      style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.85rem', opacity: isDone ? 0.55 : 1, display: 'grid', gap: '0.5rem', cursor: 'pointer' }}
+      style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.85rem', opacity: isDone ? 0.55 : isDragging ? 0.35 : 1, display: 'grid', gap: '0.5rem', cursor: 'grab', userSelect: 'none', transition: 'opacity 0.1s' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
         <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginTop: 1, color: isDone ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>
@@ -520,13 +541,13 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange }
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '1.5rem' }}>
-        <select className="input" value={status} onClick={(e) => e.stopPropagation()} onChange={(e) => onStatusChange(e.target.value as TodoStatus)} style={{ minHeight: 30, padding: '0.25rem 0.45rem', fontSize: '0.72rem' }}>
+        <select className="input" value={status} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onChange={(e) => onStatusChange(e.target.value as TodoStatus)} style={{ minHeight: 30, padding: '0.25rem 0.45rem', fontSize: '0.72rem' }}>
           <option value="pending">Pendente</option>
           <option value="in_progress">Em andamento</option>
           <option value="done">Finalizado</option>
         </select>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Pencil size={13} /></button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Trash2 size={13} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} onMouseDown={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Pencil size={13} /></button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} onMouseDown={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Trash2 size={13} /></button>
       </div>
     </div>
   );
@@ -534,13 +555,15 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange }
 
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onStatusChange }: {
+function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onStatusChange, isDragOver, draggingId, onCardMouseDown }: {
   status: TodoStatus; items: TodoItem[];
   onOpen: (item: TodoItem) => void; onToggle: (id: number) => void; onEdit: (item: TodoItem) => void;
   onDelete: (id: number) => void; onStatusChange: (id: number, s: TodoStatus) => void;
+  isDragOver: boolean; draggingId: number | null;
+  onCardMouseDown: (item: TodoItem, e: React.MouseEvent) => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 0 }}>
+    <div data-kanban-status={status} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 0.25rem' }}>
         <Circle size={12} fill="currentColor" style={{ color: STATUS_COLOR[status], flexShrink: 0 }} />
         <span style={{ fontWeight: 800, fontSize: '0.88rem' }}>{STATUS_LABEL[status]}</span>
@@ -550,13 +573,21 @@ function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onSta
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {items.map((item) => (
-          <KanbanCard key={item.id} item={item} onOpen={() => onOpen(item)} onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)} onStatusChange={(s) => onStatusChange(item.id, s)} />
+          <KanbanCard
+            key={item.id}
+            item={item}
+            isDragging={item.id === draggingId}
+            onMouseDown={(e) => onCardMouseDown(item, e)}
+            onOpen={() => onOpen(item)}
+            onToggle={() => onToggle(item.id)}
+            onEdit={() => onEdit(item)}
+            onDelete={() => onDelete(item.id)}
+            onStatusChange={(s) => onStatusChange(item.id, s)}
+          />
         ))}
-        {items.length === 0 && (
-          <div style={{ border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '1.5rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
-            Nenhuma tarefa
-          </div>
-        )}
+        <div style={{ border: `2px dashed ${isDragOver ? 'var(--color-accent)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', padding: items.length === 0 ? '1.5rem' : isDragOver ? '0.75rem' : '0', textAlign: 'center', color: isDragOver ? 'var(--color-accent)' : 'var(--color-text-muted)', fontSize: '0.78rem', background: isDragOver ? 'var(--color-accent-muted)' : 'transparent', transition: 'all 0.15s', display: items.length === 0 || isDragOver ? 'block' : 'none' }}>
+          {items.length === 0 ? 'Nenhuma tarefa' : ''}
+        </div>
       </div>
     </div>
   );
@@ -629,31 +660,99 @@ function TaskView({ projectId }: { projectId: number | null }) {
 
   const accentColor = DEFAULT_PROJECT_COLOR;
 
+  const dragIdRef = useRef<number | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<TodoStatus | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number; offsetX: number; offsetY: number; width: number } | null>(null);
+  const dragItem = draggingId !== null ? todos.find((t) => t.id === draggingId) ?? null : null;
+
+  useEffect(() => {
+    if (!dragPos) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      setDragPos((prev) => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const col = el?.closest('[data-kanban-status]');
+      setDragOverStatus((col?.getAttribute('data-kanban-status') as TodoStatus) ?? null);
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const col = el?.closest('[data-kanban-status]');
+      const targetStatus = col?.getAttribute('data-kanban-status') as TodoStatus | null;
+      const id = dragIdRef.current;
+      if (id !== null && targetStatus) {
+        const item = todos.find((t) => t.id === id);
+        if (item && getTodoStatus(item) !== targetStatus) handleStatusChange(id, targetStatus);
+      }
+      dragIdRef.current = null;
+      setDraggingId(null);
+      setDragPos(null);
+      setDragOverStatus(null);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!dragPos]);
+
+  const activeFilterCount = (filter !== 'all' ? 1 : 0) + (priorityFilter !== 'all' ? 1 : 0) + (assignedFilter !== 'all' ? 1 : 0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) setFiltersOpen(false);
+    }
+    if (filtersOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [filtersOpen]);
+
   return (
     <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', alignItems: 'center' }}>
-        <select className="input" value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'done')} style={{ flex: '1 1 120px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-          <option value="all">Todas ({todos.length})</option>
-          <option value="pending">Pendentes ({pendingCount})</option>
-          <option value="done">Concluidas ({doneCount})</option>
-        </select>
-        <select className="input" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as Priority | 'all')} style={{ flex: '1 1 120px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-          <option value="all">Todas prioridades</option>
-          <option value="high">Alta</option>
-          <option value="medium">Media</option>
-          <option value="low">Baixa</option>
-        </select>
-        <select className="input" value={assignedFilter === 'all' ? 'all' : String(assignedFilter)} onChange={(e) => setAssignedFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} style={{ flex: '1 1 160px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-          <option value="all">Todos usuarios</option>
-          {members.map((member) => (
-            <option key={member.id} value={member.id}>{formatMemberLabel(member.name, member.email)}</option>
-          ))}
-        </select>
-        <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban')} style={{ flex: '1 1 100px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-          <option value="list">Lista</option>
-          <option value="kanban">Kanban</option>
-        </select>
+      <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center' }}>
+        <div ref={filtersRef} style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setFiltersOpen((v) => !v)}
+            style={{ height: 34, padding: '0 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.45rem', border: '1px solid var(--color-border)', background: filtersOpen ? 'var(--color-surface-hover, rgba(255,255,255,0.07))' : 'none', flexShrink: 0 }}
+          >
+            <SlidersHorizontal size={14} />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: 99, background: 'var(--color-accent)', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0 4px' }}>
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {filtersOpen && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 0.4rem)', left: 0, zIndex: 50, background: 'var(--color-bg-card)', border: '1px solid var(--color-border-hover)', borderRadius: 'var(--radius-lg)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 220 }}>
+              <select className="input" value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'done')} style={{ height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                <option value="all">Todas ({todos.length})</option>
+                <option value="pending">Pendentes ({pendingCount})</option>
+                <option value="done">Concluidas ({doneCount})</option>
+              </select>
+              <select className="input" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as Priority | 'all')} style={{ height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                <option value="all">Todas prioridades</option>
+                <option value="high">Alta</option>
+                <option value="medium">Media</option>
+                <option value="low">Baixa</option>
+              </select>
+              <select className="input" value={assignedFilter === 'all' ? 'all' : String(assignedFilter)} onChange={(e) => setAssignedFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} style={{ height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                <option value="all">Todos usuarios</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>{formatMemberLabel(member.name, member.email)}</option>
+                ))}
+              </select>
+              <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban')} style={{ height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
+                <option value="list">Lista</option>
+                <option value="kanban">Kanban</option>
+              </select>
+            </div>
+          )}
+        </div>
         <button
           type="button"
           className="btn btn-primary"
@@ -707,6 +806,16 @@ function TaskView({ projectId }: { projectId: number | null }) {
                 key={s}
                 status={s}
                 items={filtered.filter((item) => getTodoStatus(item) === s)}
+                draggingId={draggingId}
+                isDragOver={dragOverStatus === s}
+                onCardMouseDown={(item, e) => {
+                  if ((e.target as HTMLElement).closest('button, select')) return;
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  dragIdRef.current = item.id;
+                  setDraggingId(item.id);
+                  setDragPos({ x: e.clientX, y: e.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, width: rect.width });
+                }}
                 onOpen={handleOpen}
                 onToggle={(id) => toggleMutation.mutate(id)}
                 onEdit={handleEdit}
@@ -716,6 +825,11 @@ function TaskView({ projectId }: { projectId: number | null }) {
             ))}
           </div>
         )
+      )}
+
+      {dragPos && dragItem && createPortal(
+        <DragGhost item={dragItem} x={dragPos.x} y={dragPos.y} offsetX={dragPos.offsetX} offsetY={dragPos.offsetY} width={dragPos.width} />,
+        document.body
       )}
 
       {selectedItem && (
