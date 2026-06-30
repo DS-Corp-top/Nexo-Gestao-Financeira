@@ -96,11 +96,17 @@ function NoteCard({
   onDelete: () => void;
   onTogglePin: () => void;
 }) {
+  const openFromCard = (target: EventTarget | null) => {
+    if (target instanceof HTMLElement && target.closest('button')) return;
+    onOpen();
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={onOpen}
+      onClick={(e) => openFromCard(e.target)}
+      onPointerUp={(e) => openFromCard(e.target)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
