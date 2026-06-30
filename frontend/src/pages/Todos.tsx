@@ -87,6 +87,10 @@ function formatPriorityLabel(priority: Priority) {
   return 'Media';
 }
 
+function formatMemberLabel(name: string, email: string) {
+  return name && email ? `${name} (${email})` : name || email;
+}
+
 const DEFAULT_PROJECT_COLOR = '#ffffff';
 
 // ─── Project Form ─────────────────────────────────────────────────────────────
@@ -214,7 +218,7 @@ function TodoForm({
             >
               <option value="">Ninguém</option>
               {members.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>{formatMemberLabel(m.name, m.email)}</option>
               ))}
             </select>
           </label>
@@ -643,7 +647,7 @@ function TaskView({ projectId }: { projectId: number | null }) {
         <select className="input" value={assignedFilter === 'all' ? 'all' : String(assignedFilter)} onChange={(e) => setAssignedFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} style={{ flex: '1 1 160px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
           <option value="all">Todos usuarios</option>
           {members.map((member) => (
-            <option key={member.id} value={member.id}>{member.name}</option>
+            <option key={member.id} value={member.id}>{formatMemberLabel(member.name, member.email)}</option>
           ))}
         </select>
         <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban')} style={{ flex: '1 1 100px', minWidth: 0, height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
