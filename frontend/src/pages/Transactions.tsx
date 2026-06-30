@@ -192,7 +192,8 @@ export default function Transactions() {
               top: '100%',
               left: 0,
               marginTop: '0.5rem',
-              background: 'var(--color-surface)',
+              background: 'var(--color-bg-elevated)',
+              backdropFilter: 'blur(12px)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
               padding: '0.5rem',
@@ -201,7 +202,7 @@ export default function Transactions() {
               gap: '0.5rem',
               zIndex: 50,
               minWidth: '200px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+              boxShadow: 'var(--shadow-lg)'
             }}>
               <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { navigate('/accounts'); setShowMenu(false); }}>
                 <Wallet size={16} /> Contas

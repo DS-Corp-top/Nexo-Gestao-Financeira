@@ -38,8 +38,11 @@ function formatDoc(doc: string | null) {
   return doc;
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function PersonBadge({ type }: { type: 'pf' | 'pj' | null }) {
@@ -55,6 +58,53 @@ function PersonBadge({ type }: { type: 'pf' | 'pj' | null }) {
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
+
+function TenantRow({ t }: { t: SystemTenant }) {
+  return (
+    <div style={listRowStyle}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>{t.name}</span>
+          <PersonBadge type={t.person_type} />
+          {!t.is_active && (
+            <span className="badge" style={{ fontSize: '0.68rem', opacity: 0.65 }}>
+              Inativo
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span>#{t.id}</span>
+          <span>{t.user_count} usuario{t.user_count !== 1 ? 's' : ''}</span>
+          <span>{t.company_count} empresa{t.company_count !== 1 ? 's' : ''}</span>
+          <span>{formatDate(t.created_at)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UserRow({ u }: { u: SystemUser }) {
+  const displayName = u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username;
+
+  return (
+    <div style={listRowStyle}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>{displayName}</span>
+          <PersonBadge type={u.person_type} />
+          <span className="badge" style={{ fontSize: '0.68rem', opacity: 0.75 }}>
+            {u.is_superuser ? 'Superuser' : u.role}
+          </span>
+        </div>
+        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span>{u.email}</span>
+          <span>{u.tenant_name}</span>
+          <span>{formatDate(u.date_joined)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function KpiCard({
   icon: Icon,
@@ -609,49 +659,80 @@ function SectionCard({
   );
 }
 
-function TenantRow({ t }: { t: SystemTenant }) {
-  const companyLabel = t.person_type === 'pj'
-    ? `empresa${t.company_count !== 1 ? 's' : ''}`
-    : `pessoa física${t.company_count !== 1 ? 's' : ''}`;
-
+function TenantTable({ tenants }: { tenants: SystemTenant[] }) {
+  if (tenants.length === 0) return null;
   return (
-    <div style={listRowStyle}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{t.name}</span>
-          <PersonBadge type={t.person_type} />
-        </div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span>Tenant: {t.id}</span>
-          <span>{t.user_count} usuário{t.user_count !== 1 ? 's' : ''}</span>
-          <span>{t.company_count} {companyLabel}</span>
-          <span>criado em {formatDate(t.created_at)}</span>
-        </div>
-      </div>
+    <div className="table-wrapper" style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: '0 0 var(--radius-md) var(--radius-md)' }}>
+      <table className="table">
+        <thead>
+          <tr>
+            <th style={{ width: '80px' }}>Tenant</th>
+            <th>Nome / Razão Social</th>
+            <th style={{ width: '80px' }}>Tipo</th>
+            <th style={{ width: '100px' }}>Usuários</th>
+            <th style={{ width: '100px' }}>Empresas</th>
+            <th style={{ width: '140px' }}>Criado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tenants.map(t => (
+            <tr key={t.id}>
+              <td style={{ color: 'var(--color-text-muted)' }}>#{t.id}</td>
+              <td style={{ fontWeight: 600 }}>{t.name}</td>
+              <td><PersonBadge type={t.person_type} /></td>
+              <td>{t.user_count}</td>
+              <td>{t.company_count}</td>
+              <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(t.created_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function UserRow({ u }: { u: SystemUser }) {
+function UserTable({ users }: { users: SystemUser[] }) {
+  if (users.length === 0) return null;
   return (
-    <div style={listRowStyle}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-            {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
-          </span>
-          <PersonBadge type={u.person_type} />
-          {!u.is_active && (
-            <span className="badge" style={{ fontSize: '0.68rem', opacity: 0.6 }}>inativo</span>
-          )}
-        </div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span>{u.email}</span>
-          <span>Tenant: {u.tenant_id}</span>
-          <span>cargo: {u.is_superuser ? 'Superuser' : u.role === 'owner' ? 'Administrador' : u.role === 'admin' ? 'Administrador' : u.role === 'member' ? 'Usuário' : u.role}</span>
-          <span>desde {formatDate(u.date_joined)}</span>
-        </div>
-      </div>
+    <div className="table-wrapper" style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: '0 0 var(--radius-md) var(--radius-md)' }}>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>E-mail</th>
+            <th style={{ width: '80px' }}>Tipo</th>
+            <th style={{ width: '80px' }}>Status</th>
+            <th style={{ width: '80px' }}>Tenant</th>
+            <th style={{ width: '140px' }}>Cargo</th>
+            <th style={{ width: '140px' }}>Membro desde</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map(u => (
+            <tr key={`${u.id}-${u.tenant_slug}`}>
+              <td style={{ fontWeight: 600 }}>
+                {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
+              </td>
+              <td style={{ color: 'var(--color-text-secondary)' }}>{u.email}</td>
+              <td><PersonBadge type={u.person_type} /></td>
+              <td>
+                {u.is_active ? (
+                  <span className="badge badge-success" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>Ativo</span>
+                ) : (
+                  <span className="badge" style={{ fontSize: '0.68rem', padding: '2px 6px', opacity: 0.6, background: 'var(--color-bg-hover)' }}>Inativo</span>
+                )}
+              </td>
+              <td style={{ color: 'var(--color-text-muted)' }}>#{u.tenant_id}</td>
+              <td>
+                <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-bg-hover)', borderRadius: '4px', border: '1px solid var(--color-border)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                  {u.is_superuser ? 'Superuser' : u.role === 'owner' ? 'Owner' : u.role === 'admin' ? 'Admin' : u.role === 'member' ? 'Usuário' : u.role}
+                </span>
+              </td>
+              <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(u.date_joined)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -693,16 +774,16 @@ function ListagensTab({
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const tenantMatches = (t: SystemTenant) => (
     String(t.id).includes(normalizedSearch) ||
-    t.name.toLowerCase().includes(normalizedSearch) ||
-    t.slug.toLowerCase().includes(normalizedSearch)
+    (t.name || '').toLowerCase().includes(normalizedSearch) ||
+    (t.slug || '').toLowerCase().includes(normalizedSearch)
   );
   const userMatches = (u: SystemUser) => (
     String(u.id).includes(normalizedSearch) ||
     String(u.tenant_id).includes(normalizedSearch) ||
-    u.email.toLowerCase().includes(normalizedSearch) ||
-    u.username.toLowerCase().includes(normalizedSearch) ||
-    `${u.first_name} ${u.last_name}`.toLowerCase().includes(normalizedSearch) ||
-    u.tenant_name.toLowerCase().includes(normalizedSearch)
+    (u.email || '').toLowerCase().includes(normalizedSearch) ||
+    (u.username || '').toLowerCase().includes(normalizedSearch) ||
+    `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase().includes(normalizedSearch) ||
+    (u.tenant_name || '').toLowerCase().includes(normalizedSearch)
   );
 
   const filteredTenants = tenants.filter((t) => (
@@ -717,7 +798,7 @@ function ListagensTab({
     !normalizedSearch ||
     (searchType === 'usuario' ? userMatches(u) : (
       String(u.tenant_id).includes(normalizedSearch) ||
-      u.tenant_name.toLowerCase().includes(normalizedSearch)
+      (u.tenant_name || '').toLowerCase().includes(normalizedSearch)
     ))
   ));
   const foundCount = searchType === 'usuario' ? filteredUsers.length : filteredTenants.length;
@@ -764,7 +845,7 @@ function ListagensTab({
         isEmpty={filteredTenants.length === 0}
         emptyLabel="Nenhum tenant encontrado"
       >
-        <div>{filteredTenants.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+        <TenantTable tenants={filteredTenants} />
       </SectionCard>
 
       {/* Pessoa Jurídica */}
@@ -776,7 +857,7 @@ function ListagensTab({
         isEmpty={pjList.length === 0}
         emptyLabel="Nenhum tenant PJ encontrado"
       >
-        <div>{pjList.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+        <TenantTable tenants={pjList} />
       </SectionCard>
 
       {/* Pessoa Física */}
@@ -788,7 +869,7 @@ function ListagensTab({
         isEmpty={pfList.length === 0}
         emptyLabel="Nenhum tenant PF encontrado"
       >
-        <div>{pfList.map((t) => <TenantRow key={t.id} t={t} />)}</div>
+        <TenantTable tenants={pfList} />
       </SectionCard>
 
       {/* Todos os Usuários */}
@@ -800,7 +881,7 @@ function ListagensTab({
         isEmpty={filteredUsers.length === 0}
         emptyLabel="Nenhum usuário encontrado"
       >
-        <div>{filteredUsers.map((u) => <UserRow key={`${u.id}-${u.tenant_slug}`} u={u} />)}</div>
+        <UserTable users={filteredUsers} />
       </SectionCard>
 
       {false && (
