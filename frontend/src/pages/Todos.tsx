@@ -248,12 +248,10 @@ function TodoDetailsModal({
   members,
   onClose,
   onSubmit,
-  onDelete,
   onCreateSubtask,
   onToggleSubtask,
   onDeleteSubtask,
   isSaving,
-  isDeleting,
   isCreatingSubtask,
   isUpdatingSubtasks,
 }: {
@@ -262,7 +260,6 @@ function TodoDetailsModal({
   members: TenantMember[];
   onClose: () => void;
   onSubmit: (value: TodoPayload) => void;
-  onDelete: () => void;
   onCreateSubtask: (title: string) => void;
   onToggleSubtask: (subtaskId: number) => void;
   onDeleteSubtask: (subtaskId: number) => void;
@@ -850,7 +847,6 @@ function TaskView({ projectId }: { projectId: number | null }) {
           members={members}
           onClose={() => setSelectedItemId(null)}
           onSubmit={(value) => handleEditSubmit(selectedItem.id, value)}
-          onDelete={() => deleteMutation.mutate(selectedItem.id)}
           onCreateSubtask={(title) => createSubtaskMutation.mutate({
             title,
             description: '',
@@ -864,7 +860,6 @@ function TaskView({ projectId }: { projectId: number | null }) {
           onToggleSubtask={(subtaskId) => toggleSubtaskMutation.mutate(subtaskId)}
           onDeleteSubtask={(subtaskId) => deleteSubtaskMutation.mutate(subtaskId)}
           isSaving={updateMutation.isPending}
-          isDeleting={deleteMutation.isPending}
           isCreatingSubtask={createSubtaskMutation.isPending}
           isUpdatingSubtasks={toggleSubtaskMutation.isPending || deleteSubtaskMutation.isPending}
         />

@@ -31,7 +31,7 @@ export default function TransactionModal({ transaction, isOpen, onClose, onSave,
   const [account, setAccount] = useState<number | string>(transaction?.account || '');
   const [destinationAccount, setDestinationAccount] = useState<number | string>(transaction?.destination_account || '');
   const [category, setCategory] = useState<number | string>(transaction?.category || '');
-  const [isCleared, setIsCleared] = useState(transaction?.is_cleared ?? true);
+  const [isCleared, setIsCleared] = useState(transaction?.is_cleared ?? false);
   const [isIgnored, setIsIgnored] = useState(transaction?.is_ignored ?? false);
   
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(transaction?.recurrence_type || 'once');

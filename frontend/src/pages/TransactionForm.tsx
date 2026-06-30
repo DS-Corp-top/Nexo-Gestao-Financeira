@@ -52,7 +52,7 @@ export default function TransactionForm() {
   const [account, setAccount] = useState<number | string>('');
   const [destinationAccount, setDestinationAccount] = useState<number | string>('');
   const [category, setCategory] = useState<number | string>('');
-  const [isCleared, setIsCleared] = useState(true);
+  const [isCleared, setIsCleared] = useState(false);
   const [isIgnored, setIsIgnored] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once');
   const [installmentCount, setInstallmentCount] = useState<number | string>('');
