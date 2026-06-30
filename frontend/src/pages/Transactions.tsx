@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -48,6 +49,7 @@ export default function Transactions() {
   const [orderBy, setOrderBy] = useState('-date');
   const navigate = useNavigate();
   const [clearingTx, setClearingTx] = useState<Transaction | null>(null);
+  const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -398,9 +400,7 @@ export default function Transactions() {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 document.querySelectorAll('details').forEach(d => d.removeAttribute('open'));
-                                if (confirm('Tem certeza que deseja excluir esta transação?')) {
-                                  deleteMutation.mutate({ id: tx.id });
-                                }
+                                setDeletingTx(tx);
                               }}>Excluir</button>
                             </div>
                           </details>
@@ -424,6 +424,50 @@ export default function Transactions() {
           await toggleMutation.mutateAsync({ id, cleared_date: date, unlock_password: unlockPassword });
         }}
       />
+
+      {deletingTx && createPortal(
+        <div
+          onClick={() => setDeletingTx(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, padding: '1rem',
+          }}
+        >
+          <div
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 380, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+          >
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Excluir transação</h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setDeletingTx(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  deleteMutation.mutate({ id: deletingTx.id });
+                  setDeletingTx(null);
+                }}
+              >
+                {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

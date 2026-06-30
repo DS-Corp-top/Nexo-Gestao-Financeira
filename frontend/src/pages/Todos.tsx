@@ -145,6 +145,8 @@ function TodoForm({
   onSubmit,
   onCancel,
   isLoading,
+  formId,
+  hideActions,
 }: {
   initial?: Partial<TodoItem>;
   projectId: number | null;
@@ -153,6 +155,8 @@ function TodoForm({
   onSubmit: (v: TodoPayload) => void;
   onCancel: () => void;
   isLoading: boolean;
+  formId?: string;
+  hideActions?: boolean;
 }) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -163,6 +167,7 @@ function TodoForm({
 
   return (
     <form
+      id={formId}
       onSubmit={(e) => {
         e.preventDefault();
         if (!title.trim()) return;
@@ -225,12 +230,14 @@ function TodoForm({
           </label>
         )}
       </div>
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-        <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
-        <button type="submit" className="btn btn-primary" disabled={isLoading || !title.trim()}>
-          {isLoading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : (initial?.id ? 'Salvar' : 'Adicionar')}
-        </button>
-      </div>
+      {!hideActions && (
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={isLoading || !title.trim()}>
+            {isLoading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : (initial?.id ? 'Salvar' : 'Adicionar')}
+          </button>
+        </div>
+      )}
     </form>
   );
 }
@@ -306,6 +313,8 @@ function TodoDetailsModal({
           onSubmit={onSubmit}
           onCancel={onClose}
           isLoading={isSaving}
+          formId="todo-detail-form"
+          hideActions
         />
 
         <div style={{ marginTop: '1rem', display: 'grid', gap: '0.85rem' }}>
@@ -409,9 +418,10 @@ function TodoDetailsModal({
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.75rem' }}>
-          <button type="button" className="btn btn-danger" onClick={onDelete} disabled={isDeleting}>
-            {isDeleting ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Excluir tarefa'}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="submit" form="todo-detail-form" className="btn btn-primary" disabled={isSaving}>
+            {isSaving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Salvar'}
           </button>
         </div>
       </div>
