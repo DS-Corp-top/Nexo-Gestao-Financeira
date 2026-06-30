@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Menu, Building2, ChevronDown, LogOut, ArrowLeft } from 'lucide-react';
+import { Menu, Building2, ChevronDown, LogOut, ArrowLeft, Settings } from 'lucide-react';
 import { fetchTenantCompanies } from '../../api/tenant';
 import { fetchAllCompanies, type AllCompanyItem } from '../../api/system';
 import { useAuth } from '../../contexts/AuthContext';
@@ -88,6 +88,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
         )
       ).sort((a, b) => a.tenant_id - b.tenant_id)
     : [];
+
   const userDisplayName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email || user.username
     : '';
@@ -110,9 +111,8 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
 
   function roleLabel(role?: string | null) {
     if (user?.is_superuser) return 'Superadmin';
-    if (role === 'owner') return 'Owner';
-    if (role === 'admin') return 'Admin';
-    if (role === 'member') return 'Membro';
+    if (role === 'owner' || role === 'admin') return 'Administrador';
+    if (role === 'member') return 'Usuario';
     return 'Sem nível';
   }
 
@@ -229,8 +229,8 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: 1, minWidth: 0 }}>
         {isMobile && (location.pathname.startsWith('/accounts') || location.pathname.startsWith('/categories')) && (
-          <button 
-            className="btn-ghost btn-icon" 
+          <button
+            className="btn-ghost btn-icon"
             onClick={() => navigate('/transactions')}
             style={{ padding: '0.25rem', marginLeft: '-0.25rem', marginRight: '0.25rem' }}
             aria-label="Voltar"
@@ -257,71 +257,83 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
 
           {tenantMenuOpen && (
             <div className="tenant-dropdown">
-              {isSuperuser ? (
-                <>
-                  <div className="tenant-dropdown-title">Todas as empresas</div>
-                  {allCompaniesByTenant.length === 0 ? (
-                    <div className="tenant-dropdown-empty">Nenhuma empresa cadastrada.</div>
-                  ) : allCompaniesByTenant.map((group) => (
-                    <div key={group.tenant_id}>
-                      <div className="tenant-dropdown-group">
-                        Tenant {group.tenant_id}
+              {/* Scrollable list */}
+              <div className="tenant-dropdown-scroll">
+                {isSuperuser ? (
+                  <>
+                    <div className="tenant-dropdown-title">Todas as empresas</div>
+                    {allCompaniesByTenant.length === 0 ? (
+                      <div className="tenant-dropdown-empty">Nenhuma empresa cadastrada.</div>
+                    ) : allCompaniesByTenant.map((group) => (
+                      <div key={group.tenant_id}>
+                        <div className="tenant-dropdown-group">
+                          Tenant {group.tenant_id}
+                        </div>
+                        {group.companies.map((company) => (
+                          <button
+                            key={company.id}
+                            type="button"
+                            className={`tenant-dropdown-item ${
+                              company.id === activeCompany?.id &&
+                              getCompanyTenantId(company) === getCompanyTenantId(activeCompany)
+                                ? 'active'
+                                : ''
+                            }`}
+                            onClick={() => selectCompany(company)}
+                          >
+                            <div className="tenant-dropdown-main">
+                              <span className="tenant-dropdown-seq">{company.sequence_number}</span>
+                              <span className="tenant-dropdown-name">{displayName(company.name)}</span>
+                              {company.is_default && <span className="tenant-dropdown-badge">Padrão</span>}
+                            </div>
+                            <div className="tenant-dropdown-doc">
+                              {formatDocument(company.document) || 'CPF/CNPJ não informado'}
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                      {group.companies.map((company) => (
-                        <button
-                          key={company.id}
-                          type="button"
-                          className={`tenant-dropdown-item ${
-                            company.id === activeCompany?.id &&
-                            getCompanyTenantId(company) === getCompanyTenantId(activeCompany)
-                              ? 'active'
-                              : ''
-                          }`}
-                          onClick={() => selectCompany(company)}
-                        >
-                          <div className="tenant-dropdown-main">
-                            <span className="tenant-dropdown-seq">{company.sequence_number}</span>
-                            <span className="tenant-dropdown-name">{displayName(company.name)}</span>
-                            {company.is_default && <span className="tenant-dropdown-badge">Padrão</span>}
-                          </div>
-                          <div className="tenant-dropdown-doc">
-                            {formatDocument(company.document) || 'CPF/CNPJ não informado'}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <div className="tenant-dropdown-title">Empresas do tenant</div>
-                  {tenantCompanies.length === 0 ? (
-                    <div className="tenant-dropdown-empty">Nenhuma empresa disponivel.</div>
-                  ) : tenantCompanies.map((company) => (
-                    <button
-                      key={company.id}
-                      type="button"
-                      className={`tenant-dropdown-item ${
-                        company.id === activeCompany?.id &&
-                        getCompanyTenantId(company) === getCompanyTenantId(activeCompany)
-                          ? 'active'
-                          : ''
-                      }`}
-                      onClick={() => selectCompany(company)}
-                    >
-                      <div className="tenant-dropdown-main">
-                        <span className="tenant-dropdown-seq">{company.sequence_number}</span>
-                        <span className="tenant-dropdown-name">{company.name}</span>
-                        {company.is_default && <span className="tenant-dropdown-badge">Padrao</span>}
-                      </div>
-                      <div className="tenant-dropdown-doc">
-                        {formatDocument(company.document) || 'CPF/CNPJ nao informado'}
-                      </div>
-                    </button>
-                  ))}
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div className="tenant-dropdown-title">Empresas do tenant</div>
+                    {tenantCompanies.length === 0 ? (
+                      <div className="tenant-dropdown-empty">Nenhuma empresa disponivel.</div>
+                    ) : tenantCompanies.map((company) => (
+                      <button
+                        key={company.id}
+                        type="button"
+                        className={`tenant-dropdown-item ${
+                          company.id === activeCompany?.id &&
+                          getCompanyTenantId(company) === getCompanyTenantId(activeCompany)
+                            ? 'active'
+                            : ''
+                        }`}
+                        onClick={() => selectCompany(company)}
+                      >
+                        <div className="tenant-dropdown-main">
+                          <span className="tenant-dropdown-seq">{company.sequence_number}</span>
+                          <span className="tenant-dropdown-name">{company.name}</span>
+                          {company.is_default && <span className="tenant-dropdown-badge">Padrao</span>}
+                        </div>
+                        <div className="tenant-dropdown-doc">
+                          {formatDocument(company.document) || 'CPF/CNPJ nao informado'}
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
 
-                </>
-              )}
+              {/* Atalho fixo no rodapé do dropdown */}
+              <button
+                type="button"
+                className="tenant-dropdown-link-btn"
+                onClick={() => { setTenantMenuOpen(false); navigate('/settings/company?modal=profile'); }}
+              >
+                <Settings size={13} />
+                Dados da Empresa
+              </button>
             </div>
           )}
         </div>
@@ -417,7 +429,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                     color: 'var(--color-text-muted)',
                     marginBottom: '0.22rem',
                   }}>
-                    Empresa
+                    {tenantLabel}
                   </div>
                   <div style={{
                     fontSize: '0.82rem',
@@ -530,14 +542,21 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
           top: calc(100% + 0.5rem);
           right: 0;
           width: min(320px, calc(100vw - 1.5rem));
-          max-height: min(360px, calc(100vh - 5rem));
-          overflow-y: auto;
+          max-height: min(400px, calc(100vh - 5rem));
+          display: flex;
+          flex-direction: column;
           background: var(--color-bg-card);
           border: 1px solid var(--color-border-hover);
           border-radius: var(--radius-lg);
           box-shadow: 0 12px 30px rgba(0,0,0,0.6);
           z-index: 100;
+          overflow: hidden;
+        }
+        .tenant-dropdown-scroll {
+          flex: 1;
+          overflow-y: auto;
           padding: 0.35rem;
+          min-height: 0;
         }
         .tenant-dropdown-title {
           padding: 0.45rem 0.55rem 0.35rem;
@@ -619,15 +638,28 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
         .tenant-dropdown-empty {
           padding: 0.55rem;
         }
-        .tenant-dropdown-link {
-          display: block;
-          margin-top: 0.25rem;
-          padding: 0.6rem 0.55rem;
+        .tenant-dropdown-link-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex-shrink: 0;
+          width: 100%;
+          padding: 0.65rem 0.9rem;
+          border: none;
           border-top: 1px solid var(--color-border);
-          color: var(--color-text-primary);
+          border-radius: 0;
+          background: none;
+          color: var(--color-text-secondary);
+          font-family: inherit;
           font-size: 0.8rem;
-          font-weight: 800;
-          text-decoration: none;
+          font-weight: 700;
+          text-align: left;
+          cursor: pointer;
+          transition: color 0.15s, background 0.15s;
+        }
+        .tenant-dropdown-link-btn:hover {
+          color: var(--color-accent);
+          background: var(--color-accent-muted);
         }
         @media (max-width: 768px) {
           .mobile-menu-btn { display: flex; }

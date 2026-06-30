@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, ChevronRight, KeyRound, MapPin, Pencil, Plus, Save, Users, X } from 'lucide-react';
@@ -11,9 +12,12 @@ import {
   inviteTenantUser,
   lookupCep,
   updateNfseCredential,
+  updateTenantCompany,
   updateTenantProfile,
+  type TenantCompany,
 } from '../api/tenant';
 import { fetchTenantMembers, type TenantMember, updateTenantMember } from '../api/users';
+import { useAuth } from '../contexts/AuthContext';
 import { useViewMode } from '../contexts/ViewModeContext';
 
 function formatWorkspaceId(documentValue?: string) {
@@ -60,17 +64,37 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 export default function CompanySettings() {
+  const { refresh } = useAuth();
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const cols21 = isMobile ? '1fr' : '2fr 1fr';
   const cols211 = isMobile ? '1fr' : '2fr 1fr 1fr';
   const queryClient = useQueryClient();
 
-  const [modal, setModal] = useState<'profile' | 'companies' | 'nfse' | 'users' | 'userInvite' | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'nfse' | 'users' | 'userInvite' | null>(() => {
+    const m = searchParams.get('modal');
+    if (m === 'profile' || m === 'companies' || m === 'nfse' || m === 'users') return m;
+    return null;
+  });
+
+  useEffect(() => {
+    setSearchParams({}, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [cepLoading, setCepLoading] = useState(false);
   const [editingMember, setEditingMember] = useState<TenantMember | null>(null);
+  const [editingCompany, setEditingCompany] = useState<TenantCompany | null>(null);
+
+  // Sync modal state with URL query param
+  useEffect(() => {
+    const m = searchParams.get('modal');
+    if (m === 'profile' || m === 'companies' || m === 'nfse' || m === 'users') {
+      setModal(m);
+    }
+  }, [searchParams]);
 
   const { data: profile, isLoading } = useQuery({ queryKey: ['tenantProfile'], queryFn: fetchTenantProfile });
   const { data: tenantMembers = [] } = useQuery<TenantMember[]>({ queryKey: ['tenant-members'], queryFn: fetchTenantMembers });
@@ -80,12 +104,14 @@ export default function CompanySettings() {
   const companyLimit = 2;
   const companyLimitReached = tenantCompanies.length >= companyLimit;
 
-  const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); setEditingMember(null); };
+  const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); setEditingMember(null); setEditingCompany(null); };
 
   const updateMutation = useMutation({
     mutationFn: updateTenantProfile,
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['tenantProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['tenantCompanies'] });
+      await refresh();
       setSuccessMsg('Dados atualizados com sucesso!');
       setTimeout(() => { setSuccessMsg(''); closeModal(); }, 1500);
     },
@@ -137,11 +163,26 @@ export default function CompanySettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenantCompanies'] });
       setSuccessMsg('Empresa adicionada com sucesso!');
+      setModal('companies');
       setTimeout(() => setSuccessMsg(''), 2000);
     },
     onError: (error: any) => {
       const data = error?.response?.data || {};
       setErrorMsg(data.detail || data.document?.[0] || data.sequence_number?.[0] || 'Erro ao adicionar empresa.');
+    },
+  });
+
+  const companyEditMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: FormData }) =>
+      updateTenantCompany(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenantCompanies'] });
+      setSuccessMsg('Empresa atualizada com sucesso!');
+      setTimeout(() => { setSuccessMsg(''); setModal('companies'); setEditingCompany(null); }, 1500);
+    },
+    onError: (error: any) => {
+      const data = error?.response?.data || {};
+      setErrorMsg(data.detail || data.document?.[0] || data.name?.[0] || 'Erro ao atualizar empresa.');
     },
   });
 
@@ -201,13 +242,14 @@ export default function CompanySettings() {
     setSuccessMsg(''); setErrorMsg('');
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const selectedRole = String(formData.get('role') || 'member') as 'admin' | 'member';
     await updateMemberMutation.mutateAsync({
       id: editingMember.id,
       payload: {
         name: String(formData.get('name') || '').trim(),
         email: String(formData.get('email') || '').trim(),
         password: String(formData.get('password') || '').trim() || undefined,
-        role: String(formData.get('role') || editingMember.role) as 'owner' | 'admin' | 'member',
+        role: (selectedRole === 'admin' && editingMember.role === 'owner' ? 'owner' : selectedRole) as 'owner' | 'admin' | 'member',
       },
     });
     form.reset();
@@ -229,17 +271,20 @@ export default function CompanySettings() {
     form.reset();
   };
 
+  const handleCompanyEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCompany) return;
+    setSuccessMsg(''); setErrorMsg('');
+    const formData = new FormData(e.currentTarget);
+    if ((formData.get('logo') as File)?.size === 0) formData.delete('logo');
+    await companyEditMutation.mutateAsync({ id: editingCompany.id, payload: formData });
+  };
+
   if (isLoading) {
     return <div className="animate-fade-in"><div className="card skeleton" style={{ height: 300 }} /></div>;
   }
 
   const sections = [
-    {
-      key: 'profile' as const,
-      icon: Building2,
-      title: 'Dados da Empresa',
-      description: profile?.name || 'Nome, CNPJ, endereco e logo',
-    },
     {
       key: 'companies' as const,
       icon: Building2,
@@ -262,25 +307,6 @@ export default function CompanySettings() {
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
-      {/* Header */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-          {profile?.logo
-            ? <img src={profile.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            : <Building2 size={28} style={{ color: 'var(--color-text-muted)' }} />
-          }
-        </div>
-        <div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{profile?.name}</h3>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-            {workspaceIdLabel(profile?.document)}: {formatWorkspaceId(profile?.document) || 'Nao informado'}
-          </p>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', marginTop: 2 }}>
-            Tenant: {profile?.id || '--'}
-          </p>
-        </div>
-      </div>
-
       {/* Section list */}
       <div className="card" style={{ padding: 0 }}>
         {sections.map(({ key, icon: Icon, title, description }, i) => (
@@ -369,13 +395,23 @@ export default function CompanySettings() {
             {tenantCompanies.length === 0
               ? <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Nenhuma empresa cadastrada.</p>
               : tenantCompanies.map((company) => (
-                <div key={company.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '90px 1fr auto', gap: 'var(--space-sm)', alignItems: 'center', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Seq. {company.sequence_number}</span>
-                  <div>
+                <div key={company.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)' }}>
+                  {!isMobile && <span style={{ flexShrink: 0, width: 52, fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Seq. {company.sequence_number}</span>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <strong style={{ display: 'block', fontSize: '0.88rem' }}>{company.name}</strong>
                     <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.78rem' }}>{workspaceIdLabel(company.document)}: {formatWorkspaceId(company.document) || 'Nao informado'}</span>
                   </div>
-                  {company.is_default && <span style={{ color: 'var(--color-success)', fontSize: '0.75rem', fontWeight: 600 }}>Padrao</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                    {company.is_default && <span style={{ color: 'var(--color-success)', fontSize: '0.75rem', fontWeight: 600 }}>Padrao</span>}
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ height: 30, padding: '0 0.65rem', fontSize: '0.75rem', gap: '0.3rem', display: 'flex', alignItems: 'center' }}
+                      onClick={() => { setEditingCompany(company); setModal('companyEdit'); setSuccessMsg(''); setErrorMsg(''); }}
+                    >
+                      <Pencil size={12} /> Editar
+                    </button>
+                  </div>
                 </div>
               ))
             }
@@ -387,6 +423,33 @@ export default function CompanySettings() {
             </div>
           )}
 
+          <div style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 'var(--space-md)' }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Adicionar empresa <span style={{ color: 'var(--color-text-muted)' }}>({tenantCompanies.length}/{companyLimit})</span>
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={companyLimitReached}
+              onClick={() => { setModal('companyCreate'); setSuccessMsg(''); setErrorMsg(''); }}
+            >
+              <Plus size={16} />Adicionar empresa
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === 'companyCreate' && (
+        <Modal title="Adicionar empresa" onClose={() => { setModal('companies'); setSuccessMsg(''); setErrorMsg(''); }}>
+          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
+          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
+            Adicionar empresa <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({tenantCompanies.length}/{companyLimit})</span>
+          </p>
+          {companyLimitReached && (
+            <div style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
+              Limite de {companyLimit} cadastros atingido.
+            </div>
+          )}
           <form onSubmit={handleCompanySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
               <input type="hidden" name="sequence_number" value={String(tenantCompanies.length + 1)} />
@@ -398,8 +461,73 @@ export default function CompanySettings() {
               <input type="email" name="email" className="input" disabled={companyLimitReached} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button type="button" className="btn" onClick={() => { setModal('companies'); setErrorMsg(''); }}>
+                Cancelar
+              </button>
               <button type="submit" className="btn btn-primary" disabled={companyLimitReached || companyMutation.isPending}>
                 <Plus size={16} />{companyMutation.isPending ? 'Adicionando...' : 'Adicionar'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal: Editar Empresa */}
+      {modal === 'companyEdit' && editingCompany && (
+        <Modal title={`Editar — ${editingCompany.name}`} onClose={() => { setModal('companies'); setEditingCompany(null); setSuccessMsg(''); setErrorMsg(''); }}>
+          {successMsg && <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{successMsg}</div>}
+          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
+          <form key={editingCompany.id} onSubmit={handleCompanyEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
+              <div><label className="label">Nome da Empresa</label><input type="text" name="name" className="input" defaultValue={editingCompany.name} required /></div>
+              <div><label className="label">CNPJ / CPF</label><input type="text" name="document" className="input" defaultValue={editingCompany.document} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
+              <div><label className="label">E-mail de Contato</label><input type="email" name="email" className="input" defaultValue={editingCompany.email} /></div>
+              <div><label className="label">Telefone</label><input type="text" name="phone" className="input" defaultValue={editingCompany.phone} /></div>
+            </div>
+            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)', margin: 0 }}>Endereco (para Notas Fiscais)</p>
+            <div style={{ display: 'grid', gridTemplateColumns: cols21, gap: 'var(--space-md)' }}>
+              <div><label className="label">Logradouro</label><input type="text" name="address" className="input" defaultValue={editingCompany.address} /></div>
+              <div><label className="label">Numero</label><input type="text" name="address_number" className="input" defaultValue={editingCompany.address_number} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
+              <div><label className="label">Complemento</label><input type="text" name="address_complement" className="input" defaultValue={editingCompany.address_complement} /></div>
+              <div><label className="label">Bairro</label><input type="text" name="district" className="input" defaultValue={editingCompany.district} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: cols211, gap: 'var(--space-md)' }}>
+              <div><label className="label">Cidade</label><input type="text" name="city" className="input" defaultValue={editingCompany.city} /></div>
+              <div><label className="label">Estado (UF)</label><input type="text" name="state" className="input" defaultValue={editingCompany.state} maxLength={2} /></div>
+              <div>
+                <label className="label">CEP</label>
+                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                  <input type="text" name="postal_code" className="input" defaultValue={editingCompany.postal_code} />
+                  <button type="button" className="btn btn-secondary" onClick={handleCepLookup} disabled={cepLoading}><MapPin size={16} /></button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="label">Logo da Empresa</label>
+              {editingCompany.logo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <img src={editingCompany.logo} alt="Logo atual" style={{ height: 40, maxWidth: 120, objectFit: 'contain', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }} />
+                  <button type="button" className="btn" style={{ fontSize: '0.75rem', height: 28, padding: '0 0.6rem' }}
+                    onClick={async () => {
+                      setSuccessMsg(''); setErrorMsg('');
+                      const fd = new FormData(); fd.append('clear_logo', 'true');
+                      await companyEditMutation.mutateAsync({ id: editingCompany.id, payload: fd });
+                    }}
+                  >
+                    Remover logo
+                  </button>
+                </div>
+              )}
+              <input type="file" name="logo" className="input" accept="image/*" />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button type="button" className="btn" onClick={() => { setModal('companies'); setEditingCompany(null); setErrorMsg(''); }}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" disabled={companyEditMutation.isPending}>
+                <Save size={16} />{companyEditMutation.isPending ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </form>
@@ -481,7 +609,7 @@ export default function CompanySettings() {
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
               <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Minimo 6 caracteres" minLength={6} required /></div>
               <div>
-                <label className="label">Papel</label>
+                <label className="label">Nivel de Acesso</label>
                 <select name="role" className="input" defaultValue="member">
                   <option value="member">Usuario</option>
                   <option value="admin">Administrador</option>
@@ -511,11 +639,10 @@ export default function CompanySettings() {
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
               <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Deixe em branco para manter" /></div>
               <div>
-                <label className="label">Papel</label>
-                <select name="role" className="input" defaultValue={editingMember.role}>
+                <label className="label">Nivel de Acesso</label>
+                <select name="role" className="input" defaultValue={editingMember.role === 'member' ? 'member' : 'admin'}>
                   <option value="member">Usuario</option>
                   <option value="admin">Administrador</option>
-                  {editingMember.role === 'owner' && <option value="owner">Owner</option>}
                 </select>
               </div>
             </div>

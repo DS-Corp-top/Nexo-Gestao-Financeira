@@ -725,7 +725,7 @@ function UserTable({ users }: { users: SystemUser[] }) {
               <td style={{ color: 'var(--color-text-muted)' }}>#{u.tenant_id}</td>
               <td>
                 <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-bg-hover)', borderRadius: '4px', border: '1px solid var(--color-border)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                  {u.is_superuser ? 'Superuser' : u.role === 'owner' ? 'Owner' : u.role === 'admin' ? 'Admin' : u.role === 'member' ? 'Usuário' : u.role}
+                  {u.is_superuser ? 'Superuser' : u.role === 'owner' || u.role === 'admin' ? 'Administrador' : u.role === 'member' ? 'Usuario' : u.role}
                 </span>
               </td>
               <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(u.date_joined)}</td>

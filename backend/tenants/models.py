@@ -76,6 +76,7 @@ class Tenant(models.Model):
         if len(digits) not in (11, 14):
             raise ValidationError({"document": "Informe CPF com 11 digitos ou CNPJ com 14 digitos."})
         self.document = digits
+        self.person_type = self.PersonType.PJ if len(digits) == 14 else self.PersonType.PF
 
     def save(self, *args, **kwargs):
         self._normalize_document()
@@ -124,6 +125,12 @@ class TenantCompany(models.Model):
     city = models.CharField("Cidade", max_length=100, blank=True)
     state = models.CharField("UF", max_length=2, blank=True)
     postal_code = models.CharField("CEP", max_length=9, blank=True)
+    logo = models.ImageField(
+        "Logo da empresa",
+        upload_to=TenantPath("companies/logo"),
+        blank=True,
+        null=True,
+    )
     is_default = models.BooleanField("Empresa padrao", default=False)
     is_active = models.BooleanField("Ativa", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)

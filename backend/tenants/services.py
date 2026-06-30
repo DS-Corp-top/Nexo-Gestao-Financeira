@@ -42,9 +42,15 @@ def ensure_default_tenant_company(tenant):
 
     company = tenant.companies.filter(is_default=True).first()
     if company:
+        update_fields = []
         if not company.document:
             company.document = document
-            company.save(update_fields=["document", "updated_at"])
+            update_fields.append("document")
+        if company.name != tenant.name:
+            company.name = tenant.name
+            update_fields.append("name")
+        if update_fields:
+            company.save(update_fields=[*update_fields, "updated_at"])
         return company
 
     company = tenant.companies.order_by("sequence_number", "id").first()
@@ -73,6 +79,42 @@ def ensure_default_tenant_company(tenant):
         is_default=True,
         is_active=True,
     )
+
+
+def sync_default_tenant_company(tenant):
+    company = ensure_default_tenant_company(tenant)
+    fields_to_sync = (
+        "name",
+        "document",
+        "email",
+        "phone",
+        "address",
+        "address_number",
+        "address_complement",
+        "district",
+        "city",
+        "state",
+        "postal_code",
+    )
+    changed_fields = []
+    for field_name in fields_to_sync:
+        tenant_value = getattr(tenant, field_name)
+        if getattr(company, field_name) != tenant_value:
+            setattr(company, field_name, tenant_value)
+            changed_fields.append(field_name)
+
+    if not company.is_active:
+        company.is_active = True
+        changed_fields.append("is_active")
+
+    if not company.is_default:
+        company.is_default = True
+        changed_fields.append("is_default")
+
+    if changed_fields:
+        company.save(update_fields=[*changed_fields, "updated_at"])
+
+    return company
 
 
 @transaction.atomic

@@ -18,7 +18,7 @@ from tenants.serializers import (
     TenantMembershipSerializer,
     TenantSerializer,
 )
-from tenants.services import ensure_default_tenant_company
+from tenants.services import ensure_default_tenant_company, sync_default_tenant_company
 
 
 def get_tenant_membership(user, tenant):
@@ -56,9 +56,10 @@ class TenantProfileView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         clear_logo = self.request.data.get("clear_logo") in ("true", "1", True, "True")
         if clear_logo:
-            serializer.save(logo=None)
+            tenant = serializer.save(logo=None)
         else:
-            serializer.save()
+            tenant = serializer.save()
+        sync_default_tenant_company(tenant)
 
 
 class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSet):
@@ -158,6 +159,7 @@ class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSe
 class TenantCompanyViewSet(viewsets.ModelViewSet):
     """Manage companies that belong to the authenticated user's tenant."""
     serializer_class = TenantCompanySerializer
+    parser_classes = [parsers.MultiPartParser, parsers.JSONParser]
     ordering = ("sequence_number", "name")
     max_companies_per_tenant = 2
 
@@ -190,7 +192,11 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
             TenantCompany.objects.filter(tenant=tenant, is_default=True).exclude(
                 pk=serializer.instance.pk
             ).update(is_default=False)
-        serializer.save()
+        clear_logo = self.request.data.get("clear_logo") in ("true", "1", True, "True")
+        if clear_logo:
+            serializer.save(logo=None)
+        else:
+            serializer.save()
 
     def perform_destroy(self, instance):
         tenant = get_user_tenant(self.request.user, self.request)

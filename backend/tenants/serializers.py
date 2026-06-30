@@ -72,6 +72,7 @@ class TenantCompanySerializer(serializers.ModelSerializer):
     formatted_address_line = serializers.CharField(read_only=True)
     formatted_city_state = serializers.CharField(read_only=True)
     full_address = serializers.CharField(read_only=True)
+    logo = serializers.ImageField(required=False, allow_null=True, validators=[validate_logo_file])
 
     class Meta:
         model = TenantCompany
@@ -90,6 +91,7 @@ class TenantCompanySerializer(serializers.ModelSerializer):
             "city",
             "state",
             "postal_code",
+            "logo",
             "formatted_address_line",
             "formatted_city_state",
             "full_address",

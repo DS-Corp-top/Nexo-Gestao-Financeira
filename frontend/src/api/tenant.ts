@@ -53,6 +53,7 @@ export interface TenantCompany {
   state: string;
   postal_code: string;
   full_address: string;
+  logo: string | null;
   is_default: boolean;
   is_active: boolean;
   created_at: string;
@@ -83,8 +84,11 @@ export async function createTenantCompany(payload: Partial<TenantCompany>): Prom
   return data;
 }
 
-export async function updateTenantCompany(id: number, payload: Partial<TenantCompany>): Promise<TenantCompany> {
-  const { data } = await api.patch<TenantCompany>(`/tenant-companies/${id}/`, payload);
+export async function updateTenantCompany(id: number, payload: FormData | Partial<TenantCompany>): Promise<TenantCompany> {
+  const isFormData = payload instanceof FormData;
+  const { data } = await api.patch<TenantCompany>(`/tenant-companies/${id}/`, payload, {
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+  });
   return data;
 }
 
