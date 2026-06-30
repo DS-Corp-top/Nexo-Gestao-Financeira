@@ -85,17 +85,28 @@ function NoteForm({
 
 function NoteCard({
   note,
+  onOpen,
   onEdit,
   onDelete,
   onTogglePin,
 }: {
   note: Note;
+  onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
 }) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       style={{
         background: 'var(--color-bg-card)',
         border: '1px solid var(--color-border)',
@@ -106,6 +117,7 @@ function NoteCard({
         gap: '0.5rem',
         position: 'relative',
         minHeight: 120,
+        cursor: 'pointer',
       }}
     >
       {note.is_pinned && (
@@ -149,7 +161,10 @@ function NoteCard({
         </span>
         <button
           type="button"
-          onClick={onTogglePin}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin();
+          }}
           title={note.is_pinned ? 'Desafixar' : 'Fixar'}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}
         >
@@ -157,7 +172,10 @@ function NoteCard({
         </button>
         <button
           type="button"
-          onClick={onEdit}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
           title="Editar"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}
         >
@@ -165,7 +183,10 @@ function NoteCard({
         </button>
         <button
           type="button"
-          onClick={onDelete}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
           title="Excluir"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}
         >
@@ -182,6 +203,7 @@ export default function Notes() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [search, setSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<Note | null>(null);
 
@@ -216,8 +238,16 @@ export default function Notes() {
   const pinned = filtered.filter((n) => n.is_pinned);
   const unpinned = filtered.filter((n) => !n.is_pinned);
 
-  const handleEdit = (note: Note) => { setEditingNote(note); setShowForm(false); };
-  const handleTogglePin = (note: Note) => updateMutation.mutate({ id: note.id, payload: { is_pinned: !note.is_pinned } });
+  const handleEdit = (note: Note) => {
+    setEditingNote(note);
+    setViewingNote(null);
+    setShowForm(false);
+  };
+  const handleTogglePin = (note: Note) => {
+    const isPinned = !note.is_pinned;
+    setViewingNote((current) => current?.id === note.id ? { ...current, is_pinned: isPinned } : current);
+    updateMutation.mutate({ id: note.id, payload: { is_pinned: isPinned } });
+  };
 
   return (
     <>
@@ -315,6 +345,7 @@ export default function Notes() {
               <NoteCard
                 key={note.id}
                 note={note}
+                onOpen={() => setViewingNote(note)}
                 onEdit={() => handleEdit(note)}
                 onDelete={() => setConfirmDelete(note)}
                 onTogglePin={() => handleTogglePin(note)}
@@ -337,6 +368,7 @@ export default function Notes() {
               <NoteCard
                 key={note.id}
                 note={note}
+                onOpen={() => setViewingNote(note)}
                 onEdit={() => handleEdit(note)}
                 onDelete={() => setConfirmDelete(note)}
                 onTogglePin={() => handleTogglePin(note)}
@@ -347,6 +379,75 @@ export default function Notes() {
       )}
 
     </div>
+
+      {viewingNote && (
+        <div className="modal-overlay" onClick={() => setViewingNote(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+            <div className="modal-header">
+              <div style={{ minWidth: 0 }}>
+                <h3 className="modal-title" style={{ wordBreak: 'break-word' }}>
+                  {viewingNote.title || 'Anotacao'}
+                </h3>
+                <p style={{ marginTop: 4, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  {new Date(viewingNote.updated_at).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={() => setViewingNote(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.65,
+                fontSize: '0.95rem',
+                color: 'var(--color-text-primary)',
+                maxHeight: '55vh',
+                overflowY: 'auto',
+                paddingRight: '0.25rem',
+                marginBottom: 'var(--space-lg)',
+                wordBreak: 'break-word',
+              }}
+            >
+              {viewingNote.content}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => handleTogglePin(viewingNote)}
+                disabled={updateMutation.isPending}
+              >
+                {viewingNote.is_pinned ? <PinOff size={15} /> : <Pin size={15} />}
+                {viewingNote.is_pinned ? 'Desafixar' : 'Fixar'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => handleEdit(viewingNote)}>
+                <Pencil size={15} />
+                Editar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  setConfirmDelete(viewingNote);
+                  setViewingNote(null);
+                }}
+              >
+                <Trash2 size={15} />
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmDelete && (
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
