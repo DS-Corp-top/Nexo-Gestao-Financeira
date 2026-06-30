@@ -117,13 +117,14 @@ function NoteCard({
         background: 'var(--color-bg-card)',
         border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-md)',
-        padding: '1rem',
+        padding: '0.9rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.5rem',
+        gap: '0.45rem',
         position: 'relative',
-        minHeight: 120,
+        height: 152,
         cursor: 'pointer',
+        overflow: 'hidden',
       }}
     >
       {note.is_pinned && (
@@ -140,7 +141,20 @@ function NoteCard({
       )}
 
       {note.title && (
-        <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-primary)', paddingRight: note.is_pinned ? '1.2rem' : 0 }}>
+        <div
+          style={{
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            color: 'var(--color-text-primary)',
+            paddingRight: note.is_pinned ? '1.2rem' : 0,
+            lineHeight: 1.3,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            minHeight: '1.15rem',
+          }}
+        >
           {note.title}
         </div>
       )}
@@ -151,17 +165,18 @@ function NoteCard({
           color: 'var(--color-text-primary)',
           flex: 1,
           whiteSpace: 'pre-wrap',
-          lineHeight: 1.55,
+          lineHeight: 1.45,
           overflow: 'hidden',
           display: '-webkit-box',
-          WebkitLineClamp: 8,
+          WebkitLineClamp: note.title ? 4 : 5,
           WebkitBoxOrient: 'vertical',
+          margin: 0,
         }}
       >
         {note.content}
       </p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: 'auto', paddingTop: '0.5rem', borderTop: `1px solid rgba(0,0,0,0.08)` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: 'auto', paddingTop: '0.45rem', borderTop: `1px solid rgba(0,0,0,0.08)` }}>
         <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', flex: 1 }}>
           {new Date(note.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
         </span>
@@ -232,7 +247,13 @@ export default function Notes() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteNote,
-    onSuccess: () => { invalidate(); setConfirmDelete(null); },
+    onSuccess: (_data, deletedId) => {
+      qc.setQueryData<Note[]>(['notes'], (current = []) => current.filter((note) => note.id !== deletedId));
+      setConfirmDelete(null);
+      setViewingNote((current) => current?.id === deletedId ? null : current);
+      setEditingNote((current) => current?.id === deletedId ? null : current);
+      invalidate();
+    },
   });
 
   const filtered = notes.filter((n) => {
@@ -346,14 +367,17 @@ export default function Notes() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             <Pin size={12} /> Fixadas
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-md)', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--space-md)', alignItems: 'stretch' }}>
             {pinned.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
                 onOpen={() => setViewingNote(note)}
                 onEdit={() => handleEdit(note)}
-                onDelete={() => setConfirmDelete(note)}
+                onDelete={() => {
+                  setViewingNote(null);
+                  setConfirmDelete(note);
+                }}
                 onTogglePin={() => handleTogglePin(note)}
               />
             ))}
@@ -369,14 +393,17 @@ export default function Notes() {
               Outras
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-md)', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--space-md)', alignItems: 'stretch' }}>
             {unpinned.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
                 onOpen={() => setViewingNote(note)}
                 onEdit={() => handleEdit(note)}
-                onDelete={() => setConfirmDelete(note)}
+                onDelete={() => {
+                  setViewingNote(null);
+                  setConfirmDelete(note);
+                }}
                 onTogglePin={() => handleTogglePin(note)}
               />
             ))}
