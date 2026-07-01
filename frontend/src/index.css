@@ -1100,7 +1100,7 @@ select.select option:checked {
 
 .notes-board {
   display: grid;
-  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   gap: var(--space-lg);
 }
 

@@ -142,30 +142,30 @@ function ListRow({
       style={{
         width: '100%',
         display: 'grid',
-        gridTemplateColumns: hasActions ? '22px minmax(0, 1fr) auto auto auto' : '22px minmax(0, 1fr) auto',
+        gridTemplateColumns: hasActions ? '18px minmax(0, 1fr) auto auto auto' : '18px minmax(0, 1fr) auto',
         alignItems: 'center',
-        gap: '0.55rem',
+        gap: '0.4rem',
         border: 'none',
         borderRadius: 'var(--radius-md)',
         background: active ? 'var(--color-bg-hover)' : 'transparent',
         color: 'var(--color-text-primary)',
         cursor: 'pointer',
-        padding: '0.55rem 0.55rem',
+        padding: '0.45rem 0.45rem',
         textAlign: 'left',
       }}
     >
-      <List size={16} style={{ color }} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+      <List size={14} style={{ color }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem', fontWeight: 600 }}>
         {label}
       </span>
       <span
         style={{
-          minWidth: 22,
+          minWidth: 18,
           borderRadius: 'var(--radius-full)',
-          padding: '1px 7px',
+          padding: '1px 5px',
           background: 'var(--color-bg-elevated)',
           color: 'var(--color-text-secondary)',
-          fontSize: '0.72rem',
+          fontSize: '0.64rem',
           textAlign: 'center',
         }}
       >
@@ -180,8 +180,8 @@ function ListRow({
             onEdit();
           }}
           style={{
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-sm)',
             background: active ? 'var(--color-bg-elevated)' : 'transparent',
@@ -192,7 +192,7 @@ function ListRow({
             cursor: 'pointer',
           }}
         >
-          <Edit2 size={14} />
+          <Edit2 size={13} />
         </button>
       )}
       {onDelete && (
@@ -204,8 +204,8 @@ function ListRow({
             onDelete();
           }}
           style={{
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-sm)',
             background: active ? 'var(--color-bg-elevated)' : 'transparent',
@@ -216,7 +216,7 @@ function ListRow({
             cursor: 'pointer',
           }}
         >
-          <Trash2 size={14} />
+          <Trash2 size={13} />
         </button>
       )}
     </div>
