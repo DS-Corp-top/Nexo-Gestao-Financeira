@@ -21,7 +21,7 @@ from tenants.api_views import (
     TenantMembershipViewSet,
     TenantProfileView,
 )
-from notes.api_views import NoteViewSet
+from notes.api_views import NoteListViewSet, NoteViewSet
 from drive.api_views import DocumentViewSet, FolderViewSet
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoItemViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
@@ -59,6 +59,7 @@ router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-compa
 router.register("nfse-credentials", NfseCredentialViewSet, basename="nfse-credential")
 router.register("todo-projects", ProjectViewSet, basename="todo-project")
 router.register("todos", TodoItemViewSet, basename="todo")
+router.register("note-lists", NoteListViewSet, basename="note-list")
 router.register("notes", NoteViewSet, basename="note")
 router.register("drive/folders", FolderViewSet, basename="folder")
 router.register("drive/documents", DocumentViewSet, basename="document")
