@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { Lock } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
 import { ViewModeContext, type ViewMode } from '../../contexts/ViewModeContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -45,6 +47,7 @@ export default function AppShell() {
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
   const location = useLocation();
   const isSmallScreen = useIsSmallScreen();
+  const { tenant } = useAuth();
 
   const title = pageTitles[location.pathname] || 'Nexo';
   const isMobile = viewMode === 'mobile' || isSmallScreen;
@@ -83,6 +86,17 @@ export default function AppShell() {
             onMenuClick={() => setSidebarOpen((prev) => !prev)}
             isMobile={isMobile}
           />
+          {tenant?.is_view_only && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+              padding: '8px 12px', background: 'rgba(251, 191, 36, 0.12)',
+              borderBottom: '1px solid rgba(251, 191, 36, 0.35)',
+              color: '#fbbf24', fontSize: '0.8rem', fontWeight: 600, textAlign: 'center',
+            }}>
+              <Lock size={14} />
+              Modo suporte (superusuário): navegação liberada, valores financeiros ocultos.
+            </div>
+          )}
           <main className="app-content animate-fade-in" key={location.pathname}>
             <Outlet />
           </main>

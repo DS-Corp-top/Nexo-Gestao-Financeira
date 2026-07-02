@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from common.api_mixins import get_user_tenant
+from common.api_mixins import get_user_tenant, is_view_only_superuser
 from common.throttles import LoginThrottle
 from tenants.models import TenantMembership
 from users.serializers import PendingUserSerializer, RegisterSerializer, UserSerializer
@@ -93,6 +93,7 @@ class MeView(APIView):
             "person_type_display": tenant.get_person_type_display(),
             "created_at": tenant.created_at,
             "role": membership.role if membership else None,
+            "is_view_only": is_view_only_superuser(request.user, tenant),
         } if tenant else None
 
         return Response({

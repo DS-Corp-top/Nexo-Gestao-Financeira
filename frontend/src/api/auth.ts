@@ -31,6 +31,7 @@ export interface Tenant {
   person_type_display: string;
   created_at: string;
   role: 'owner' | 'admin' | 'member' | null;
+  is_view_only: boolean;
 }
 
 export interface MeResponse {

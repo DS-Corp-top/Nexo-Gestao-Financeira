@@ -5,7 +5,8 @@ import { fetchAccounts, createAccount, updateAccount, type Account } from '../ap
 import AccountModal from '../components/Accounts/AccountModal';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 
-function formatCurrency(value: string | number, currency: string = 'BRL'): string {
+function formatCurrency(value: string | number | null, currency: string = 'BRL'): string {
+  if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency });
 }
@@ -105,7 +106,7 @@ export default function Accounts() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Atual</span>
-                  <span style={{ fontWeight: 600, color: parseFloat(account.balance) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                  <span style={{ fontWeight: 600, color: account.balance == null || parseFloat(account.balance) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                     {formatCurrency(account.balance, account.currency)}
                   </span>
                 </div>

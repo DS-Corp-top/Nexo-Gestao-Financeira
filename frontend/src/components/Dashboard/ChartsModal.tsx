@@ -10,7 +10,8 @@ import { fetchDashboard } from '../../api/dashboard';
 
 const CHART_COLORS = ['#7abf00', '#60a5fa', '#fbbf24', '#fb7185', '#34d399', '#a78bfa', '#f472b6'];
 
-function formatCurrency(value: string | number): string {
+function formatCurrency(value: string | number | null): string {
+  if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -42,27 +43,29 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
     queryFn: () => fetchDashboard(month),
   });
 
-  const expenseCategories = (data?.expense_by_category ?? []).map((c, i) => ({
+  const masked = data?.masked ?? false;
+
+  const expenseCategories = masked ? [] : (data?.expense_by_category ?? []).map((c, i) => ({
     name: c.name,
-    value: parseFloat(c.total),
+    value: parseFloat(c.total ?? '0'),
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const incomeCategories = (data?.income_by_category ?? []).map((c, i) => ({
+  const incomeCategories = masked ? [] : (data?.income_by_category ?? []).map((c, i) => ({
     name: c.name,
-    value: parseFloat(c.total),
+    value: parseFloat(c.total ?? '0'),
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const expenseTrend = (data?.expense_trend ?? []).map((p) => ({
+  const expenseTrend = masked ? [] : (data?.expense_trend ?? []).map((p) => ({
     label: p.label,
-    total: parseFloat(p.total),
+    total: parseFloat(p.total ?? '0'),
     isCurrent: p.is_current,
   }));
 
-  const incomeTrend = (data?.income_trend ?? []).map((p) => ({
+  const incomeTrend = masked ? [] : (data?.income_trend ?? []).map((p) => ({
     label: p.label,
-    total: parseFloat(p.total),
+    total: parseFloat(p.total ?? '0'),
     isCurrent: p.is_current,
   }));
 
@@ -235,7 +238,9 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               ))}
             </div>
             {!hasData ? (
-              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>Sem registros nos últimos meses.</p>
+              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>
+                {masked ? 'Valores ocultos em modo de visualização.' : 'Sem registros nos últimos meses.'}
+              </p>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={150}>

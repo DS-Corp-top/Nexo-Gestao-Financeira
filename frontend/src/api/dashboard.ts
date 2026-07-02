@@ -1,26 +1,26 @@
 import api from './client';
 
 export interface DashboardKPIs {
-  user_balance: string;
-  monthly_income: string;
-  monthly_expense: string;
-  monthly_balance: string;
-  credit_available: string;
-  investments_total: string;
-  investments_earnings: string;
-  investments_month_deposited: string;
-  investments_month_withdrawn: string;
-  investments_month_earnings: string;
+  user_balance: string | null;
+  monthly_income: string | null;
+  monthly_expense: string | null;
+  monthly_balance: string | null;
+  credit_available: string | null;
+  investments_total: string | null;
+  investments_earnings: string | null;
+  investments_month_deposited: string | null;
+  investments_month_withdrawn: string | null;
+  investments_month_earnings: string | null;
 }
 
 export interface CategoryBreakdown {
   name: string;
-  total: string;
+  total: string | null;
 }
 
 export interface ExpenseTrendPoint {
   label: string;
-  total: string;
+  total: string | null;
   is_current: boolean;
 }
 
@@ -28,14 +28,14 @@ export interface AccountSummary {
   id: number;
   name: string;
   account_type: string;
-  balance: string;
+  balance: string | null;
   include_in_balance: boolean;
 }
 
 export interface DueNotificationItem {
   id: number;
   description: string;
-  amount: string;
+  amount: string | null;
   date: string;
   category: string | null;
   account: string | null;
@@ -50,22 +50,23 @@ export interface DueNotifications {
 
 export interface DashboardAlerts {
   pending_expense_count: number;
-  pending_expense_total: string;
+  pending_expense_total: string | null;
   credit_card_open_count: number;
-  credit_card_open_total: string;
+  credit_card_open_total: string | null;
   credit_card_month_count: number;
-  credit_card_month_total: string;
-  credit_card_limit: string;
-  consolidated_balance: string;
-  balance_after_pending: string;
+  credit_card_month_total: string | null;
+  credit_card_limit: string | null;
+  consolidated_balance: string | null;
+  balance_after_pending: string | null;
 }
 
 export interface DashboardData {
   selected_month: string;
   month_label: string;
+  masked: boolean;
   kpis: DashboardKPIs;
   invoices: {
-    total_gross: string;
+    total_gross: string | null;
     count: number;
   };
   expense_by_category: CategoryBreakdown[];

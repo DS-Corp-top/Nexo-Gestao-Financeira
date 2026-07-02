@@ -19,8 +19,8 @@ function getCurrency(currency?: Currency | null): Currency {
   return currency || 'BRL';
 }
 
-function formatCurrency(value: string | number, currency: Currency = 'BRL'): string {
-  if (value == null) return '';
+function formatCurrency(value: string | number | null, currency: Currency = 'BRL'): string {
+  if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency });
 }

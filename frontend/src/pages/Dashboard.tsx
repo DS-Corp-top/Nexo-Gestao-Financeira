@@ -28,7 +28,8 @@ import {
   Pie,
 } from 'recharts';
 
-function formatCurrency(value: string | number): string {
+function formatCurrency(value: string | number | null): string {
+  if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -152,20 +153,20 @@ export default function Dashboard() {
     );
   }
 
-  const monthlyInvested = investmentMonthTotals?.deposited ?? data.kpis.investments_month_deposited;
-  const monthlyWithdrawn = investmentMonthTotals?.withdrawn ?? data.kpis.investments_month_withdrawn;
-  const monthlyInvestmentEarnings = investmentMonthTotals?.earnings ?? data.kpis.investments_month_earnings;
+  const monthlyInvested = data.masked ? null : (investmentMonthTotals?.deposited ?? data.kpis.investments_month_deposited);
+  const monthlyWithdrawn = data.masked ? null : (investmentMonthTotals?.withdrawn ?? data.kpis.investments_month_withdrawn);
+  const monthlyInvestmentEarnings = data.masked ? null : (investmentMonthTotals?.earnings ?? data.kpis.investments_month_earnings);
 
-  const combinedTrend = data.expense_trend.map((p, i) => ({
+  const combinedTrend = data.masked ? [] : data.expense_trend.map((p, i) => ({
     label: p.label,
-    expense: parseFloat(p.total),
+    expense: parseFloat(p.total ?? '0'),
     income: parseFloat(data.income_trend[i]?.total ?? '0'),
     isCurrent: p.is_current,
   }));
 
-  const expenseCategories = data.expense_by_category.map((c, i) => ({
+  const expenseCategories = data.masked ? [] : data.expense_by_category.map((c, i) => ({
     name: c.name,
-    value: parseFloat(c.total),
+    value: parseFloat(c.total ?? '0'),
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
@@ -271,7 +272,7 @@ export default function Dashboard() {
           <div style={{ fontSize: isMobile ? '0.75rem' : '0.9rem', fontWeight: 600, color: 'var(--color-accent)', marginBottom: 4 }}>
             Saldo atual em contas
           </div>
-          <div style={{ fontSize: isMobile ? '2.2rem' : '2.8rem', fontWeight: 700, color: parseFloat(data.kpis.user_balance) >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)' }}>
+          <div style={{ fontSize: isMobile ? '2.2rem' : '2.8rem', fontWeight: 700, color: data.kpis.user_balance == null || parseFloat(data.kpis.user_balance) >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)' }}>
             {formatCurrency(data.kpis.user_balance)}
           </div>
         </div>
@@ -339,7 +340,7 @@ export default function Dashboard() {
           {/* Balanço consolidado */}
           <div className="kpi-card">
             <div className="kpi-label">Balanço consolidado</div>
-            <div className={`kpi-value ${parseFloat(data.alerts.consolidated_balance) >= 0 ? 'positive' : 'negative'}`}>
+            <div className={`kpi-value ${data.alerts.consolidated_balance == null || parseFloat(data.alerts.consolidated_balance) >= 0 ? 'positive' : 'negative'}`}>
               {formatCurrency(data.alerts.consolidated_balance)}
             </div>
           </div>
@@ -382,9 +383,9 @@ export default function Dashboard() {
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
             Tendência
           </h3>
-          {combinedTrend.every((p) => p.expense === 0 && p.income === 0) ? (
+          {data.masked || combinedTrend.every((p) => p.expense === 0 && p.income === 0) ? (
             <div className="empty-state" style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p className="empty-state-text">Sem movimentações nos últimos 6 meses</p>
+              <p className="empty-state-text">{data.masked ? 'Valores ocultos em modo de visualização' : 'Sem movimentações nos últimos 6 meses'}</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
@@ -456,7 +457,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="empty-state" style={{ padding: 'var(--space-lg)' }}>
-              <p className="empty-state-text">Sem despesas neste mês</p>
+              <p className="empty-state-text">{data.masked ? 'Valores ocultos em modo de visualização' : 'Sem despesas neste mês'}</p>
             </div>
           )}
         </div>
@@ -495,7 +496,7 @@ export default function Dashboard() {
                   {acct.account_type}
                 </span>
               </div>
-              <span style={{ fontWeight: 600, color: parseFloat(acct.balance) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              <span style={{ fontWeight: 600, color: acct.balance == null || parseFloat(acct.balance) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
                 {formatCurrency(acct.balance)}
               </span>
             </div>

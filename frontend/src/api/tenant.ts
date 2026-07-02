@@ -116,3 +116,8 @@ export async function inviteTenantUser(payload: { name: string; email: string; p
   const { data } = await api.post('/tenant/invite-user/', payload);
   return data;
 }
+
+export async function resetTenantAccount(password: string): Promise<{ detail: string }> {
+  const { data } = await api.post('/tenant/reset/', { password });
+  return data;
+}

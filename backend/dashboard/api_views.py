@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import Account
-from common.api_mixins import get_user_tenant
+from common.api_mixins import get_user_tenant, is_view_only_superuser, set_mask_financial_values
 from common.balance import (
     calculate_credit_card_available_limit,
     calculate_monthly_balance,
@@ -35,6 +35,8 @@ class DashboardView(APIView):
 
     def get(self, request):
         tenant = get_user_tenant(request.user, request)
+        masked = is_view_only_superuser(request.user, tenant)
+        set_mask_financial_values(request, masked)
         today = timezone.localdate()
 
         # Resolve selected month
@@ -224,6 +226,7 @@ class DashboardView(APIView):
         return Response({
             "selected_month": selected_month.isoformat(),
             "month_label": f"{MONTH_NAMES_PT.get(selected_month.month, '')} {selected_month.year}",
+            "masked": masked,
             "kpis": {
                 "user_balance": str(user_balance),
                 "monthly_income": str(income),

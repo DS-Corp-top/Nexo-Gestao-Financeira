@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, ChevronRight, KeyRound, MapPin, Pencil, Plus, Save, Users, X } from 'lucide-react';
+import { Building2, ChevronRight, KeyRound, MapPin, Pencil, Plus, Save, Users, X, AlertTriangle, Trash2 } from 'lucide-react';
 import {
   createNfseCredential,
   createTenantCompany,
@@ -14,6 +14,7 @@ import {
   updateNfseCredential,
   updateTenantCompany,
   updateTenantProfile,
+  resetTenantAccount,
   type TenantCompany,
 } from '../api/tenant';
 import { fetchTenantMembers, type TenantMember, updateTenantMember } from '../api/users';
@@ -75,7 +76,7 @@ export default function CompanySettings() {
   const queryClient = useQueryClient();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'nfse' | 'users' | 'userInvite' | null>(() => {
+  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'nfse' | 'users' | 'userInvite' | 'resetAccount' | null>(() => {
     const m = searchParams.get('modal');
     if (m === 'profile' || m === 'companies' || m === 'nfse' || m === 'users') return m;
     return null;
@@ -195,6 +196,22 @@ export default function CompanySettings() {
       const data = error?.response?.data || {};
       setErrorMsg(data.detail || data.document?.[0] || data.name?.[0] || 'Erro ao atualizar empresa.');
     },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: resetTenantAccount,
+    onSuccess: () => {
+      setSuccessMsg('Todos os registros foram apagados com sucesso!');
+      setTimeout(() => { 
+        setSuccessMsg(''); 
+        closeModal(); 
+        window.location.reload(); 
+      }, 2000);
+    },
+    onError: (error: any) => {
+      const data = error?.response?.data || {};
+      setErrorMsg(data.detail || 'Erro ao redefinir a conta.');
+    }
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -317,6 +334,14 @@ export default function CompanySettings() {
       description: nfseCredential?.has_password ? 'Senha configurada' : 'Sem senha configurada',
       adminOnly: true,
     },
+    {
+      key: 'resetAccount' as const,
+      icon: AlertTriangle,
+      title: 'Reset',
+      description: 'Resetar conta e apagar registros',
+      adminOnly: true,
+      danger: true,
+    },
   ];
   const sections = allSections.filter((s) => !s.adminOnly || isAdmin);
 
@@ -324,10 +349,10 @@ export default function CompanySettings() {
     <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
       {/* Section list */}
       <div className="card" style={{ padding: 0 }}>
-        {sections.map(({ key, icon: Icon, title, description }, i) => (
+        {sections.map(({ key, icon: Icon, title, description, danger }, i) => (
           <button
             key={key}
-            onClick={() => { setModal(key); setSuccessMsg(''); setErrorMsg(''); }}
+            onClick={() => { setModal(key as any); setSuccessMsg(''); setErrorMsg(''); }}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: '1rem',
               padding: '1rem 1.25rem', background: 'none', border: 'none', cursor: 'pointer',
@@ -335,11 +360,11 @@ export default function CompanySettings() {
               textAlign: 'left',
             }}
           >
-            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Icon size={16} style={{ color: 'var(--color-accent)' }} />
+            <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: danger ? 'var(--color-danger-muted)' : 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon size={16} style={{ color: danger ? 'var(--color-danger)' : 'var(--color-accent)' }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>{title}</div>
+              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: danger ? 'var(--color-danger)' : 'var(--color-text-primary)' }}>{title}</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 1 }}>{description}</div>
             </div>
             <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
@@ -701,6 +726,45 @@ export default function CompanySettings() {
           </form>
         </Modal>
       )}
+      {/* Modal: Resetar Conta */}
+      {modal === 'resetAccount' && (
+        <Modal title="Resetar Conta" onClose={closeModal}>
+          {successMsg && <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{successMsg}</div>}
+          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
+          
+          <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.9rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Atenção: Ação irreversível</strong>
+              Esta ação irá apagar permanentemente todas as suas transações, contas, categorias, faturas, compras, investimentos e documentos. Apenas o cadastro de empresas e membros será mantido.
+            </div>
+          </div>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const password = String(new FormData(e.currentTarget).get('password') || '');
+            if (!password) {
+              setErrorMsg('A senha é obrigatória.');
+              return;
+            }
+            if (window.confirm('Tem certeza absoluta que deseja apagar TODOS os registros financeiros da conta? Esta ação NÃO PODE ser desfeita.')) {
+              await resetMutation.mutateAsync(password);
+            }
+          }} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            <div>
+              <label className="label">Confirme sua senha para continuar</label>
+              <input type="password" name="password" className="input" required placeholder="Digite sua senha" />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', marginTop: '1rem' }}>
+              <button type="button" className="btn" onClick={closeModal}>Cancelar</button>
+              <button type="submit" className="btn btn-primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} disabled={resetMutation.isPending}>
+                <Trash2 size={16} />{resetMutation.isPending ? 'Apagando...' : 'Apagar todos os registros'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
     </div>
   );
 }

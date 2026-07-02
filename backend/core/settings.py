@@ -119,6 +119,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.ApiOriginMiddleware",
+    "core.middleware.FinancialMaskingMiddleware",
     "core.middleware.ContentSecurityPolicyMiddleware",
 ] + (["django_browser_reload.middleware.BrowserReloadMiddleware"] if RUNSERVER else [])
 

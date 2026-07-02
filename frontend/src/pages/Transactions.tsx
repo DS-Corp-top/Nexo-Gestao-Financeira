@@ -18,7 +18,8 @@ import ClearTransactionModal from '../components/Transactions/ClearTransactionMo
 import { useNavigate } from 'react-router-dom';
 import { Wallet, Tags, ChevronDown } from 'lucide-react';
 
-function formatCurrency(value: string | number): string {
+function formatCurrency(value: string | number | null): string {
+  if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }

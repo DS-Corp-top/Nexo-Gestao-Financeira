@@ -23,8 +23,8 @@ import { fetchAccounts } from '../api/accounts';
 import InvoiceModal from '../components/Invoices/InvoiceModal';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 
-function formatCurrency(value: string | number): string {
-  if (value == null) return '';
+function formatCurrency(value: string | number | null): string {
+  if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }

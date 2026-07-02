@@ -1,6 +1,53 @@
 from django.http import JsonResponse
 
 
+class FinancialMaskingMiddleware:
+    """Hides monetary values from superusers browsing a tenant they don't belong to.
+
+    Views/mixins that resolve the active tenant (TenantQuerySetMixin.get_tenant,
+    DashboardView) set request.mask_financial_values = True when the requester
+    is a superuser without a real membership in that tenant. This middleware
+    then blanks out any known monetary field, anywhere in the response body,
+    so support/admin access never exposes real financial data.
+    """
+
+    MASKED_FIELDS = frozenset({
+        "amount", "balance", "initial_balance", "credit_limit",
+        "gross_value", "deductions", "calculation_base",
+        "iss_value", "pis_value", "cofins_value", "csll_value", "ir_value", "inss_value",
+        "total_withheld", "net_value",
+        "total_invested", "total_withdrawn", "total_earnings", "net_invested",
+        "user_balance", "monthly_income", "monthly_expense", "monthly_balance",
+        "credit_available", "investments_total", "investments_earnings",
+        "investments_month_deposited", "investments_month_withdrawn", "investments_month_earnings",
+        "pending_expense_total", "credit_card_open_total", "credit_card_month_total",
+        "credit_card_limit", "consolidated_balance", "balance_after_pending",
+        "total_gross", "total",
+        "current_balance", "pending_bank_total", "monthly_income_total", "monthly_expense_total",
+    })
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if getattr(request, "mask_financial_values", False) and hasattr(response, "data"):
+            self._mask(response.data)
+        return response
+
+    @classmethod
+    def _mask(cls, node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in cls.MASKED_FIELDS and value is not None:
+                    node[key] = None
+                else:
+                    cls._mask(value)
+        elif isinstance(node, list):
+            for item in node:
+                cls._mask(item)
+
+
 class ApiOriginMiddleware:
     """
     Rejeita requisições à API que não venham do próprio servidor.

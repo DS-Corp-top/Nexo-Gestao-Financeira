@@ -59,6 +59,29 @@ def get_user_tenant(user, request=None):
     raise PermissionDenied("Usuário não possui tenant ativo.")
 
 
+def is_view_only_superuser(user, tenant):
+    """True when a superuser is browsing a tenant they don't actually belong to.
+
+    Superusers can open any tenant via X-Tenant-ID (see get_user_tenant above)
+    to support the account, but must not see the tenant's real financial
+    values unless they also hold a membership there.
+    """
+    if not tenant or not getattr(user, "is_superuser", False):
+        return False
+    return not TenantMembership.objects.filter(user=user, tenant=tenant).exists()
+
+
+def set_mask_financial_values(request, masked):
+    """Flag the request so FinancialMaskingMiddleware can blank monetary fields.
+
+    DRF's Request proxies attribute *reads* to the underlying Django
+    HttpRequest but not writes, and the masking middleware only ever sees
+    that underlying HttpRequest — so the flag must be set there directly,
+    not on the DRF Request wrapper.
+    """
+    getattr(request, "_request", request).mask_financial_values = masked
+
+
 class TenantQuerySetMixin:
     """Filter queryset by the authenticated user's tenant.
 
@@ -72,12 +95,12 @@ class TenantQuerySetMixin:
         # session tenant override the stateless API tenant selection.
         requested_tenant_id = self.request.headers.get("X-Tenant-ID") or self.request.META.get("HTTP_X_TENANT_ID")
         if requested_tenant_id:
-            return get_user_tenant(self.request.user, self.request)
+            tenant = get_user_tenant(self.request.user, self.request)
+        else:
+            tenant = getattr(self.request, "tenant", None) or get_user_tenant(self.request.user, self.request)
 
-        tenant = getattr(self.request, "tenant", None)
-        if tenant:
-            return tenant
-        return get_user_tenant(self.request.user, self.request)
+        set_mask_financial_values(self.request, is_view_only_superuser(self.request.user, tenant))
+        return tenant
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -307,3 +307,46 @@ class CepLookupView(APIView):
             "postal_code": data.get("cep", ""),
             "complement": data.get("complemento", ""),
         })
+
+class TenantResetView(APIView):
+    """POST /api/v1/tenant/reset/ - Apaga os dados financeiros do tenant, mantendo apenas cadastro de empresas, membros, credenciais e configurações."""
+    
+    def post(self, request):
+        from django.contrib.auth import authenticate
+        from transactions.models import Transaction, ClosedMonth
+        from todos.models import Project, TodoItem
+        from shopping.models import ShoppingList
+        from notes.models import NoteList, Note
+        from investments.models import Investment
+        from invoices.models import Invoice, Client
+        from drive.models import Folder, Document
+        from categories.models import Category
+        from accounts.models import Account
+        
+        tenant = get_user_tenant(request.user, request)
+        require_tenant_admin(request.user, tenant)
+        
+        password = request.data.get("password")
+        if not password:
+            return Response({"detail": "Senha é obrigatória."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = authenticate(username=request.user.username, password=password)
+        if not user:
+            return Response({"detail": "Senha incorreta."}, status=status.HTTP_403_FORBIDDEN)
+            
+        Transaction.objects.filter(tenant=tenant).delete()
+        ClosedMonth.objects.filter(tenant=tenant).delete()
+        ShoppingList.objects.filter(tenant=tenant).delete()
+        Investment.objects.filter(tenant=tenant).delete()
+        Invoice.objects.filter(tenant=tenant).delete()
+        Client.objects.filter(tenant=tenant).delete()
+        NoteList.objects.filter(tenant=tenant).delete()
+        Note.objects.filter(tenant=tenant).delete()
+        TodoItem.objects.filter(tenant=tenant).delete()
+        Project.objects.filter(tenant=tenant).delete()
+        Document.objects.filter(tenant=tenant).delete()
+        Folder.objects.filter(tenant=tenant).delete()
+        Category.objects.filter(tenant=tenant).delete()
+        Account.objects.filter(tenant=tenant).delete()
+        
+        return Response({"detail": "Dados apagados com sucesso."})
