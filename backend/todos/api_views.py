@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.api_mixins import TenantQuerySetMixin, get_user_tenant
+from common.api_mixins import TenantQuerySetMixin, get_user_tenant, is_view_only_superuser
 from tenants.models import TenantMembership
 from todos.models import Project, TodoItem
 from todos.serializers import ProjectSerializer, TodoItemSerializer
@@ -15,6 +15,8 @@ class TenantMembersView(APIView):
 
     def get(self, request):
         tenant = get_user_tenant(request.user, request)
+        if is_view_only_superuser(request.user, tenant):
+            return Response([])
         memberships = (
             TenantMembership.objects
             .filter(tenant=tenant)

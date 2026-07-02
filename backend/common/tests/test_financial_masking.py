@@ -42,9 +42,10 @@ def test_is_view_only_superuser_false_for_regular_user(baker):
     assert is_view_only_superuser(user, other_tenant) is False
 
 
-def test_superuser_browsing_foreign_tenant_gets_masked_amounts(baker):
-    """End-to-end: superuser opens a tenant they don't belong to via X-Tenant-ID
-    and must receive null for monetary fields, even though the account is real."""
+def test_superuser_browsing_foreign_tenant_sees_no_content(baker):
+    """End-to-end: superuser opens a tenant they don't belong to via X-Tenant-ID.
+    List results must be completely empty (not just masked fields) — only the
+    count is allowed to leak, so navigation/pagination keep working."""
     _, tenant = setup_tenant(baker)
     superuser = baker.make("auth.User", is_superuser=True, is_active=True)
     baker.make(
@@ -59,11 +60,21 @@ def test_superuser_browsing_foreign_tenant_gets_masked_amounts(baker):
 
     assert response.status_code == 200
     body = body_of(response)
-    results = body.get("results", body) if isinstance(body, dict) else body
-    account_data = next(a for a in results if a["name"] == "Conta Alheia")
+    assert body["count"] == 1
+    assert body["results"] == []
 
-    assert account_data["initial_balance"] is None
-    assert account_data["balance"] is None
+
+def test_superuser_browsing_foreign_tenant_cannot_retrieve_detail(baker):
+    _, tenant = setup_tenant(baker)
+    superuser = baker.make("auth.User", is_superuser=True, is_active=True)
+    account = baker.make("accounts.Account", tenant=tenant, name="Conta Alheia")
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=superuser)
+    url = reverse("api:account-detail", args=[account.pk])
+    response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 403
 
 
 def test_owner_viewing_own_tenant_sees_real_amounts(baker):
@@ -102,3 +113,38 @@ def test_dashboard_masked_flag_and_amounts_for_foreign_tenant(baker):
     assert body["masked"] is True
     assert body["kpis"]["user_balance"] is None
     assert body["alerts"]["consolidated_balance"] is None
+    assert body["accounts"] == []
+    assert body["due_notifications"]["items"] == []
+    assert body["expense_by_category"] == []
+
+
+def test_superuser_browsing_foreign_tenant_cannot_see_project_content(baker):
+    """Reproduces the reported leak: project name/description showing up
+    in the Todos page while impersonating a foreign tenant."""
+    _, tenant = setup_tenant(baker)
+    superuser = baker.make("auth.User", is_superuser=True, is_active=True)
+    baker.make(
+        "todos.Project", tenant=tenant, name="Elges",
+        description="Objetivo construir um sistema para atender o departamento juridico.",
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=superuser)
+    url = reverse("api:todo-project-list")
+    response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    assert body_of(response) == []
+
+
+def test_superuser_browsing_foreign_tenant_sees_no_member_names(baker):
+    user, tenant = setup_tenant(baker)
+    superuser = baker.make("auth.User", is_superuser=True, is_active=True)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=superuser)
+    url = reverse("api:tenant_members")
+    response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    assert body_of(response) == []

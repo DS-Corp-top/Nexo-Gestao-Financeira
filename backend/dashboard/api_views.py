@@ -175,16 +175,17 @@ class DashboardView(APIView):
             expense_trend.append({"label": label, "total": str(exp_total), "is_current": offset == 0})
             income_trend.append({"label": label, "total": str(inc_total), "is_current": offset == 0})
 
-        # Accounts summary
+        # Accounts summary — omitted entirely in view-only mode (names are content, not just values)
         accounts = []
-        for acct in Account.objects.filter(tenant=tenant, is_active=True).order_by("name"):
-            accounts.append({
-                "id": acct.pk,
-                "name": acct.name,
-                "account_type": acct.account_type,
-                "balance": str(acct.balance),
-                "include_in_balance": acct.include_in_balance,
-            })
+        if not masked:
+            for acct in Account.objects.filter(tenant=tenant, is_active=True).order_by("name"):
+                accounts.append({
+                    "id": acct.pk,
+                    "name": acct.name,
+                    "account_type": acct.account_type,
+                    "balance": str(acct.balance),
+                    "include_in_balance": acct.include_in_balance,
+                })
 
         # Invoices summary — excludes CANCELLED (matches views.py)
         invoices_summary = Invoice.objects.filter(
@@ -210,7 +211,7 @@ class DashboardView(APIView):
 
         due_count = due_qs.count()
         due_overdue_count = due_qs.filter(date__lt=today).count()
-        due_list = [
+        due_list = [] if masked else [
             {
                 "id": t.pk,
                 "description": t.description or "Sem descricao",
@@ -254,12 +255,12 @@ class DashboardView(APIView):
                 "total_gross": str(invoices_summary["total_gross"]),
                 "count": invoices_summary["count"],
             },
-            "expense_by_category": [
+            "expense_by_category": [] if masked else [
                 {"name": row["category__name"] or "Sem categoria", "total": str(row["total"])}
                 for row in expense_by_category
                 if row["total"] > 0
             ],
-            "income_by_category": [
+            "income_by_category": [] if masked else [
                 {"name": row["category__name"] or "Sem categoria", "total": str(row["total"])}
                 for row in income_by_category
                 if row["total"] > 0

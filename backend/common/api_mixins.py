@@ -1,6 +1,7 @@
 """API mixins for tenant-scoped ViewSets (DRF equivalent of UserQuerySetMixin)."""
 
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 
 from tenants.models import Tenant, TenantMembership
 
@@ -105,6 +106,27 @@ class TenantQuerySetMixin:
     def get_queryset(self):
         qs = super().get_queryset()
         return qs.filter(**{self.tenant_field: self.get_tenant()})
+
+    def _content_hidden(self):
+        """True once get_tenant() has run and flagged this as a view-only
+        superuser request. Content (list/detail) must not be exposed then —
+        only counts, so navigation and pagination keep working."""
+        self.get_tenant()
+        return bool(getattr(self.request, "mask_financial_values", False))
+
+    def list(self, request, *args, **kwargs):
+        if self._content_hidden():
+            queryset = self.filter_queryset(self.get_queryset())
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                return self.get_paginated_response([])
+            return Response([])
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        if self._content_hidden():
+            raise PermissionDenied("Conteúdo oculto no modo de visualização (superusuário).")
+        return super().retrieve(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(
