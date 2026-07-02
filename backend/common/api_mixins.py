@@ -123,10 +123,15 @@ class TenantQuerySetMixin:
             return Response([])
         return super().list(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def get_object(self):
+        # Every single-record path — retrieve(), update(), destroy(), and
+        # custom @actions like pay/cancel/nfse_emit/add_entry/toggle — all
+        # go through get_object(). Blocking it here (instead of only
+        # retrieve()) closes those custom-action leaks in one place instead
+        # of patching each action individually.
         if self._content_hidden():
             raise PermissionDenied("Conteúdo oculto no modo de visualização (superusuário).")
-        return super().retrieve(request, *args, **kwargs)
+        return super().get_object()
 
     def perform_create(self, serializer):
         serializer.save(

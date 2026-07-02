@@ -137,6 +137,22 @@ def test_superuser_browsing_foreign_tenant_cannot_see_project_content(baker):
     assert body_of(response) == []
 
 
+def test_superuser_cannot_use_custom_actions_on_foreign_tenant_objects(baker):
+    """Custom @actions (toggle, pay, add_entry, ...) call self.get_object()
+    directly, bypassing retrieve() — get_object() itself must block them too."""
+    _, tenant = setup_tenant(baker)
+    superuser = baker.make("auth.User", is_superuser=True, is_active=True)
+    project = baker.make("todos.Project", tenant=tenant)
+    todo = baker.make("todos.TodoItem", tenant=tenant, project=project)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=superuser)
+    url = reverse("api:todo-toggle", args=[todo.pk])
+    response = client.post(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 403
+
+
 def test_superuser_browsing_foreign_tenant_sees_no_member_names(baker):
     user, tenant = setup_tenant(baker)
     superuser = baker.make("auth.User", is_superuser=True, is_active=True)
