@@ -2,10 +2,9 @@ import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNod
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Edit2, Printer, ReceiptText, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
 
 import {
-  cancelInvoice,
   deleteInvoice,
   fetchInvoicePrintData,
   fetchInvoices,
@@ -217,13 +216,12 @@ function buildPrintHtml(data: InvoicePrintData): string {
 </html>`;
 }
 
-function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onToggleNoteIssued, onCancel, onDelete, isAdmin }: {
+function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onToggleNoteIssued, onDelete, isAdmin }: {
   invoice: Invoice;
   onEdit: () => void;
   onPay: () => void;
   onPrint: () => void;
   onToggleNoteIssued: () => void;
-  onCancel: () => void;
   onDelete: () => void;
   isAdmin: boolean;
 }) {
@@ -254,7 +252,6 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onToggleNoteIssued, 
       true,
       true,
       invoice.status === 'issued',
-      invoice.status !== 'cancelled',
     ].filter(Boolean).length;
     const estimatedHeight = Math.min(visibleItems * 36 + 8, viewportHeight - bottomSafeArea - 16);
 
@@ -315,19 +312,14 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onToggleNoteIssued, 
           boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           overflowY: 'auto',
         }}>
-          {isAdmin && invoice.status === 'issued' && item('Marcar como Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
-          {isAdmin && item('Editar', <Edit2 size={14} />, onEdit)}
-          {item('Imprimir', <Printer size={14} />, onPrint)}
+          {isAdmin && invoice.status === 'issued' && item('Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
           {invoice.status === 'issued' && item(
-            invoice.note_issued ? 'Desmarcar Nota Emitida' : 'Marcar Nota Emitida',
+            'Nota Emitida',
             <ReceiptText size={14} style={{ color: invoice.note_issued ? 'var(--color-success)' : undefined }} />,
             onToggleNoteIssued
           )}
-          {isAdmin && invoice.status !== 'cancelled' && (
-            <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
-              {item('Cancelar', <Ban size={14} />, onCancel, true)}
-            </div>
-          )}
+          {item('Imprimir', <Printer size={14} />, onPrint)}
+          {isAdmin && item('Editar', <Edit2 size={14} />, onEdit)}
           {isAdmin && (
             <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
               {item('Excluir', <Trash2 size={14} />, onDelete, true)}
@@ -357,7 +349,7 @@ function DataModal({ title, onClose, children }: { title: string; onClose: () =>
 
 type InvoiceSortKey = 'number' | 'status' | 'client_name' | 'client_document' | 'issue_date' | 'due_date';
 
-const STATUS_SORT_ORDER: Record<Invoice['status'], number> = { draft: 0, issued: 1, paid: 2, cancelled: 3 };
+const STATUS_SORT_ORDER: Record<Invoice['status'], number> = { issued: 0, paid: 1 };
 
 function normalizeFilterText(value: string) {
   return value
@@ -372,7 +364,6 @@ export default function Invoices() {
   const { isMobile } = useViewMode();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortKey, setSortKey] = useState<InvoiceSortKey | null>(null);
@@ -448,11 +439,10 @@ export default function Invoices() {
   }, [invoices, sortKey, sortDir, noteFilter]);
 
   const totalFaturado = visibleInvoices
-    .filter((inv) => inv.status !== 'cancelled')
     .reduce((sum, inv) => sum + parseFloat(inv.net_value || '0'), 0);
 
   const totalNotaEmitida = visibleInvoices
-    .filter((inv) => inv.note_issued && inv.status !== 'cancelled')
+    .filter((inv) => inv.note_issued)
     .reduce((sum, inv) => sum + parseFloat(inv.net_value || '0'), 0);
 
   const filterSummary = [
@@ -473,16 +463,6 @@ export default function Invoices() {
     mutationFn: toggleInvoiceNoteIssued,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    },
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: cancelInvoice,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      setCancelTarget(null);
     },
   });
 
@@ -576,7 +556,7 @@ export default function Invoices() {
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Quantidade de Faturas</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{visibleInvoices.filter(i => i.status !== 'cancelled').length}</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{visibleInvoices.length}</div>
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Notas Emitidas</div>
@@ -613,10 +593,8 @@ export default function Invoices() {
                   onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))}
                 >
                   <option value="">Todos</option>
-                  <option value="draft">Rascunho</option>
                   <option value="issued">Emitida</option>
                   <option value="paid">Paga</option>
-                  <option value="cancelled">Cancelada</option>
                 </select>
               </div>
               <div>
@@ -744,13 +722,11 @@ export default function Invoices() {
               </thead>
               <tbody>
                 {visibleInvoices.map((inv) => (
-                  <tr key={inv.id} style={{ opacity: inv.status === 'cancelled' ? 0.6 : 1 }}>
+                  <tr key={inv.id}>
                     <td><strong style={{ cursor: 'pointer' }} onClick={() => handleOpenEdit(inv)}>{inv.number_display}</strong></td>
                     <td>
-                      {inv.status === 'draft' && <span className="badge badge-warning">Fatura Rascunho</span>}
                       {inv.status === 'issued' && <span className="badge badge-info">Fatura Emitida</span>}
                       {inv.status === 'paid' && <span className="badge badge-success">Fatura Paga</span>}
-                      {inv.status === 'cancelled' && <span className="badge badge-danger">Fatura Cancelada</span>}
                     </td>
                     {!isMobile && (
                       <td>
@@ -776,7 +752,6 @@ export default function Invoices() {
                         onPay={() => handlePay(inv)}
                         onPrint={() => handlePrint(inv)}
                         onToggleNoteIssued={() => toggleNoteIssuedMutation.mutate(inv.id)}
-                        onCancel={() => setCancelTarget(inv)}
                         onDelete={() => setDeleteTarget(inv)}
                       />
                     </td>
@@ -792,39 +767,6 @@ export default function Invoices() {
         <InvoiceModal invoice={editingInvoice} isOpen={modalOpen} onClose={() => setModalOpen(false)} />
       )}
 
-      {cancelTarget && (
-        <DataModal title="Cancelar fatura" onClose={() => setCancelTarget(null)}>
-          <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
-            <div>
-              <p style={{ color: 'var(--color-text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
-                Cancelar fatura {cancelTarget.number_display}?
-              </p>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 6 }}>
-                Essa ação altera o status da fatura e remove o lançamento financeiro pendente vinculado, se existir.
-              </p>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setCancelTarget(null)}
-                disabled={cancelMutation.isPending}
-              >
-                Voltar
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => cancelMutation.mutate(cancelTarget.id)}
-                disabled={cancelMutation.isPending}
-              >
-                <Ban size={16} />
-                {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar fatura'}
-              </button>
-            </div>
-          </div>
-        </DataModal>
-      )}
 
       {deleteTarget && (
         <DataModal title="Excluir fatura" onClose={() => setDeleteTarget(null)}>

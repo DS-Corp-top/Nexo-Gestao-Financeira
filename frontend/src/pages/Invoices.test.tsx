@@ -14,7 +14,6 @@ vi.mock('../api/invoices', async () => {
     ...actual,
     fetchInvoices: vi.fn(),
     fetchInvoicePrintData: vi.fn(),
-    cancelInvoice: vi.fn(),
     deleteInvoice: vi.fn(),
     payInvoice: vi.fn(),
     toggleInvoiceNoteIssued: vi.fn(),
@@ -231,7 +230,7 @@ describe('Invoices Page', () => {
     });
 
     fireEvent.click(screen.getByText('Filtros'));
-    fireEvent.change(screen.getByDisplayValue('Todos'), { target: { value: 'draft' } });
+    fireEvent.change(screen.getByDisplayValue('Todos'), { target: { value: 'paid' } });
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }));
 
     await waitFor(() => {
@@ -287,7 +286,7 @@ describe('Invoices Page', () => {
 
     const row = screen.getByText('Cliente C').closest('tr')!;
     fireEvent.click(within(row).getByRole('button'));
-    fireEvent.click(await screen.findByText('Marcar Nota Emitida'));
+    fireEvent.click(await screen.findByText('Nota Emitida'));
 
     await waitFor(() => {
       expect(invoicesApi.toggleInvoiceNoteIssued).toHaveBeenCalledWith(5, expect.anything());

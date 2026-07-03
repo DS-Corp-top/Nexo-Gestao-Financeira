@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, LineChart, Line,
+  AreaChart, Area, CartesianGrid, ReferenceLine,
 } from 'recharts';
 import { fetchDashboard } from '../../api/dashboard';
 
@@ -26,7 +26,17 @@ function shiftMonth(current: string, delta: number): string {
   return getMonthParam(d);
 }
 
-type Tab = 'categorias' | 'tendencia' | 'ranking';
+type Tab = 'heatmap' | 'tendencia' | 'ranking';
+
+const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+function heatColor(value: number, mode: 'expense' | 'income' | 'unified', maxAbs: number): string {
+  if (value === 0) return 'var(--color-bg-elevated)';
+  const intensity = 0.15 + Math.min(1, Math.abs(value) / maxAbs) * 0.75;
+  if (mode === 'expense') return `rgba(251, 113, 133, ${intensity})`;
+  if (mode === 'income') return `rgba(34, 197, 94, ${intensity})`;
+  return value >= 0 ? `rgba(34, 197, 94, ${intensity})` : `rgba(251, 113, 133, ${intensity})`;
+}
 
 interface ChartsModalProps {
   initialMonth: string;
@@ -34,9 +44,9 @@ interface ChartsModalProps {
 }
 
 export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps) {
-  const [tab, setTab] = useState<Tab>('ranking');
+  const [tab, setTab] = useState<Tab>('tendencia');
   const [month, setMonth] = useState(initialMonth);
-  const [mode, setMode] = useState<'expense' | 'income' | 'unified'>('expense');
+  const [mode, setMode] = useState<'expense' | 'income' | 'unified'>('unified');
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-charts', month],
@@ -79,6 +89,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
     return {
       label: e.label,
       expense: e.total,
+      expenseNeg: -e.total,
       income: inc.total,
       total: inc.total - e.total, // Balance
       isCurrent: e.isCurrent
@@ -87,6 +98,26 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
 
   const activeCategories = mode === 'expense' ? expenseCategories : mode === 'income' ? incomeCategories : unifiedCategories;
   const activeTrend = mode === 'expense' ? expenseTrend : mode === 'income' ? incomeTrend : unifiedTrend;
+
+  const [selYearStr, selMonthStr] = (data?.selected_month ?? `${month}-01`).split('-');
+  const selYear = Number(selYearStr);
+  const selMonthIndex = Number(selMonthStr) - 1;
+  const daysInMonth = new Date(selYear, selMonthIndex + 1, 0).getDate();
+  const firstWeekday = new Date(selYear, selMonthIndex, 1).getDay();
+
+  const dailyExpenseMap = new Map((masked ? [] : data?.daily_expense ?? []).map((d) => [d.date, parseFloat(d.total ?? '0')]));
+  const dailyIncomeMap = new Map((masked ? [] : data?.daily_income ?? []).map((d) => [d.date, parseFloat(d.total ?? '0')]));
+
+  const heatmapDays = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    const iso = `${selYear}-${String(selMonthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const exp = dailyExpenseMap.get(iso) ?? 0;
+    const inc = dailyIncomeMap.get(iso) ?? 0;
+    const value = mode === 'expense' ? exp : mode === 'income' ? inc : inc - exp;
+    return { day, iso, value };
+  });
+  const heatmapMaxAbs = Math.max(1, ...heatmapDays.map((d) => Math.abs(d.value)));
+  const hasHeatmapData = heatmapDays.some((d) => d.value !== 0);
 
   const ranking = [...activeCategories].sort((a, b) => b.value - a.value);
   const rankingTotal = ranking.reduce((s, c) => s + c.value, 0);
@@ -98,6 +129,11 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
   const tooltipStyle = { background: '#111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: '0.8rem' };
   const tooltipLabelStyle = { color: '#fff', fontWeight: 700, marginBottom: 2 };
   const tooltipItemStyle = { color: 'rgba(255,255,255,0.7)' };
+
+  const trendValues = activeTrend.map((p) => p.total);
+  const trendYMax = Math.max(0, ...trendValues);
+  const trendYMin = Math.min(0, ...trendValues);
+  const trendGradientOffset = trendYMax === trendYMin ? 0.5 : trendYMax / (trendYMax - trendYMin);
 
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
@@ -120,16 +156,16 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
         {/* Toggle Mode */}
         <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
           <button
-            onClick={() => setMode('expense')}
+            onClick={() => setMode('unified')}
             style={{
               flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: '0.8rem',
-              background: mode === 'expense' ? '#fb7185' : 'transparent',
-              color: mode === 'expense' ? '#fff' : 'var(--color-text-muted)',
-              border: `1px solid ${mode === 'expense' ? '#fb7185' : 'var(--color-border)'}`,
+              background: mode === 'unified' ? '#3b82f6' : 'transparent',
+              color: mode === 'unified' ? '#fff' : 'var(--color-text-muted)',
+              border: `1px solid ${mode === 'unified' ? '#3b82f6' : 'var(--color-border)'}`,
               cursor: 'pointer'
             }}
           >
-            Despesas
+            Unificadas
           </button>
           <button
             onClick={() => setMode('income')}
@@ -144,22 +180,22 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
             Receitas
           </button>
           <button
-            onClick={() => setMode('unified')}
+            onClick={() => setMode('expense')}
             style={{
               flex: 1, padding: '8px', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: '0.8rem',
-              background: mode === 'unified' ? '#3b82f6' : 'transparent',
-              color: mode === 'unified' ? '#fff' : 'var(--color-text-muted)',
-              border: `1px solid ${mode === 'unified' ? '#3b82f6' : 'var(--color-border)'}`,
+              background: mode === 'expense' ? '#fb7185' : 'transparent',
+              color: mode === 'expense' ? '#fff' : 'var(--color-text-muted)',
+              border: `1px solid ${mode === 'expense' ? '#fb7185' : 'var(--color-border)'}`,
               cursor: 'pointer'
             }}
           >
-            Unificadas
+            Despesas
           </button>
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-          {(['ranking', 'tendencia', 'categorias'] as Tab[]).map((t) => (
+          {(['tendencia', 'ranking', 'heatmap'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -176,7 +212,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                 cursor: 'pointer',
               }}
             >
-              {t === 'categorias' ? 'Categorias' : t === 'tendencia' ? 'Tendência' : 'Ranking'}
+              {t === 'heatmap' ? 'Mapa de Calor' : t === 'tendencia' ? 'Tendência' : 'Ranking'}
             </button>
           ))}
         </div>
@@ -195,31 +231,70 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
         {/* Content */}
         {isLoading ? (
           <div className="skeleton" style={{ height: 240 }} />
-        ) : tab === 'categorias' ? (
-          activeCategories.length === 0 ? (
+        ) : tab === 'heatmap' ? (
+          masked ? (
+            <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>
+              Valores ocultos em modo de visualização.
+            </p>
+          ) : !hasHeatmapData ? (
             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-xl) 0', fontSize: '0.85rem' }}>
               Sem registros no mês selecionado.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <PieChart width={200} height={200}>
-                  <Pie data={activeCategories} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" stroke="none">
-                    {activeCategories.map((e, i) => <Cell key={i} fill={e.fill} />)}
-                  </Pie>
-                </PieChart>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textAlign: 'center', textTransform: 'uppercase' }}>
+                {WEEKDAY_LABELS.map((d, i) => <div key={i}>{d}</div>)}
               </div>
-              <div>
-                {activeCategories.map((cat, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.83rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.fill }} />
-                      <span style={{ color: 'var(--color-text-secondary)' }}>{cat.name}</span>
-                    </div>
-                    <span style={{ fontWeight: 600 }}>{formatCurrency(cat.value)}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+                {Array.from({ length: firstWeekday }).map((_, i) => <div key={`blank-${i}`} />)}
+                {heatmapDays.map(({ day, iso, value }) => (
+                  <div
+                    key={iso}
+                    title={`Dia ${day} — ${formatCurrency(value)}`}
+                    style={{
+                      aspectRatio: '1',
+                      borderRadius: 6,
+                      background: heatColor(value, mode, heatmapMaxAbs),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      color: 'var(--color-text-primary)',
+                    }}
+                  >
+                    {day}
                   </div>
                 ))}
               </div>
+              {mode === 'unified' ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 'var(--space-sm)' }}>
+                  <span>Déficit</span>
+                  {[0.9, 0.55, 0.15].map((op, i) => (
+                    <div key={`neg-${i}`} style={{ width: 14, height: 14, borderRadius: 3, background: `rgba(251, 113, 133, ${op})` }} />
+                  ))}
+                  {[0.15, 0.55, 0.9].map((op, i) => (
+                    <div key={`pos-${i}`} style={{ width: 14, height: 14, borderRadius: 3, background: `rgba(34, 197, 94, ${op})` }} />
+                  ))}
+                  <span>Superávit</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 'var(--space-sm)' }}>
+                  <span>Menor</span>
+                  {[0.15, 0.35, 0.55, 0.75, 0.9].map((op, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 3,
+                        background: mode === 'expense' ? `rgba(251, 113, 133, ${op})` : `rgba(34, 197, 94, ${op})`,
+                      }}
+                    />
+                  ))}
+                  <span>Maior</span>
+                </div>
+              )}
             </div>
           )
         ) : tab === 'tendencia' ? (
@@ -243,6 +318,9 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               </p>
             ) : (
               <>
+                <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+                  {mode === 'unified' ? 'Receitas x Despesas' : mode === 'expense' ? 'Despesas por mês' : 'Receitas por mês'}
+                </p>
                 <ResponsiveContainer width="100%" height={150}>
                   <BarChart data={activeTrend} barCategoryGap="25%">
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
@@ -262,14 +340,72 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                     )}
                   </BarChart>
                 </ResponsiveContainer>
+                {mode === 'unified' && (
+                  <div style={{ marginTop: 'var(--space-md)' }}>
+                    <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+                      Receita x Despesa (divergente)
+                    </p>
+                    <ResponsiveContainer width="100%" height={150}>
+                      <BarChart data={activeTrend} barCategoryGap="25%" stackOffset="sign">
+                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
+                        <YAxis hide />
+                        <Tooltip
+                          formatter={(val: any, name: any) => [formatCurrency(name === 'Despesas' ? Math.abs(val) : val), name]}
+                          contentStyle={tooltipStyle}
+                          labelStyle={tooltipLabelStyle}
+                          itemStyle={tooltipItemStyle}
+                        />
+                        <Bar dataKey="income" name="Receitas" fill="#22c55e" stackId="flow" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="expenseNeg" name="Despesas" fill="#fb7185" stackId="flow" radius={[0, 0, 4, 4]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
                 <div style={{ marginTop: 'var(--space-md)' }}>
-                  <ResponsiveContainer width="100%" height={110}>
-                    <LineChart data={activeTrend}>
+                  <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+                    {mode === 'unified' ? 'Evolução do Saldo' : mode === 'expense' ? 'Evolução das Despesas' : 'Evolução das Receitas'}
+                  </p>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <AreaChart data={activeTrend} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
+                      <defs>
+                        {mode === 'unified' ? (
+                          <>
+                            <linearGradient id="trendStroke" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset={trendGradientOffset} stopColor="#22c55e" />
+                              <stop offset={trendGradientOffset} stopColor="#fb7185" />
+                            </linearGradient>
+                            <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset={trendGradientOffset} stopColor="#22c55e" stopOpacity={0.35} />
+                              <stop offset={trendGradientOffset} stopColor="#fb7185" stopOpacity={0.35} />
+                            </linearGradient>
+                          </>
+                        ) : (
+                          <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={mode === 'expense' ? '#fb7185' : '#22c55e'} stopOpacity={0.4} />
+                            <stop offset="100%" stopColor={mode === 'expense' ? '#fb7185' : '#22c55e'} stopOpacity={0} />
+                          </linearGradient>
+                        )}
+                      </defs>
+                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.07)" />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
-                      <YAxis hide />
+                      <YAxis hide domain={mode === 'unified' ? [trendYMin, trendYMax] : [0, 'auto']} />
+                      {mode === 'unified' && <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />}
                       <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-                      <Line type="monotone" dataKey="total" name={mode === 'unified' ? "Saldo" : "Total"} stroke={mode === 'expense' ? '#22d3ee' : mode === 'income' ? '#34d399' : '#3b82f6'} strokeWidth={2} dot={false} />
-                    </LineChart>
+                      <Area
+                        type="monotone"
+                        dataKey="total"
+                        name={mode === 'unified' ? 'Saldo' : 'Total'}
+                        stroke={mode === 'unified' ? 'url(#trendStroke)' : mode === 'expense' ? '#fb7185' : '#22c55e'}
+                        strokeWidth={2.5}
+                        fill="url(#trendFill)"
+                        dot={mode === 'unified'
+                          ? (props: any) => (
+                              <circle key={props.index} cx={props.cx} cy={props.cy} r={3} fill={props.payload.total >= 0 ? '#22c55e' : '#fb7185'} stroke="none" />
+                            )
+                          : { r: 3, strokeWidth: 0, fill: mode === 'expense' ? '#fb7185' : '#22c55e' }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </>

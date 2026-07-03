@@ -44,15 +44,12 @@ class Client(models.Model):
 
 
 class Invoice(models.Model):
-    DRAFT = "draft"
     ISSUED = "issued"
     PAID = "paid"
-    CANCELLED = "cancelled"
 
     STATUS_CHOICES = [
         (ISSUED, "Emitida"),
         (PAID, "Paga"),
-        (CANCELLED, "Cancelada"),
     ]
 
     user = models.ForeignKey(
@@ -77,7 +74,7 @@ class Invoice(models.Model):
     )
     number = models.PositiveIntegerField("Número")
     status = models.CharField(
-        "Status", max_length=20, choices=STATUS_CHOICES, default=DRAFT
+        "Status", max_length=20, choices=STATUS_CHOICES, default=ISSUED
     )
 
     issue_date = models.DateField("Data de emissão")

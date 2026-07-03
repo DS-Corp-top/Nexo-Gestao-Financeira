@@ -18,7 +18,7 @@ export interface Invoice {
   issuer_company_name: string;
   number: number;
   number_display: string;
-  status: 'draft' | 'issued' | 'paid' | 'cancelled';
+  status: 'issued' | 'paid';
   issue_date: string;
   due_date: string;
   client_name: string;
@@ -108,11 +108,6 @@ export async function deleteInvoice(id: number): Promise<void> {
 
 export async function payInvoice(id: number, payload: { paid_at: string; account?: number | null; launch_financial?: boolean }): Promise<Invoice> {
   const { data } = await api.post<Invoice>(`/invoices/${id}/pay/`, payload);
-  return data;
-}
-
-export async function cancelInvoice(id: number): Promise<Invoice> {
-  const { data } = await api.post<Invoice>(`/invoices/${id}/cancel/`);
   return data;
 }
 

@@ -153,6 +153,24 @@ class DashboardView(APIView):
             .order_by("-total")
         )
 
+        # Daily breakdown (calendar heatmap) for the selected month
+        daily_expense = list(
+            monthly_txns.filter(
+                transaction_type=Transaction.TransactionType.EXPENSE,
+            )
+            .values("date")
+            .annotate(total=Coalesce(Sum("amount"), ZERO))
+            .order_by("date")
+        )
+        daily_income = list(
+            monthly_txns.filter(
+                transaction_type=Transaction.TransactionType.INCOME,
+            )
+            .values("date")
+            .annotate(total=Coalesce(Sum("amount"), ZERO))
+            .order_by("date")
+        )
+
         # Expense + Income trend (last 6 months — matches views.py)
         expense_trend = []
         income_trend = []
@@ -187,12 +205,12 @@ class DashboardView(APIView):
                     "include_in_balance": acct.include_in_balance,
                 })
 
-        # Invoices summary — excludes CANCELLED (matches views.py)
+        # excludes any legacy invoices left over with the retired "cancelled" status
         invoices_summary = Invoice.objects.filter(
             tenant=tenant,
             issue_date__year=selected_month.year,
             issue_date__month=selected_month.month,
-        ).exclude(status=Invoice.CANCELLED).aggregate(
+        ).exclude(status="cancelled").aggregate(
             total_gross=Coalesce(Sum("gross_value"), ZERO),
             count=Count("id"),
         )
@@ -267,6 +285,14 @@ class DashboardView(APIView):
             ],
             "expense_trend": expense_trend,
             "income_trend": income_trend,
+            "daily_expense": [] if masked else [
+                {"date": row["date"].isoformat(), "total": str(row["total"])}
+                for row in daily_expense
+            ],
+            "daily_income": [] if masked else [
+                {"date": row["date"].isoformat(), "total": str(row["total"])}
+                for row in daily_income
+            ],
             "accounts": accounts,
             "due_notifications": {
                 "count": due_count,

@@ -59,7 +59,7 @@ class InvoiceModelTest(TestCase):
 
     def test_invoice_creation(self):
         self.assertEqual(self.invoice.number, 1)
-        self.assertEqual(self.invoice.status, Invoice.DRAFT)
+        self.assertEqual(self.invoice.status, Invoice.ISSUED)
         self.assertEqual(self.invoice.number_display, "0001/2026")
 
     def test_calculation_base(self):

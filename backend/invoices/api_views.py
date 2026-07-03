@@ -186,32 +186,6 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         return Response(InvoiceSerializer(invoice).data)
 
     @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
-        """Cancel an invoice (mirrors InvoiceCancelView — rejects PAID invoices)."""
-        invoice = self.get_object()
-
-        if invoice.status == Invoice.PAID:
-            return Response(
-                {"detail": "Nota paga não pode ser cancelada."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if invoice.status == Invoice.CANCELLED:
-            return Response(
-                {"detail": "Fatura já cancelada."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        invoice.status = Invoice.CANCELLED
-        update_fields = ["status", "updated_at"]
-        if invoice.transaction and not invoice.transaction.is_cleared:
-            invoice.transaction.delete()
-            invoice.transaction = None
-            update_fields.append("transaction")
-        invoice.save(update_fields=update_fields)
-
-        return Response(InvoiceSerializer(invoice).data)
-
-    @action(detail=True, methods=["post"])
     def toggle_note_issued(self, request, pk=None):
         """Flip the manual "nota emitida" flag for an issued invoice."""
         invoice = self.get_object()

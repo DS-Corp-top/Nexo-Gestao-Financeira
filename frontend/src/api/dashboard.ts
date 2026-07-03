@@ -24,6 +24,11 @@ export interface ExpenseTrendPoint {
   is_current: boolean;
 }
 
+export interface DailyBreakdown {
+  date: string;
+  total: string | null;
+}
+
 export interface AccountSummary {
   id: number;
   name: string;
@@ -73,6 +78,8 @@ export interface DashboardData {
   income_by_category: CategoryBreakdown[];
   expense_trend: ExpenseTrendPoint[];
   income_trend: ExpenseTrendPoint[];
+  daily_expense: DailyBreakdown[];
+  daily_income: DailyBreakdown[];
   accounts: AccountSummary[];
   due_notifications: DueNotifications;
   alerts: DashboardAlerts;

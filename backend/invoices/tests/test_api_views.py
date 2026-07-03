@@ -206,7 +206,7 @@ class InvoiceApiViewSetTest(TestCase):
         self.assertFalse(invoice.note_issued)
 
     def test_toggle_note_issued_rejects_non_issued_invoices(self):
-        invoice = self._create_invoice(status=Invoice.DRAFT)
+        invoice = self._create_invoice(status=Invoice.PAID)
 
         response = self.client.post(f"/api/v1/invoices/{invoice.pk}/toggle_note_issued/")
 
