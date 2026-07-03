@@ -2,16 +2,13 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, ChevronRight, KeyRound, MapPin, Pencil, Plus, Save, Users, X, AlertTriangle, Trash2 } from 'lucide-react';
+import { Building2, ChevronRight, MapPin, Pencil, Plus, Save, Users, X, AlertTriangle, Trash2 } from 'lucide-react';
 import {
-  createNfseCredential,
   createTenantCompany,
-  fetchNfseCredentials,
   fetchTenantCompanies,
   fetchTenantProfile,
   inviteTenantUser,
   lookupCep,
-  updateNfseCredential,
   updateTenantCompany,
   updateTenantProfile,
   resetTenantAccount,
@@ -76,9 +73,9 @@ export default function CompanySettings() {
   const queryClient = useQueryClient();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'nfse' | 'users' | 'userInvite' | 'resetAccount' | null>(() => {
+  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'users' | 'userInvite' | 'resetAccount' | null>(() => {
     const m = searchParams.get('modal');
-    if (m === 'profile' || m === 'companies' || m === 'nfse' || m === 'users') return m;
+    if (m === 'profile' || m === 'companies' || m === 'users') return m;
     return null;
   });
 
@@ -102,15 +99,13 @@ export default function CompanySettings() {
   // Sync modal state with URL query param
   useEffect(() => {
     const m = searchParams.get('modal');
-    if (m === 'profile' || m === 'companies' || m === 'nfse' || m === 'users') {
+    if (m === 'profile' || m === 'companies' || m === 'users') {
       setModal(m);
     }
   }, [searchParams]);
 
   const { data: profile, isLoading } = useQuery({ queryKey: ['tenantProfile'], queryFn: fetchTenantProfile });
   const { data: tenantMembers = [] } = useQuery<TenantMember[]>({ queryKey: ['tenant-members'], queryFn: fetchTenantMembers });
-  const { data: nfseCredentials } = useQuery({ queryKey: ['nfseCredentials'], queryFn: fetchNfseCredentials });
-  const nfseCredential = nfseCredentials?.[0];
   const { data: tenantCompanies = [] } = useQuery({ queryKey: ['tenantCompanies'], queryFn: fetchTenantCompanies });
   const companyLimit = 2;
   const companyLimitReached = tenantCompanies.length >= companyLimit;
@@ -128,18 +123,6 @@ export default function CompanySettings() {
       setTimeout(() => { setSuccessMsg(''); closeModal(); }, 1500);
     },
     onError: () => setErrorMsg('Erro ao atualizar os dados.'),
-  });
-
-  const nfseMutation = useMutation({
-    mutationFn: (payload: { gov_br_cpf: string; gov_br_password?: string }) => (
-      nfseCredential ? updateNfseCredential(nfseCredential.id, payload) : createNfseCredential(payload)
-    ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['nfseCredentials'] });
-      setSuccessMsg('Credenciais salvas com sucesso!');
-      setTimeout(() => { setSuccessMsg(''); closeModal(); }, 1500);
-    },
-    onError: () => setErrorMsg('Erro ao salvar credenciais NFS-e.'),
   });
 
   const inviteMutation = useMutation({
@@ -241,15 +224,6 @@ export default function CompanySettings() {
     }
   };
 
-  const handleNfseSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const gov_br_cpf = String(formData.get('gov_br_cpf') || '');
-    const gov_br_password = String(formData.get('gov_br_password') || '');
-    await nfseMutation.mutateAsync({ gov_br_cpf, ...(gov_br_password ? { gov_br_password } : {}) });
-    e.currentTarget.reset();
-  };
-
   const handleInviteSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSuccessMsg(''); setErrorMsg('');
@@ -325,13 +299,6 @@ export default function CompanySettings() {
       icon: Users,
       title: 'Usuarios',
       description: `${tenantMembers.length} membro${tenantMembers.length !== 1 ? 's' : ''}`,
-      adminOnly: true,
-    },
-    {
-      key: 'nfse' as const,
-      icon: KeyRound,
-      title: 'Credenciais NFS-e',
-      description: nfseCredential?.has_password ? 'Senha configurada' : 'Sem senha configurada',
       adminOnly: true,
     },
     {
@@ -707,25 +674,6 @@ export default function CompanySettings() {
         </Modal>
       )}
 
-      {/* Modal: Credenciais NFS-e */}
-      {modal === 'nfse' && (
-        <Modal title="Credenciais NFS-e" onClose={closeModal}>
-          {successMsg && <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{successMsg}</div>}
-          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
-          <form onSubmit={handleNfseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
-              <div><label className="label">CPF do portal NFS-e</label><input type="text" name="gov_br_cpf" className="input" defaultValue={nfseCredential?.gov_br_cpf} required /></div>
-              <div><label className="label">Senha</label><input type="password" name="gov_br_password" className="input" placeholder={nfseCredential?.has_password ? 'Deixe em branco para manter' : ''} /></div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
-              <button type="button" className="btn" onClick={closeModal}>Cancelar</button>
-              <button type="submit" className="btn btn-primary" disabled={nfseMutation.isPending}>
-                <Save size={16} />{nfseMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
       {/* Modal: Resetar Conta */}
       {modal === 'resetAccount' && (
         <Modal title="Resetar Conta" onClose={closeModal}>

@@ -123,11 +123,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "expected_account_name",
             "launch_financial",
             "save_client",
-            # NFS-e
-            "nfse_status",
-            "nfse_number",
-            "nfse_error",
-            "nfse_requested_at",
             # Payment
             "paid_at",
             "transaction",
@@ -149,10 +144,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "inss_value",
             "total_withheld",
             "net_value",
-            "nfse_status",
-            "nfse_number",
-            "nfse_error",
-            "nfse_requested_at",
             "paid_at",
             "transaction",
             "created_at",

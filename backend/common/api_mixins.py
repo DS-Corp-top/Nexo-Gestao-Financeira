@@ -121,7 +121,7 @@ class TenantQuerySetMixin:
 
     def get_object(self):
         # Every single-record path — retrieve(), update(), destroy(), and
-        # custom @actions like pay/cancel/nfse_emit/add_entry/toggle — all
+        # custom @actions like pay/cancel/add_entry/toggle — all
         # go through get_object(). Blocking it here (instead of only
         # retrieve()) closes those custom-action leaks in one place instead
         # of patching each action individually.

@@ -180,24 +180,6 @@ class TenantCompany(models.Model):
         return " | ".join(part for part in parts if part)
 
 
-class NfseCredential(models.Model):
-    tenant = models.OneToOneField(
-        Tenant,
-        on_delete=models.CASCADE,
-        related_name="nfse_credential",
-    )
-    gov_br_cpf = models.CharField("CPF gov.br", max_length=14)
-    gov_br_password_enc = models.TextField("Senha criptografada")
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Credencial NFS-e"
-        verbose_name_plural = "Credenciais NFS-e"
-
-    def __str__(self):
-        return f"NFS-e · {self.tenant}"
-
-
 class TenantMembership(models.Model):
     class Role(models.TextChoices):
         OWNER = "owner", "Owner"

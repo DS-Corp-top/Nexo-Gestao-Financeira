@@ -10,9 +10,8 @@ from rest_framework.views import APIView
 
 from common.api_mixins import get_user_tenant
 from common.throttles import CepLookupThrottle
-from tenants.models import NfseCredential, TenantCompany, TenantCompanyAccess, TenantMembership
+from tenants.models import TenantCompany, TenantCompanyAccess, TenantMembership
 from tenants.serializers import (
-    NfseCredentialSerializer,
     TenantCompanySerializer,
     TenantMemberUpdateSerializer,
     TenantMembershipSerializer,
@@ -202,21 +201,6 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
         tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         instance.delete()
-
-
-class NfseCredentialViewSet(viewsets.ModelViewSet):
-    """
-    Manage NFS-e gov.br credentials.
-    Accepts gov_br_password as plaintext and encrypts it before saving.
-    Never returns the encrypted password, only has_password.
-    """
-    serializer_class = NfseCredentialSerializer
-
-    def get_queryset(self):
-        return NfseCredential.objects.filter(tenant=get_user_tenant(self.request.user, self.request))
-
-    def perform_create(self, serializer):
-        serializer.save(tenant=get_user_tenant(self.request.user, self.request))
 
 
 class TenantInviteUserView(APIView):

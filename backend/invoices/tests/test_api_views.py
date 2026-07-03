@@ -188,11 +188,3 @@ class InvoiceApiViewSetTest(TestCase):
         self.assertEqual(response.data["invoice"]["id"], invoice.pk)
         self.assertEqual(response.data["tenant"]["id"], self.tenant.pk)
         self.assertIn("service_code_description", response.data)
-
-    def test_nfse_guide_endpoint_returns_manual_fields(self):
-        invoice = self._create_invoice()
-        response = self.client.get(f"/api/v1/invoices/{invoice.pk}/nfse_guide/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["fields"]["client"]["name"], invoice.client_name)
-        self.assertEqual(response.data["fields"]["service"]["competence"], "06/2026")

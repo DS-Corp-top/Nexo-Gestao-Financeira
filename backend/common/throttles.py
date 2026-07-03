@@ -11,11 +11,6 @@ class CnpjLookupThrottle(UserRateThrottle):
     scope = "cnpj_lookup"
 
 
-class NfseEmitThrottle(UserRateThrottle):
-    """10 NFSe emission attempts per hour per user."""
-    scope = "nfse_emit"
-
-
 class CepLookupThrottle(UserRateThrottle):
     """60 CEP lookups per hour per user."""
     scope = "cep_lookup"

@@ -54,10 +54,6 @@ export interface Invoice {
   installment_count: number | null;
   expected_account: number | null;
   expected_account_name: string;
-  nfse_status: 'nfse_pending' | 'nfse_processing' | 'nfse_issued' | 'nfse_failed' | null;
-  nfse_number: string | null;
-  nfse_error: string | null;
-  nfse_requested_at: string | null;
   paid_at: string | null;
   transaction: number | null;
   notes: string;
@@ -72,24 +68,6 @@ export interface InvoicePrintData {
   issuer_company: TenantCompany | null;
   service_code_description: string;
   responsible_name: string;
-}
-
-export interface InvoiceNfseGuide {
-  invoice: Invoice;
-  service_code_description: string;
-  portal_url: string;
-  fields: {
-    issuer: Record<string, string>;
-    client: Record<string, string>;
-    service: Record<string, string>;
-    values: Record<string, string | boolean>;
-  };
-}
-
-export interface InvoiceNfseStatus {
-  nfse_status: Invoice['nfse_status'];
-  nfse_error: string | null;
-  nfse_requested_at: string | null;
 }
 
 export interface InvoiceFilters {
@@ -158,21 +136,6 @@ export async function deleteClient(id: number): Promise<void> {
 
 export async function fetchInvoicePrintData(id: number): Promise<InvoicePrintData> {
   const { data } = await api.get<InvoicePrintData>(`/invoices/${id}/print_data/`);
-  return data;
-}
-
-export async function fetchInvoiceNfseGuide(id: number): Promise<InvoiceNfseGuide> {
-  const { data } = await api.get<InvoiceNfseGuide>(`/invoices/${id}/nfse_guide/`);
-  return data;
-}
-
-export async function emitInvoiceNfse(id: number): Promise<Invoice> {
-  const { data } = await api.post<Invoice>(`/invoices/${id}/nfse_emit/`);
-  return data;
-}
-
-export async function fetchInvoiceNfseStatus(id: number): Promise<InvoiceNfseStatus> {
-  const { data } = await api.get<InvoiceNfseStatus>(`/invoices/${id}/nfse_status/`);
   return data;
 }
 

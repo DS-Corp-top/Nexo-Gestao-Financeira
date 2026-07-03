@@ -2,21 +2,16 @@ import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNod
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
 
 import {
   cancelInvoice,
   deleteInvoice,
-  emitInvoiceNfse,
-  fetchInvoiceNfseGuide,
-  fetchInvoiceNfseStatus,
   fetchInvoicePrintData,
   fetchInvoices,
   payInvoice,
   type Invoice,
   type InvoiceFilters,
-  type InvoiceNfseGuide,
-  type InvoiceNfseStatus,
   type InvoicePrintData,
 } from '../api/invoices';
 import { fetchAccounts } from '../api/accounts';
@@ -27,20 +22,6 @@ function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function nfseLabel(status: Invoice['nfse_status']) {
-  if (status === 'nfse_pending' || status === 'nfse_processing') return 'Pendente';
-  if (status === 'nfse_issued') return 'Emitida';
-  if (status === 'nfse_failed') return 'Cancelada';
-  return '—';
-}
-
-function nfseBadgeClass(status: Invoice['nfse_status']) {
-  if (status === 'nfse_issued') return 'badge-success';
-  if (status === 'nfse_failed') return 'badge-danger';
-  if (status === 'nfse_pending' || status === 'nfse_processing') return 'badge-warning';
-  return 'badge-info';
 }
 
 function firstOfMonth() {
@@ -165,7 +146,6 @@ function buildPrintHtml(data: InvoicePrintData): string {
   </div>
   <div style="text-align:right">
     <div style="font-size:22px;font-weight:900;letter-spacing:.01em">Fatura ${escapeHtml(invoice.number_display)}</div>
-    ${invoice.nfse_number ? `<div style="margin-top:4px;font-size:11px;color:#6b7280">NFS-e: ${escapeHtml(invoice.nfse_number)}</div>` : ''}
     <div style="margin-top:6px;display:inline-block;padding:3px 12px;background:#111;color:#fff;font-size:10px;font-weight:800;letter-spacing:.1em">${statusLabel}</div>
   </div>
 </div>
@@ -235,14 +215,11 @@ function buildPrintHtml(data: InvoicePrintData): string {
 </html>`;
 }
 
-function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, onEmitNfse, onCancel, onDelete, isAdmin }: {
+function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onCancel, onDelete, isAdmin }: {
   invoice: Invoice;
   onEdit: () => void;
   onPay: () => void;
   onPrint: () => void;
-  onGuide: () => void;
-  onStatus: () => void;
-  onEmitNfse: () => void;
   onCancel: () => void;
   onDelete: () => void;
   isAdmin: boolean;
@@ -273,9 +250,6 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
       invoice.status === 'issued',
       true,
       true,
-      invoice.status === 'issued',
-      Boolean(invoice.status === 'issued' && invoice.nfse_status && invoice.nfse_status !== 'nfse_issued'),
-      invoice.status === 'issued' && invoice.nfse_status !== 'nfse_issued',
       invoice.status !== 'cancelled',
     ].filter(Boolean).length;
     const estimatedHeight = Math.min(visibleItems * 36 + 8, viewportHeight - bottomSafeArea - 16);
@@ -340,11 +314,6 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
           {isAdmin && invoice.status === 'issued' && item('Marcar como Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
           {isAdmin && item('Editar', <Edit2 size={14} />, onEdit)}
           {item('Imprimir', <Printer size={14} />, onPrint)}
-          {invoice.status === 'issued' && item('Guia NFS-e', <ReceiptText size={14} />, onGuide)}
-          {invoice.status === 'issued' && invoice.nfse_status && invoice.nfse_status !== 'nfse_issued' &&
-            item('Status NFS-e', <RefreshCw size={14} />, onStatus)}
-          {isAdmin && invoice.status === 'issued' && invoice.nfse_status !== 'nfse_issued' &&
-            item('Emitir NFS-e', <Send size={14} style={{ color: 'var(--color-info)' }} />, onEmitNfse)}
           {isAdmin && invoice.status !== 'cancelled' && (
             <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
               {item('Cancelar', <Ban size={14} />, onCancel, true)}
@@ -377,16 +346,9 @@ function DataModal({ title, onClose, children }: { title: string; onClose: () =>
   );
 }
 
-type InvoiceSortKey = 'number' | 'status' | 'nfse_status' | 'client_name' | 'client_document' | 'issue_date' | 'due_date';
+type InvoiceSortKey = 'number' | 'status' | 'client_name' | 'client_document' | 'issue_date' | 'due_date';
 
 const STATUS_SORT_ORDER: Record<Invoice['status'], number> = { draft: 0, issued: 1, paid: 2, cancelled: 3 };
-const NFSE_STATUS_SORT_ORDER: Record<string, number> = {
-  not_issued: 0,
-  nfse_pending: 1,
-  nfse_processing: 2,
-  nfse_issued: 3,
-  nfse_failed: 4,
-};
 
 function normalizeFilterText(value: string) {
   return value
@@ -400,8 +362,6 @@ export default function Invoices() {
   const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-  const [guideData, setGuideData] = useState<InvoiceNfseGuide | null>(null);
-  const [statusData, setStatusData] = useState<{ invoice: Invoice; status: InvoiceNfseStatus } | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -452,11 +412,6 @@ export default function Invoices() {
           return dir * a.number_display.localeCompare(b.number_display, 'pt-BR', { numeric: true });
         case 'status':
           return dir * (STATUS_SORT_ORDER[a.status] - STATUS_SORT_ORDER[b.status]);
-        case 'nfse_status':
-          return dir * (
-            (NFSE_STATUS_SORT_ORDER[a.nfse_status ?? 'not_issued'] ?? 0)
-            - (NFSE_STATUS_SORT_ORDER[b.nfse_status ?? 'not_issued'] ?? 0)
-          );
         case 'client_name':
           return dir * normalizeFilterText(a.client_name).localeCompare(normalizeFilterText(b.client_name));
         case 'client_document':
@@ -496,14 +451,6 @@ export default function Invoices() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setCancelTarget(null);
-    },
-  });
-
-  const emitNfseMutation = useMutation({
-    mutationFn: emitInvoiceNfse,
-    onSuccess: (invoice) => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      setStatusData({ invoice, status: { nfse_status: invoice.nfse_status, nfse_error: invoice.nfse_error, nfse_requested_at: invoice.nfse_requested_at } });
     },
   });
 
@@ -556,9 +503,6 @@ export default function Invoices() {
     printWindow.document.write(buildPrintHtml(data));
     printWindow.document.close();
   };
-  const handleGuide = async (invoice: Invoice) => { setGuideData(await fetchInvoiceNfseGuide(invoice.id)); };
-  const handleStatus = async (invoice: Invoice) => { setStatusData({ invoice, status: await fetchInvoiceNfseStatus(invoice.id) }); };
-
   const sortableHeader = (key: InvoiceSortKey, label: string) => {
     const active = sortKey === key;
     return (
@@ -715,7 +659,6 @@ export default function Invoices() {
                 <tr>
                   {sortableHeader('number', 'N\u00ba')}
                   {sortableHeader('status', 'Status')}
-                  {sortableHeader('nfse_status', 'Status NF-e')}
                   {sortableHeader('client_name', 'Cliente')}
                   {sortableHeader('client_document', 'CPF / CNPJ')}
                   {sortableHeader('issue_date', 'Emiss\u00e3o')}
@@ -735,12 +678,6 @@ export default function Invoices() {
                       {inv.status === 'paid' && <span className="badge badge-success">Fatura Paga</span>}
                       {inv.status === 'cancelled' && <span className="badge badge-danger">Fatura Cancelada</span>}
                     </td>
-                    <td>
-                      {inv.nfse_status
-                        ? <span className={`badge ${nfseBadgeClass(inv.nfse_status)}`}>{nfseLabel(inv.nfse_status)}</span>
-                        : <span className="badge" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--color-text-muted)' }}>Não emitida</span>
-                      }
-                    </td>
                     <td style={{ fontWeight: 500 }}>{inv.client_name}</td>
                     <td>{inv.client_document}</td>
                     <td>{format(parseISO(inv.issue_date), 'dd/MM/yy')}</td>
@@ -754,9 +691,6 @@ export default function Invoices() {
                         onEdit={() => handleOpenEdit(inv)}
                         onPay={() => handlePay(inv)}
                         onPrint={() => handlePrint(inv)}
-                        onGuide={() => handleGuide(inv)}
-                        onStatus={() => handleStatus(inv)}
-                        onEmitNfse={() => emitNfseMutation.mutate(inv.id)}
                         onCancel={() => setCancelTarget(inv)}
                         onDelete={() => setDeleteTarget(inv)}
                       />
@@ -803,59 +737,6 @@ export default function Invoices() {
                 {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar fatura'}
               </button>
             </div>
-          </div>
-        </DataModal>
-      )}
-
-      {guideData && (
-        <DataModal title={`Guia NFS-e ${guideData.invoice.number_display}`} onClose={() => setGuideData(null)}>
-          <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-md)', alignItems: 'center' }}>
-              <span className="badge badge-info">{guideData.service_code_description || guideData.invoice.service_code}</span>
-              <a className="btn btn-secondary" href={guideData.portal_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>Abrir Portal</a>
-            </div>
-            {Object.entries(guideData.fields).map(([group, values]) => (
-              <div key={group}>
-                <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 'var(--space-sm)', textTransform: 'capitalize' }}>{group}</h3>
-                <div className="table-wrapper">
-                  <table className="table">
-                    <tbody>
-                      {Object.entries(values).map(([key, value]) => (
-                        <tr key={key}>
-                          <td style={{ color: 'var(--color-text-secondary)', width: '35%' }}>{key}</td>
-                          <td>{String(value || '-')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        </DataModal>
-      )}
-
-      {statusData && (
-        <DataModal title={`Status NFS-e ${statusData.invoice.number_display}`} onClose={() => setStatusData(null)}>
-          <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
-            <span className={`badge ${nfseBadgeClass(statusData.status.nfse_status)}`} style={{ width: 'fit-content' }}>
-              {nfseLabel(statusData.status.nfse_status)}
-            </span>
-            {statusData.status.nfse_requested_at && (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-                Solicitada em {format(parseISO(statusData.status.nfse_requested_at), 'dd/MM/yyyy HH:mm')}
-              </p>
-            )}
-            {statusData.status.nfse_error && (
-              <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem' }}>
-                {statusData.status.nfse_error}
-              </div>
-            )}
-            {(statusData.status.nfse_status === 'nfse_pending' || statusData.status.nfse_status === 'nfse_processing') && (
-              <button className="btn btn-secondary" onClick={() => handleStatus(statusData.invoice)}>
-                <RefreshCw size={16} /> Atualizar
-              </button>
-            )}
           </div>
         </DataModal>
       )}

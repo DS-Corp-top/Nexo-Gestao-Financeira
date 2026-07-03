@@ -372,7 +372,6 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "10/min",
         "cnpj_lookup": "60/hour",
-        "nfse_emit": "10/hour",
         "cep_lookup": "60/hour",
     },
 }

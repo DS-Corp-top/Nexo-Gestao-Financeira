@@ -29,7 +29,6 @@ from invoices.api_views import ClientViewSet, InvoiceViewSet
 from shopping.api_views import ShoppingItemViewSet, ShoppingListViewSet
 from tenants.api_views import (
     CepLookupView,
-    NfseCredentialViewSet,
     TenantCompanyViewSet,
     TenantInviteUserView,
     TenantMembershipViewSet,
@@ -71,7 +70,6 @@ router.register("investments", InvestmentViewSet)
 router.register("investment-entries", InvestmentEntryViewSet)
 router.register("tenant-memberships", TenantMembershipViewSet, basename="tenant-membership")
 router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-company")
-router.register("nfse-credentials", NfseCredentialViewSet, basename="nfse-credential")
 router.register("todo-projects", ProjectViewSet, basename="todo-project")
 router.register("todos", TodoItemViewSet, basename="todo")
 router.register("note-lists", NoteListViewSet, basename="note-list")

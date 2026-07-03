@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from accounts.models import Account
 from common.api_mixins import TenantQuerySetMixin
-from common.throttles import CnpjLookupThrottle, NfseEmitThrottle
+from common.throttles import CnpjLookupThrottle
 from invoices.models import Client, Invoice
 from invoices.serializers import ClientSerializer, InvoicePaySerializer, InvoiceSerializer
 from invoices.service_codes import SERVICE_CODES
@@ -211,65 +211,6 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         return Response(InvoiceSerializer(invoice).data)
 
-    @action(detail=True, methods=["post"], throttle_classes=[NfseEmitThrottle])
-    def nfse_emit(self, request, pk=None):
-        """Trigger NFSe emission (mirrors InvoiceNfseEmitView)."""
-        from django.utils import timezone as tz
-
-        invoice = self.get_object()
-        tenant = self.get_tenant()
-
-        if not hasattr(tenant, "nfse_credential"):
-            return Response(
-                {"detail": "Configure suas credenciais gov.br antes de emitir."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if invoice.nfse_status == Invoice.NFSE_PROCESSING:
-            return Response(
-                {"detail": "A emissão já está em andamento.", "nfse_status": invoice.nfse_status},
-                status=status.HTTP_200_OK,
-            )
-
-        invoice.nfse_status = Invoice.NFSE_PENDING
-        invoice.nfse_requested_at = tz.now()
-        invoice.nfse_error = ""
-        invoice.save(update_fields=["nfse_status", "nfse_requested_at", "nfse_error"])
-
-        try:
-            from invoices.tasks import emit_nfse_task
-            emit_nfse_task.delay(invoice.pk)
-        except Exception:
-            from invoices.tasks import emit_nfse_task
-            emit_nfse_task.apply(args=[invoice.pk])
-
-        return Response(InvoiceSerializer(invoice).data, status=status.HTTP_202_ACCEPTED)
-
-    @action(detail=True, methods=["get"])
-    def nfse_status(self, request, pk=None):
-        """Return NFSe status with timeout check (mirrors InvoiceNfseStatusView)."""
-        from django.utils import timezone as tz
-
-        _TIMEOUT_SECONDS = 300
-        invoice = self.get_object()
-
-        if invoice.nfse_status in (Invoice.NFSE_PENDING, Invoice.NFSE_PROCESSING):
-            if invoice.nfse_requested_at:
-                elapsed = (tz.now() - invoice.nfse_requested_at).total_seconds()
-                if elapsed > _TIMEOUT_SECONDS:
-                    invoice.nfse_status = Invoice.NFSE_FAILED
-                    invoice.nfse_error = (
-                        "Tempo limite excedido. O worker de processamento pode estar inativo "
-                        "ou o portal demorou demais para responder."
-                    )
-                    invoice.save(update_fields=["nfse_status", "nfse_error"])
-
-        return Response({
-            "nfse_status": invoice.nfse_status,
-            "nfse_error": invoice.nfse_error,
-            "nfse_requested_at": invoice.nfse_requested_at,
-        })
-
     @action(detail=True, methods=["get"])
     def print_data(self, request, pk=None):
         """Return all data needed to render/print an invoice in the SPA."""
@@ -289,46 +230,6 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     def service_codes(self, request):
         """Return the full LC 116 service code list."""
         return Response([{"code": c, "description": d} for c, d in SERVICE_CODES])
-
-    @action(detail=True, methods=["get"])
-    def nfse_guide(self, request, pk=None):
-        """Return structured data for the manual NFS-e emission guide."""
-        invoice = self.get_object()
-        service_code_description = self._service_code_description(invoice)
-        return Response({
-            "invoice": InvoiceSerializer(invoice).data,
-            "service_code_description": service_code_description,
-            "portal_url": "https://www.nfse.gov.br/EmissorNacional/Login",
-            "fields": {
-                "issuer": {
-                    "name": invoice.issuer_company.name if invoice.issuer_company else "",
-                    "document": invoice.issuer_company.document if invoice.issuer_company else "",
-                    "sequence_number": invoice.issuer_company.sequence_number if invoice.issuer_company else "",
-                },
-                "client": {
-                    "name": invoice.client_name,
-                    "document": invoice.client_document,
-                    "email": invoice.client_email,
-                    "address": invoice.client_address,
-                    "city": invoice.client_city,
-                },
-                "service": {
-                    "code": invoice.service_code,
-                    "code_description": service_code_description,
-                    "description": invoice.service_description,
-                    "competence": invoice.issue_date.strftime("%m/%Y"),
-                },
-                "values": {
-                    "gross_value": str(invoice.gross_value),
-                    "deductions": str(invoice.deductions),
-                    "calculation_base": str(invoice.calculation_base),
-                    "iss_rate": str(invoice.iss_rate),
-                    "iss_value": str(invoice.iss_value),
-                    "iss_withheld": invoice.iss_withheld,
-                },
-            },
-        })
-
 
 class ClientViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     queryset = Client.objects.all()

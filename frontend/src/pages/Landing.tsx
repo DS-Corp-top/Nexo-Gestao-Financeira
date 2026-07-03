@@ -338,7 +338,7 @@ function AppPreview() {
 const features = [
   { icon: BarChart3,    title: 'Dashboard',          desc: 'Saldo, receitas, despesas e metas consolidados em tempo real.' },
   { icon: CreditCard,   title: 'Contas e cartões',   desc: 'Bancárias, dinheiro e cartões com limite e fatura mensais.' },
-  { icon: FileText,     title: 'Emissão de faturas', desc: 'NFS-e com ISS, PIS, COFINS, IR, CSLL e INSS. Numeração automática.' },
+  { icon: FileText,     title: 'Emissão de faturas', desc: 'Cálculo de ISS, PIS, COFINS, IR, CSLL e INSS. Numeração automática.' },
   { icon: ShoppingCart, title: 'Listas de compras',  desc: 'Organize por lista, marque itens e acompanhe o total em tempo real.' },
   { icon: TrendingUp,   title: 'Investimentos',      desc: 'Registre aportes e acompanhe a evolução da sua carteira.' },
   { icon: Shield,       title: 'Dados isolados',     desc: 'Cada CPF/CNPJ tem ambiente próprio. Zero vazamento entre usuários.' },
