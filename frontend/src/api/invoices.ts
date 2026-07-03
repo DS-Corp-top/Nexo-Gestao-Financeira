@@ -54,6 +54,7 @@ export interface Invoice {
   installment_count: number | null;
   expected_account: number | null;
   expected_account_name: string;
+  note_issued: boolean;
   paid_at: string | null;
   transaction: number | null;
   notes: string;
@@ -112,6 +113,11 @@ export async function payInvoice(id: number, payload: { paid_at: string; account
 
 export async function cancelInvoice(id: number): Promise<Invoice> {
   const { data } = await api.post<Invoice>(`/invoices/${id}/cancel/`);
+  return data;
+}
+
+export async function toggleInvoiceNoteIssued(id: number): Promise<Invoice> {
+  const { data } = await api.post<Invoice>(`/invoices/${id}/toggle_note_issued/`);
   return data;
 }
 

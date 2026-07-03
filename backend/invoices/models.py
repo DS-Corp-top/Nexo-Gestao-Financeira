@@ -150,6 +150,8 @@ class Invoice(models.Model):
         help_text="Informe apenas quando a recorrência for Parcelado.",
     )
 
+    note_issued = models.BooleanField("Nota emitida", default=False)
+
     paid_at = models.DateField("Data de pagamento", null=True, blank=True)
     transaction = models.OneToOneField(
         "transactions.Transaction",

@@ -188,3 +188,28 @@ class InvoiceApiViewSetTest(TestCase):
         self.assertEqual(response.data["invoice"]["id"], invoice.pk)
         self.assertEqual(response.data["tenant"]["id"], self.tenant.pk)
         self.assertIn("service_code_description", response.data)
+
+    def test_toggle_note_issued_flips_the_flag(self):
+        invoice = self._create_invoice()
+        self.assertFalse(invoice.note_issued)
+
+        response = self.client.post(f"/api/v1/invoices/{invoice.pk}/toggle_note_issued/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["note_issued"])
+        invoice.refresh_from_db()
+        self.assertTrue(invoice.note_issued)
+
+        response = self.client.post(f"/api/v1/invoices/{invoice.pk}/toggle_note_issued/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["note_issued"])
+        invoice.refresh_from_db()
+        self.assertFalse(invoice.note_issued)
+
+    def test_toggle_note_issued_rejects_non_issued_invoices(self):
+        invoice = self._create_invoice(status=Invoice.DRAFT)
+
+        response = self.client.post(f"/api/v1/invoices/{invoice.pk}/toggle_note_issued/")
+
+        self.assertEqual(response.status_code, 400)
+        invoice.refresh_from_db()
+        self.assertFalse(invoice.note_issued)

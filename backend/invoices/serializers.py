@@ -123,6 +123,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "expected_account_name",
             "launch_financial",
             "save_client",
+            # Nota fiscal
+            "note_issued",
             # Payment
             "paid_at",
             "transaction",
@@ -144,6 +146,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "inss_value",
             "total_withheld",
             "net_value",
+            "note_issued",
             "paid_at",
             "transaction",
             "created_at",

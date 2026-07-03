@@ -17,6 +17,7 @@ vi.mock('../api/invoices', async () => {
     cancelInvoice: vi.fn(),
     deleteInvoice: vi.fn(),
     payInvoice: vi.fn(),
+    toggleInvoiceNoteIssued: vi.fn(),
   };
 });
 vi.mock('../api/accounts', () => ({
@@ -72,6 +73,7 @@ function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     installment_count: null,
     expected_account: null,
     expected_account_name: '',
+    note_issued: false,
     paid_at: null,
     transaction: null,
     notes: '',
@@ -109,6 +111,26 @@ describe('Invoices Page', () => {
     });
     expect(screen.getByText('Cliente B')).toBeInTheDocument();
     expect(screen.getByText('0001/2026')).toBeInTheDocument();
+  });
+
+  it('counts and sums invoices with the note marked as issued in the summary cards', async () => {
+    (invoicesApi.fetchInvoices as any).mockResolvedValue([
+      makeInvoice({ id: 1, client_name: 'Cliente A', note_issued: true, net_value: '1000.00' }),
+      makeInvoice({ id: 2, client_name: 'Cliente B', note_issued: true, net_value: '1000.00' }),
+      makeInvoice({ id: 3, client_name: 'Cliente C', note_issued: false, net_value: '1000.00' }),
+    ]);
+
+    renderInvoices();
+
+    await waitFor(() => {
+      expect(screen.getByText('Cliente A')).toBeInTheDocument();
+    });
+
+    const countCard = screen.getByText('Notas Emitidas').parentElement!;
+    expect(within(countCard).getByText('2')).toBeInTheDocument();
+
+    const totalCard = screen.getByText('Total Nota Emitida').parentElement!;
+    expect(within(totalCard).getByText('R$ 2.000,00')).toBeInTheDocument();
   });
 
   it('shows "Nova Fatura" only for admins', async () => {
@@ -188,6 +210,29 @@ describe('Invoices Page', () => {
       expect(invoicesApi.fetchInvoices).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: '', start: '', end: '' })
       );
+    });
+  });
+
+  it('toggles the "nota emitida" flag from the actions menu', async () => {
+    (invoicesApi.fetchInvoices as any).mockResolvedValue([
+      makeInvoice({ id: 5, number_display: '0005/2026', client_name: 'Cliente C', status: 'issued', note_issued: false }),
+    ]);
+    (invoicesApi.toggleInvoiceNoteIssued as any).mockResolvedValue(
+      makeInvoice({ id: 5, note_issued: true })
+    );
+
+    renderInvoices();
+
+    await waitFor(() => {
+      expect(screen.getByText('Nota Pendente')).toBeInTheDocument();
+    });
+
+    const row = screen.getByText('Cliente C').closest('tr')!;
+    fireEvent.click(within(row).getByRole('button'));
+    fireEvent.click(await screen.findByText('Marcar Nota Emitida'));
+
+    await waitFor(() => {
+      expect(invoicesApi.toggleInvoiceNoteIssued).toHaveBeenCalledWith(5, expect.anything());
     });
   });
 });

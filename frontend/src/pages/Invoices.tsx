@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNod
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
 
 import {
   cancelInvoice,
@@ -10,6 +10,7 @@ import {
   fetchInvoicePrintData,
   fetchInvoices,
   payInvoice,
+  toggleInvoiceNoteIssued,
   type Invoice,
   type InvoiceFilters,
   type InvoicePrintData,
@@ -215,11 +216,12 @@ function buildPrintHtml(data: InvoicePrintData): string {
 </html>`;
 }
 
-function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onCancel, onDelete, isAdmin }: {
+function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onToggleNoteIssued, onCancel, onDelete, isAdmin }: {
   invoice: Invoice;
   onEdit: () => void;
   onPay: () => void;
   onPrint: () => void;
+  onToggleNoteIssued: () => void;
   onCancel: () => void;
   onDelete: () => void;
   isAdmin: boolean;
@@ -250,6 +252,7 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onCancel, onDelete, 
       invoice.status === 'issued',
       true,
       true,
+      invoice.status === 'issued',
       invoice.status !== 'cancelled',
     ].filter(Boolean).length;
     const estimatedHeight = Math.min(visibleItems * 36 + 8, viewportHeight - bottomSafeArea - 16);
@@ -314,6 +317,11 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onCancel, onDelete, 
           {isAdmin && invoice.status === 'issued' && item('Marcar como Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
           {isAdmin && item('Editar', <Edit2 size={14} />, onEdit)}
           {item('Imprimir', <Printer size={14} />, onPrint)}
+          {invoice.status === 'issued' && item(
+            invoice.note_issued ? 'Desmarcar Nota Emitida' : 'Marcar Nota Emitida',
+            <ReceiptText size={14} style={{ color: invoice.note_issued ? 'var(--color-success)' : undefined }} />,
+            onToggleNoteIssued
+          )}
           {isAdmin && invoice.status !== 'cancelled' && (
             <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 2, paddingTop: 2 }}>
               {item('Cancelar', <Ban size={14} />, onCancel, true)}
@@ -430,6 +438,10 @@ export default function Invoices() {
     .filter((inv) => inv.status !== 'cancelled')
     .reduce((sum, inv) => sum + parseFloat(inv.net_value || '0'), 0);
 
+  const totalNotaEmitida = visibleInvoices
+    .filter((inv) => inv.note_issued && inv.status !== 'cancelled')
+    .reduce((sum, inv) => sum + parseFloat(inv.net_value || '0'), 0);
+
   const filterSummary = [
     filters.status ? `Status: ${filters.status}` : 'Status Todos',
     filters.start || filters.end ? 'e periodo selecionado' : '',
@@ -441,6 +453,13 @@ export default function Invoices() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+
+  const toggleNoteIssuedMutation = useMutation({
+    mutationFn: toggleInvoiceNoteIssued,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
   });
 
@@ -533,14 +552,22 @@ export default function Invoices() {
       </div>
 
       {/* ── Cards de resumo ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Faturado</div>
           <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalFaturado)}</div>
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Quantidade</div>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Nota Emitida</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalNotaEmitida)}</div>
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Quantidade de Faturas</div>
           <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{visibleInvoices.filter(i => i.status !== 'cancelled').length}</div>
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Notas Emitidas</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{visibleInvoices.filter((i) => i.note_issued).length}</div>
         </div>
       </div>
 
@@ -659,6 +686,7 @@ export default function Invoices() {
                 <tr>
                   {sortableHeader('number', 'N\u00ba')}
                   {sortableHeader('status', 'Status')}
+                  <th>Nota</th>
                   {sortableHeader('client_name', 'Cliente')}
                   {sortableHeader('client_document', 'CPF / CNPJ')}
                   {sortableHeader('issue_date', 'Emiss\u00e3o')}
@@ -678,6 +706,14 @@ export default function Invoices() {
                       {inv.status === 'paid' && <span className="badge badge-success">Fatura Paga</span>}
                       {inv.status === 'cancelled' && <span className="badge badge-danger">Fatura Cancelada</span>}
                     </td>
+                    <td>
+                      {inv.status !== 'issued'
+                        ? <span className="badge" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--color-text-muted)' }}>—</span>
+                        : inv.note_issued
+                          ? <span className="badge badge-success">Nota Emitida</span>
+                          : <span className="badge badge-warning">Nota Pendente</span>
+                      }
+                    </td>
                     <td style={{ fontWeight: 500 }}>{inv.client_name}</td>
                     <td>{inv.client_document}</td>
                     <td>{format(parseISO(inv.issue_date), 'dd/MM/yy')}</td>
@@ -691,6 +727,7 @@ export default function Invoices() {
                         onEdit={() => handleOpenEdit(inv)}
                         onPay={() => handlePay(inv)}
                         onPrint={() => handlePrint(inv)}
+                        onToggleNoteIssued={() => toggleNoteIssuedMutation.mutate(inv.id)}
                         onCancel={() => setCancelTarget(inv)}
                         onDelete={() => setDeleteTarget(inv)}
                       />

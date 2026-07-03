@@ -211,6 +211,22 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         return Response(InvoiceSerializer(invoice).data)
 
+    @action(detail=True, methods=["post"])
+    def toggle_note_issued(self, request, pk=None):
+        """Flip the manual "nota emitida" flag for an issued invoice."""
+        invoice = self.get_object()
+
+        if invoice.status != Invoice.ISSUED:
+            return Response(
+                {"detail": "Apenas faturas emitidas podem ter a nota marcada."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        invoice.note_issued = not invoice.note_issued
+        invoice.save(update_fields=["note_issued", "updated_at"])
+
+        return Response(InvoiceSerializer(invoice).data)
+
     @action(detail=True, methods=["get"])
     def print_data(self, request, pk=None):
         """Return all data needed to render/print an invoice in the SPA."""
