@@ -851,7 +851,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                     role="radiogroup"
                     aria-label="Conta para o lançamento financeiro"
                     style={{
-                      display: 'grid',
+                      display: 'none',
                       gap: 8,
                       border: '1px solid var(--color-border)',
                       borderRadius: 'var(--radius-md)',
@@ -899,7 +899,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                       })
                     )}
                   </div>
-                  <div ref={accountRef} style={{ display: 'none', position: 'relative' }}>
+                  <div ref={accountRef} style={{ position: 'relative' }}>
                     <button
                       type="button"
                       className="input"
