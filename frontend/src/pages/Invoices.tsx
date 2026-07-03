@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNod
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical, Trash2, Filter, X } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical, Trash2, Calendar } from 'lucide-react';
 
 import {
   cancelInvoice,
@@ -377,18 +377,15 @@ function DataModal({ title, onClose, children }: { title: string; onClose: () =>
   );
 }
 
-type InvoiceColumnFilterKey = 'number' | 'status' | 'nfse_status' | 'client_name' | 'client_document' | 'issue_date' | 'due_date';
+type InvoiceSortKey = 'number' | 'status' | 'nfse_status' | 'client_name' | 'client_document' | 'issue_date' | 'due_date';
 
-type InvoiceColumnFilters = Record<InvoiceColumnFilterKey, string>;
-
-const emptyColumnFilters: InvoiceColumnFilters = {
-  number: '',
-  status: '',
-  nfse_status: '',
-  client_name: '',
-  client_document: '',
-  issue_date: '',
-  due_date: '',
+const STATUS_SORT_ORDER: Record<Invoice['status'], number> = { draft: 0, issued: 1, paid: 2, cancelled: 3 };
+const NFSE_STATUS_SORT_ORDER: Record<string, number> = {
+  not_issued: 0,
+  nfse_pending: 1,
+  nfse_processing: 2,
+  nfse_issued: 3,
+  nfse_failed: 4,
 };
 
 function normalizeFilterText(value: string) {
@@ -408,9 +405,18 @@ export default function Invoices() {
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [columnFilters, setColumnFilters] = useState<InvoiceColumnFilters>(emptyColumnFilters);
-  const [openColumnFilter, setOpenColumnFilter] = useState<InvoiceColumnFilterKey | null>(null);
-  const columnFilterRef = useRef<HTMLDivElement>(null);
+  const [sortKey, setSortKey] = useState<InvoiceSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
+
+  const openDatePicker = (ref: { current: HTMLInputElement | null }) => {
+    try {
+      ref.current?.showPicker();
+    } catch {
+      ref.current?.focus();
+    }
+  };
 
   const [filters, setFilters] = useState<InvoiceFilters>({
     status: '',
@@ -427,45 +433,42 @@ export default function Invoices() {
 
   const { data: accounts } = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts });
 
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (columnFilterRef.current && !columnFilterRef.current.contains(e.target as Node)) {
-        setOpenColumnFilter(null);
-      }
+  const toggleSort = (key: InvoiceSortKey) => {
+    if (sortKey === key) {
+      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
     }
-    if (openColumnFilter) document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [openColumnFilter]);
+  };
 
   const visibleInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
-      const numberNeedle = normalizeFilterText(columnFilters.number);
-      if (numberNeedle && !normalizeFilterText(inv.number_display).includes(numberNeedle)) return false;
-
-      if (columnFilters.status && inv.status !== columnFilters.status) return false;
-
-      if (columnFilters.nfse_status) {
-        if (columnFilters.nfse_status === 'not_issued') {
-          if (inv.nfse_status) return false;
-        } else if (inv.nfse_status !== columnFilters.nfse_status) {
-          return false;
-        }
+    if (!sortKey) return invoices;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...invoices].sort((a, b) => {
+      switch (sortKey) {
+        case 'number':
+          return dir * a.number_display.localeCompare(b.number_display, 'pt-BR', { numeric: true });
+        case 'status':
+          return dir * (STATUS_SORT_ORDER[a.status] - STATUS_SORT_ORDER[b.status]);
+        case 'nfse_status':
+          return dir * (
+            (NFSE_STATUS_SORT_ORDER[a.nfse_status ?? 'not_issued'] ?? 0)
+            - (NFSE_STATUS_SORT_ORDER[b.nfse_status ?? 'not_issued'] ?? 0)
+          );
+        case 'client_name':
+          return dir * normalizeFilterText(a.client_name).localeCompare(normalizeFilterText(b.client_name));
+        case 'client_document':
+          return dir * a.client_document.localeCompare(b.client_document);
+        case 'issue_date':
+          return dir * a.issue_date.localeCompare(b.issue_date);
+        case 'due_date':
+          return dir * a.due_date.localeCompare(b.due_date);
+        default:
+          return 0;
       }
-
-      const clientNeedle = normalizeFilterText(columnFilters.client_name);
-      if (clientNeedle && !normalizeFilterText(inv.client_name).includes(clientNeedle)) return false;
-
-      const documentNeedle = columnFilters.client_document.replace(/\D/g, '');
-      if (documentNeedle && !inv.client_document.replace(/\D/g, '').includes(documentNeedle)) return false;
-
-      if (columnFilters.issue_date && inv.issue_date !== columnFilters.issue_date) return false;
-      if (columnFilters.due_date && inv.due_date !== columnFilters.due_date) return false;
-
-      return true;
     });
-  }, [columnFilters, invoices]);
-
-  const hasColumnFilters = Object.values(columnFilters).some(Boolean);
+  }, [invoices, sortKey, sortDir]);
 
   const totalFaturado = visibleInvoices
     .filter((inv) => inv.status !== 'cancelled')
@@ -555,140 +558,27 @@ export default function Invoices() {
   const handleGuide = async (invoice: Invoice) => { setGuideData(await fetchInvoiceNfseGuide(invoice.id)); };
   const handleStatus = async (invoice: Invoice) => { setStatusData({ invoice, status: await fetchInvoiceNfseStatus(invoice.id) }); };
 
-  const updateColumnFilter = (key: InvoiceColumnFilterKey, value: string) => {
-    setColumnFilters((current) => ({ ...current, [key]: value }));
-  };
-
-  const clearColumnFilter = (key: InvoiceColumnFilterKey) => {
-    setColumnFilters((current) => ({ ...current, [key]: '' }));
-  };
-
-  const renderColumnFilterControl = (key: InvoiceColumnFilterKey) => {
-    if (key === 'status') {
-      return (
-        <select className="input" value={columnFilters.status} onChange={(e) => updateColumnFilter('status', e.target.value)} autoFocus>
-          <option value="">Todos</option>
-          <option value="draft">Rascunho</option>
-          <option value="issued">Emitida</option>
-          <option value="paid">Paga</option>
-          <option value="cancelled">Cancelada</option>
-        </select>
-      );
-    }
-
-    if (key === 'nfse_status') {
-      return (
-        <select className="input" value={columnFilters.nfse_status} onChange={(e) => updateColumnFilter('nfse_status', e.target.value)} autoFocus>
-          <option value="">Todos</option>
-          <option value="not_issued">Nao emitida</option>
-          <option value="nfse_pending">Pendente</option>
-          <option value="nfse_processing">Processando</option>
-          <option value="nfse_issued">Emitida</option>
-          <option value="nfse_failed">Cancelada</option>
-        </select>
-      );
-    }
-
-    if (key === 'issue_date' || key === 'due_date') {
-      return (
-        <input
-          type="date"
-          className="input"
-          value={columnFilters[key]}
-          onChange={(e) => updateColumnFilter(key, e.target.value)}
-          autoFocus
-        />
-      );
-    }
-
-    const placeholders: Record<InvoiceColumnFilterKey, string> = {
-      number: 'Filtrar numero...',
-      status: '',
-      nfse_status: '',
-      client_name: 'Filtrar cliente...',
-      client_document: 'Filtrar CPF/CNPJ...',
-      issue_date: '',
-      due_date: '',
-    };
-
+  const sortableHeader = (key: InvoiceSortKey, label: string) => {
+    const active = sortKey === key;
     return (
-      <input
-        type="text"
-        className="input"
-        value={columnFilters[key]}
-        onChange={(e) => updateColumnFilter(key, e.target.value)}
-        placeholder={placeholders[key]}
-        autoFocus
-      />
-    );
-  };
-
-  const filterHeader = (key: InvoiceColumnFilterKey, label: string) => {
-    const active = Boolean(columnFilters[key]);
-    return (
-      <th style={{ position: 'relative' }}>
-        <button
-          type="button"
-          onClick={() => setOpenColumnFilter((current) => current === key ? null : key)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            width: '100%',
-            padding: 0,
-            border: 'none',
-            background: 'transparent',
-            color: active ? 'var(--color-accent)' : 'inherit',
-            font: 'inherit',
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-          title={`Filtrar por ${label}`}
-        >
-          <span>{label}</span>
-          <Filter size={12} style={{ opacity: active ? 1 : 0.45 }} />
-        </button>
-
-        {openColumnFilter === key && (
-          <div
-            ref={columnFilterRef}
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              left: 0,
-              zIndex: 700,
-              width: key === 'client_name' ? 260 : 210,
-              padding: 'var(--space-sm)',
-              border: '1px solid var(--color-border-hover)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-bg-card)',
-              boxShadow: '0 12px 30px rgba(0,0,0,0.65)',
-              textTransform: 'none',
-              letterSpacing: 0,
-            }}
-          >
-            {renderColumnFilterControl(key)}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => clearColumnFilter(key)} disabled={!active}>
-                <X size={13} />
-                Limpar
-              </button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpenColumnFilter(null)}>
-                OK
-              </button>
-            </div>
-          </div>
-        )}
+      <th
+        onClick={() => toggleSort(key)}
+        style={{ cursor: 'pointer', userSelect: 'none', color: active ? 'var(--color-accent)' : undefined }}
+        title={`Ordenar por ${label}`}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+          {label}
+          {active
+            ? (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)
+            : <ChevronDown size={12} style={{ opacity: 0.3 }} />}
+        </span>
       </th>
     );
   };
 
   return (
     <div className="animate-fade-in">
-      <style>{`input[type="date"]::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1); cursor: pointer; }`}</style>
+      <style>{`input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; pointer-events: none; }`}</style>
       <div className="page-header">
         {isAdmin && (
           <button className="btn btn-primary" onClick={handleOpenNew}>
@@ -746,32 +636,46 @@ export default function Invoices() {
               </div>
               <div>
                 <label className="label">Data Inicial</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={filters.start}
-                  onChange={(e) => setFilters((f) => ({ ...f, start: e.target.value }))}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    ref={startDateRef}
+                    type="date"
+                    className="input"
+                    style={{ paddingRight: 36 }}
+                    value={filters.start}
+                    onChange={(e) => setFilters((f) => ({ ...f, start: e.target.value }))}
+                  />
+                  <Calendar
+                    size={16}
+                    onClick={() => openDatePicker(startDateRef)}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                  />
+                </div>
               </div>
               <div>
                 <label className="label">Data Final</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={filters.end}
-                  onChange={(e) => setFilters((f) => ({ ...f, end: e.target.value }))}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    ref={endDateRef}
+                    type="date"
+                    className="input"
+                    style={{ paddingRight: 36 }}
+                    value={filters.end}
+                    onChange={(e) => setFilters((f) => ({ ...f, end: e.target.value }))}
+                  />
+                  <Calendar
+                    size={16}
+                    onClick={() => openDatePicker(endDateRef)}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                  />
+                </div>
               </div>
             </div>
             <button
               type="button"
               className="btn btn-secondary"
               style={{ width: '100%' }}
-              onClick={() => {
-                setFilters({ status: '', start: '', end: '' });
-                setColumnFilters(emptyColumnFilters);
-                setOpenColumnFilter(null);
-              }}
+              onClick={() => setFilters({ status: '', start: '', end: '' })}
             >
               Limpar
             </button>
@@ -791,34 +695,18 @@ export default function Invoices() {
             <h3 className="empty-state-title">Nenhuma fatura encontrada</h3>
             <p className="empty-state-text">Tente ajustar os filtros ou emita uma nova fatura.</p>
           </div>
-        ) : visibleInvoices.length === 0 ? (
-          <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
-            <FileText className="empty-state-icon" />
-            <h3 className="empty-state-title">Nenhuma fatura encontrada</h3>
-            <p className="empty-state-text">Nenhuma fatura combina com os filtros da tabela.</p>
-            {hasColumnFilters && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ marginTop: 'var(--space-md)' }}
-                onClick={() => setColumnFilters(emptyColumnFilters)}
-              >
-                Limpar filtros da tabela
-              </button>
-            )}
-          </div>
         ) : (
           <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
             <table className="table" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr>
-                  {filterHeader('number', 'N\u00ba')}
-                  {filterHeader('status', 'Status')}
-                  {filterHeader('nfse_status', 'Status NF-e')}
-                  {filterHeader('client_name', 'Cliente')}
-                  {filterHeader('client_document', 'CPF / CNPJ')}
-                  {filterHeader('issue_date', 'Emiss\u00e3o')}
-                  {filterHeader('due_date', 'Vencimento')}
+                  {sortableHeader('number', 'N\u00ba')}
+                  {sortableHeader('status', 'Status')}
+                  {sortableHeader('nfse_status', 'Status NF-e')}
+                  {sortableHeader('client_name', 'Cliente')}
+                  {sortableHeader('client_document', 'CPF / CNPJ')}
+                  {sortableHeader('issue_date', 'Emiss\u00e3o')}
+                  {sortableHeader('due_date', 'Vencimento')}
                   <th style={{ textAlign: 'right' }}>Valor Bruto</th>
                   <th style={{ textAlign: 'right' }}>Valor Líquido</th>
                   <th style={{ textAlign: 'center' }}>Ações</th>
