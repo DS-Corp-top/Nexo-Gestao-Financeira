@@ -1,12 +1,31 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { 
-  fetchInvestments, fetchInvestment, fetchInvestmentExchangeRates, createInvestment, updateInvestment, deleteInvestment,
+import { ptBR } from 'date-fns/locale';
+import {
+  fetchInvestments, fetchInvestment, fetchInvestmentEntries, fetchInvestmentExchangeRates, createInvestment, updateInvestment, deleteInvestment,
   createInvestmentEntry, deleteInvestmentEntry, type Currency, type Investment
 } from '../api/investments';
 import InvestmentModal from '../components/Investments/InvestmentModal';
+
+function getMonthParam(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function shiftMonth(current: string, delta: number): string {
+  const [y, m] = current.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return getMonthParam(d);
+}
+
+function getMonthBounds(monthStr: string) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const start = new Date(y, m - 1, 1).toISOString().split('T')[0];
+  const end = new Date(y, m, 0).toISOString().split('T')[0];
+  return { start, end };
+}
 
 const currencyOrder: Currency[] = ['BRL', 'USD', 'EUR'];
 const currencyLabels: Record<Currency, string> = {
@@ -41,6 +60,16 @@ function getCurrencyTotals(items: Investment[], getValue: (investment: Investmen
 }
 
 export default function Investments() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const monthParam = searchParams.get('month') || getMonthParam(new Date());
+  const { start: monthStart, end: monthEnd } = getMonthBounds(monthParam);
+  const navigateMonth = (delta: number) => setSearchParams({ month: shiftMonth(monthParam, delta) });
+  const selectedMonthLabel = useMemo(() => {
+    const [y, m] = monthParam.split('-').map(Number);
+    const text = format(new Date(y, m - 1, 1), 'MMMM yyyy', { locale: ptBR });
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }, [monthParam]);
+
   const [selectedInvId, setSelectedInvId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInv, setEditingInv] = useState<Investment | null>(null);
@@ -63,6 +92,12 @@ export default function Investments() {
     queryKey: ['investment', selectedInvId],
     queryFn: () => fetchInvestment(selectedInvId!),
     enabled: !!selectedInvId,
+  });
+
+  const { data: allEntries = [] } = useQuery({
+    queryKey: ['investment-entries'],
+    queryFn: fetchInvestmentEntries,
+    enabled: !selectedInvId,
   });
 
   const createMutation = useMutation({
@@ -180,6 +215,28 @@ export default function Investments() {
     parseFloat(i.total_earnings || '0')
   ));
 
+  const currencyByInvestment = useMemo(
+    () => new Map(filtered.map((inv) => [inv.id, getCurrency(inv.currency)])),
+    [filtered]
+  );
+
+  const monthEntries = useMemo(
+    () => allEntries.filter((entry) => (
+      currencyByInvestment.has(entry.investment) &&
+      entry.date >= monthStart &&
+      entry.date <= monthEnd
+    )),
+    [allEntries, currencyByInvestment, monthStart, monthEnd]
+  );
+
+  const monthlyDeposited: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
+  const monthlyWithdrawn: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
+  for (const entry of monthEntries) {
+    const currency = currencyByInvestment.get(entry.investment) || 'BRL';
+    if (entry.entry_type === 'deposit') monthlyDeposited[currency] += parseAmount(entry.amount);
+    if (entry.entry_type === 'withdrawal') monthlyWithdrawn[currency] += parseAmount(entry.amount);
+  }
+
   const hasForeignCurrency = filtered.some((investment) => getCurrency(investment.currency) !== 'BRL');
   const {
     data: exchangeRates,
@@ -200,6 +257,7 @@ export default function Investments() {
   const consolidatedWithdrawnBrl = convertTotalsToBrl(totalWithdrawn);
   const consolidatedEarningsBrl = convertTotalsToBrl(totalEarnings);
   const consolidatedNetBrl = convertTotalsToBrl(totalNet);
+  const consolidatedMonthlyWithdrawnBrl = convertTotalsToBrl(monthlyWithdrawn);
 
   const renderCurrencyTotals = (totals: Record<Currency, number>, color: string) => {
     const visibleCurrencies = currencyOrder.filter((currency) => totals[currency] !== 0);
@@ -439,6 +497,27 @@ export default function Investments() {
         </button>
       </div>
 
+      {/* ── Aportes e Resgates do Mês ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-md)', flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)} aria-label="Mês anterior">
+          <ChevronLeft size={18} />
+        </button>
+        <span style={{ fontWeight: 700, fontSize: '1rem', textAlign: 'center' }}>{selectedMonthLabel}</span>
+        <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Aportado no Mês</div>
+          {renderCurrencyTotals(monthlyDeposited, 'var(--color-success)')}
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Resgatado no Mês</div>
+          {renderConvertedBrlTotal(consolidatedMonthlyWithdrawnBrl, 'var(--color-danger)')}
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Aportado</div>
@@ -523,14 +602,15 @@ export default function Investments() {
                 </select>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ width: '100%' }}
-              onClick={() => { setSearch(''); setFilterType(''); setFilterCurrency(''); setFilterStatus('active'); }}
-            >
-              Limpar
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => { setSearch(''); setFilterType(''); setFilterCurrency(''); setFilterStatus('active'); }}
+              >
+                Limpar
+              </button>
+            </div>
           </div>
         )}
       </div>

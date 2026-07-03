@@ -325,7 +325,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                   <BarChart data={activeTrend} barCategoryGap="25%">
                     <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                     <YAxis hide />
-                    <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.06)' }} formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                     {mode === 'unified' ? (
                       <>
                         <Bar dataKey="income" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
@@ -350,6 +350,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                         <YAxis hide />
                         <Tooltip
+                          cursor={{ fill: 'rgba(255,255,255,0.06)' }}
                           formatter={(val: any, name: any) => [formatCurrency(name === 'Despesas' ? Math.abs(val) : val), name]}
                           contentStyle={tooltipStyle}
                           labelStyle={tooltipLabelStyle}
@@ -390,7 +391,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} />
                       <YAxis hide domain={mode === 'unified' ? [trendYMin, trendYMax] : [0, 'auto']} />
                       {mode === 'unified' && <ReferenceLine y={0} stroke="rgba(255,255,255,0.2)" />}
-                      <Tooltip formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+                      <Tooltip cursor={{ stroke: 'rgba(255,255,255,0.2)' }} formatter={(val: any) => formatCurrency(val)} contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                       <Area
                         type="monotone"
                         dataKey="total"

@@ -393,7 +393,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
         {/* Expense Trend */}
         <div className="card">
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
@@ -409,6 +409,7 @@ export default function Dashboard() {
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} />
                 <YAxis hide domain={[0, 'dataMax']} />
                 <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.06)' }}
                   formatter={(val: any, name) => [formatCurrency(val), name === 'expense' ? 'Despesas' : 'Receitas']}
                   contentStyle={{ background: '#111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: '0.8rem' }}
                   labelStyle={{ color: '#fff', fontWeight: 700, marginBottom: 2 }}
