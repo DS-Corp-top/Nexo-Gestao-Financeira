@@ -239,7 +239,7 @@ class DashboardView(APIView):
                 "account": t.account.name if t.account else None,
                 "overdue": t.date < today,
             }
-            for t in due_qs[:6]
+            for t in due_qs
         ]
 
         return Response({

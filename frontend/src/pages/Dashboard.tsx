@@ -227,13 +227,21 @@ export default function Dashboard() {
                       {data.due_notifications.items.map((item) => (
                         <div
                           key={item.id}
+                          onClick={() => { setBellOpen(false); navigate(`/transactions/${item.id}/edit`); }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-hover)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                           style={{
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            padding: '8px 0',
+                            padding: '8px 6px',
+                            margin: '0 -6px',
+                            borderRadius: 'var(--radius-sm)',
                             borderBottom: '1px solid var(--color-border)',
                             fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            background: 'transparent',
+                            transition: 'background 0.15s ease',
                           }}
                         >
                           <div style={{ minWidth: 0 }}>
@@ -247,16 +255,14 @@ export default function Dashboard() {
                               {item.overdue && <span style={{ color: 'var(--color-danger)', marginLeft: 4 }}>• Em atraso</span>}
                             </p>
                           </div>
-                          <span style={{ fontWeight: 700, color: 'var(--color-danger)', marginLeft: 12, whiteSpace: 'nowrap' }}>
-                            {formatCurrency(item.amount)}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 12 }}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>
+                              {formatCurrency(item.amount)}
+                            </span>
+                            <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                          </div>
                         </div>
                       ))}
-                      {data.due_notifications.count > data.due_notifications.items.length && (
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-sm)' }}>
-                          +{data.due_notifications.count - data.due_notifications.items.length} mais
-                        </p>
-                      )}
                     </div>
                   )}
                 </div>
