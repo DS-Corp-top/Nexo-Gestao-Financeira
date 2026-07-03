@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Users, X, Loader2, Trash2, Pencil } from 'lucide-react';
+import { ChevronDown, Search, Users, X, Loader2, Trash2, Pencil } from 'lucide-react';
 import {
   createInvoice,
   deleteClient,
@@ -80,6 +80,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
     !invoice || Boolean(invoice?.transaction || invoice?.expected_account)
   );
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   // service code combobox
   const [serviceCode, setServiceCode] = useState(invoice?.service_code || '1.01');
@@ -167,6 +169,16 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
   }, [codeOpen]);
 
   useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+        setAccountOpen(false);
+      }
+    }
+    if (accountOpen) document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [accountOpen]);
+
+  useEffect(() => {
     function handleCompanyChange(event: Event) {
       const companyId = (event as CustomEvent<{ companyId?: number }>).detail?.companyId;
       if (companyId) setIssuerCompanyId(String(companyId));
@@ -237,6 +249,15 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
     setClientQuery('');
   };
 
+  const formatAccountLabel = (account: Account) => {
+    const accountType =
+      account.account_type === 'bank'
+        ? 'Conta bancária'
+        : account.account_type === 'cash'
+          ? 'Dinheiro'
+          : 'Cartão';
+    return `${account.name} — ${accountType}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -783,9 +804,111 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
               {launchFinancial && (
                 <div style={{ marginTop: 'var(--space-sm)' }}>
+                  <div ref={accountRef} style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      className="input"
+                      onClick={() => setAccountOpen((open) => !open)}
+                      aria-haspopup="listbox"
+                      aria-expanded={accountOpen}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 'var(--space-sm)',
+                        minHeight: 42,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: selectedAccount ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                      }}>
+                        {selectedAccount ? formatAccountLabel(selectedAccount) : 'Selecione a conta para o lançamento...'}
+                      </span>
+                      <ChevronDown
+                        size={18}
+                        style={{
+                          flexShrink: 0,
+                          color: 'var(--color-text-muted)',
+                          transform: accountOpen ? 'rotate(180deg)' : 'none',
+                          transition: 'transform var(--transition-fast)',
+                        }}
+                      />
+                    </button>
+
+                    {accountOpen && (
+                      <div
+                        role="listbox"
+                        style={{
+                          position: 'absolute',
+                          bottom: 'calc(100% + 4px)',
+                          left: 0,
+                          right: 0,
+                          zIndex: 500,
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          background: 'var(--color-bg-card)',
+                          border: '1px solid var(--color-border-hover)',
+                          borderRadius: 'var(--radius-md)',
+                          boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
+                        }}
+                      >
+                        {activeAccounts.length === 0 ? (
+                          <div style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                            Nenhuma conta ativa encontrada.
+                          </div>
+                        ) : (
+                          activeAccounts.map((acc) => {
+                            const selected = selectedAccount?.id === acc.id;
+                            return (
+                              <button
+                                key={acc.id}
+                                type="button"
+                                role="option"
+                                aria-selected={selected}
+                                onClick={() => {
+                                  setSelectedAccount(acc);
+                                  setAccountOpen(false);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  border: 'none',
+                                  borderBottom: '1px solid var(--color-border)',
+                                  background: selected ? 'var(--color-accent-muted)' : 'transparent',
+                                  color: 'var(--color-text-primary)',
+                                  font: 'inherit',
+                                  fontSize: '0.88rem',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!selected) e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!selected) e.currentTarget.style.background = 'transparent';
+                                }}
+                              >
+                                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {formatAccountLabel(acc)}
+                                </span>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <select
                     className="input"
                     value={selectedAccount?.id ?? ''}
+                    style={{ display: 'none' }}
                     onChange={(e) => {
                       const acc = activeAccounts.find((a) => a.id === Number(e.target.value)) ?? null;
                       setSelectedAccount(acc);
