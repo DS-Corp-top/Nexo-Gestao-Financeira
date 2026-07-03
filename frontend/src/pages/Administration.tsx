@@ -24,6 +24,7 @@ import {
 } from '../api/users';
 import { uploadBackupFile } from '../api/system';
 import { useAuth } from '../contexts/AuthContext';
+import { useViewMode } from '../contexts/ViewModeContext';
 import { GerenciamentoTab } from './GerenciamentoTab';
 
 type Tab = 'dashboard' | 'listagens' | 'cadastros' | 'backup' | 'gerenciamento';
@@ -660,6 +661,7 @@ function SectionCard({
 }
 
 function TenantTable({ tenants }: { tenants: SystemTenant[] }) {
+  const { isMobile } = useViewMode();
   if (tenants.length === 0) return null;
   return (
     <div className="table-wrapper" style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: '0 0 var(--radius-md) var(--radius-md)' }}>
@@ -668,10 +670,10 @@ function TenantTable({ tenants }: { tenants: SystemTenant[] }) {
           <tr>
             <th style={{ width: '80px' }}>Tenant</th>
             <th>Nome / Razão Social</th>
-            <th style={{ width: '80px' }}>Tipo</th>
-            <th style={{ width: '100px' }}>Usuários</th>
-            <th style={{ width: '100px' }}>Empresas</th>
-            <th style={{ width: '140px' }}>Criado em</th>
+            {!isMobile && <th style={{ width: '80px' }}>Tipo</th>}
+            {!isMobile && <th style={{ width: '100px' }}>Usuários</th>}
+            {!isMobile && <th style={{ width: '100px' }}>Empresas</th>}
+            {!isMobile && <th style={{ width: '140px' }}>Criado em</th>}
           </tr>
         </thead>
         <tbody>
@@ -679,10 +681,10 @@ function TenantTable({ tenants }: { tenants: SystemTenant[] }) {
             <tr key={t.id}>
               <td style={{ color: 'var(--color-text-muted)' }}>#{t.id}</td>
               <td style={{ fontWeight: 600 }}>{t.name}</td>
-              <td><PersonBadge type={t.person_type} /></td>
-              <td>{t.user_count}</td>
-              <td>{t.company_count}</td>
-              <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(t.created_at)}</td>
+              {!isMobile && <td><PersonBadge type={t.person_type} /></td>}
+              {!isMobile && <td>{t.user_count}</td>}
+              {!isMobile && <td>{t.company_count}</td>}
+              {!isMobile && <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(t.created_at)}</td>}
             </tr>
           ))}
         </tbody>
@@ -692,6 +694,7 @@ function TenantTable({ tenants }: { tenants: SystemTenant[] }) {
 }
 
 function UserTable({ users }: { users: SystemUser[] }) {
+  const { isMobile } = useViewMode();
   if (users.length === 0) return null;
   return (
     <div className="table-wrapper" style={{ borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: '0 0 var(--radius-md) var(--radius-md)' }}>
@@ -699,12 +702,12 @@ function UserTable({ users }: { users: SystemUser[] }) {
         <thead>
           <tr>
             <th>Usuário</th>
-            <th>E-mail</th>
-            <th style={{ width: '80px' }}>Tipo</th>
+            {!isMobile && <th>E-mail</th>}
+            {!isMobile && <th style={{ width: '80px' }}>Tipo</th>}
             <th style={{ width: '80px' }}>Status</th>
-            <th style={{ width: '80px' }}>Tenant</th>
-            <th style={{ width: '140px' }}>Cargo</th>
-            <th style={{ width: '140px' }}>Membro desde</th>
+            {!isMobile && <th style={{ width: '80px' }}>Tenant</th>}
+            {!isMobile && <th style={{ width: '140px' }}>Cargo</th>}
+            {!isMobile && <th style={{ width: '140px' }}>Membro desde</th>}
           </tr>
         </thead>
         <tbody>
@@ -713,8 +716,8 @@ function UserTable({ users }: { users: SystemUser[] }) {
               <td style={{ fontWeight: 600 }}>
                 {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
               </td>
-              <td style={{ color: 'var(--color-text-secondary)' }}>{u.email}</td>
-              <td><PersonBadge type={u.person_type} /></td>
+              {!isMobile && <td style={{ color: 'var(--color-text-secondary)' }}>{u.email}</td>}
+              {!isMobile && <td><PersonBadge type={u.person_type} /></td>}
               <td>
                 {u.is_active ? (
                   <span className="badge badge-success" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>Ativo</span>
@@ -722,13 +725,15 @@ function UserTable({ users }: { users: SystemUser[] }) {
                   <span className="badge" style={{ fontSize: '0.68rem', padding: '2px 6px', opacity: 0.6, background: 'var(--color-bg-hover)' }}>Inativo</span>
                 )}
               </td>
-              <td style={{ color: 'var(--color-text-muted)' }}>#{u.tenant_id}</td>
-              <td>
-                <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-bg-hover)', borderRadius: '4px', border: '1px solid var(--color-border)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                  {u.is_superuser ? 'Superuser' : u.role === 'owner' || u.role === 'admin' ? 'Administrador' : u.role === 'member' ? 'Usuario' : u.role}
-                </span>
-              </td>
-              <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(u.date_joined)}</td>
+              {!isMobile && <td style={{ color: 'var(--color-text-muted)' }}>#{u.tenant_id}</td>}
+              {!isMobile && (
+                <td>
+                  <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-bg-hover)', borderRadius: '4px', border: '1px solid var(--color-border)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                    {u.is_superuser ? 'Superuser' : u.role === 'owner' || u.role === 'admin' ? 'Administrador' : u.role === 'member' ? 'Usuario' : u.role}
+                  </span>
+                </td>
+              )}
+              {!isMobile && <td style={{ color: 'var(--color-text-secondary)' }}>{formatDate(u.date_joined)}</td>}
             </tr>
           ))}
         </tbody>
@@ -931,6 +936,7 @@ function ListagensTab({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Administration() {
+  const { isMobile } = useViewMode();
   const [tab, setTab] = useState<Tab>('dashboard');
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
@@ -989,8 +995,8 @@ export default function Administration() {
   const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'listagens', label: 'Listagens', icon: Building2 },
-    { key: 'cadastros', label: 'Cadastros Pendentes', icon: Users },
-    { key: 'gerenciamento', label: 'Gerenciamento', icon: Shield },
+    { key: 'cadastros', label: isMobile ? 'Pendentes' : 'Cadastros Pendentes', icon: Users },
+    { key: 'gerenciamento', label: isMobile ? 'Gerenciar' : 'Gerenciamento', icon: Shield },
     { key: 'backup', label: 'Backup', icon: Database },
   ];
 
@@ -1016,22 +1022,22 @@ export default function Administration() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.35rem',
-              padding: '0.65rem 0.9rem',
+              gap: isMobile ? '0.25rem' : '0.35rem',
+              padding: isMobile ? '0.6rem 0.5rem' : '0.65rem 0.9rem',
               background: 'none',
               border: 'none',
               borderBottom: tab === key ? '2px solid var(--color-accent)' : '2px solid transparent',
               marginBottom: -1,
               cursor: 'pointer',
-              fontSize: '0.82rem',
+              fontSize: isMobile ? '0.7rem' : '0.82rem',
               fontWeight: tab === key ? 700 : 500,
               color: tab === key ? 'var(--color-accent)' : 'var(--color-text-secondary)',
               transition: 'color 0.15s',
               whiteSpace: 'nowrap',
-              minWidth: 0,
+              flexShrink: 0,
             }}
           >
-            <Icon size={15} />
+            <Icon size={isMobile ? 13 : 15} />
             {label}
             {key === 'cadastros' && (pendingUsers as PendingUser[]).length > 0 && (
               <span

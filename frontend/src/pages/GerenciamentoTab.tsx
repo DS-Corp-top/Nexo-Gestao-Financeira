@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Power, PowerOff, Trash2, AlertTriangle } from 'lucide-react';
 import { fetchSystemTenants, fetchSystemUsers, type SystemTenant, type SystemUser } from '../api/users';
+import { useViewMode } from '../contexts/ViewModeContext';
 import {
   fetchAllCompanies,
   toggleTenantStatus,
@@ -14,6 +15,7 @@ import {
 } from '../api/system';
 
 export function GerenciamentoTab() {
+  const { isMobile } = useViewMode();
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<'tenants' | 'companies' | 'users'>('tenants');
   const [confirmModal, setConfirmModal] = useState<{
@@ -146,13 +148,25 @@ export function GerenciamentoTab() {
   };
 
   const btnStyle = { padding: '4px 8px', fontSize: '0.75rem' };
-  const rowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-bg-elevated)', marginBottom: '8px' };
+  const rowStyle = {
+    display: 'flex',
+    flexDirection: isMobile ? 'column' as const : 'row' as const,
+    justifyContent: 'space-between',
+    alignItems: isMobile ? 'stretch' as const : 'center' as const,
+    gap: isMobile ? '10px' : 0,
+    padding: '10px 12px',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-md)',
+    background: 'var(--color-bg-elevated)',
+    marginBottom: '8px',
+  };
+  const actionsStyle = { display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const };
 
   return (
-    <div className="card" style={{ padding: '1.5rem' }}>
+    <div className="card" style={{ padding: isMobile ? '1rem' : '1.5rem' }}>
       <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem' }}>Gerenciamento do Sistema</h2>
-      
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
         <button className={`btn ${activeSection === 'tenants' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveSection('tenants')}>Tenants</button>
         <button className={`btn ${activeSection === 'companies' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveSection('companies')}>Empresas</button>
         <button className={`btn ${activeSection === 'users' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveSection('users')}>Usuários</button>
@@ -169,7 +183,7 @@ export function GerenciamentoTab() {
                   {t.is_active ? 'Ativo' : 'Inativo'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={actionsStyle}>
                 <button className={`btn ${t.is_active ? 'btn-outline' : 'btn-success'}`} style={btnStyle} onClick={() => handleToggleTenant(t)}>
                   {t.is_active ? <PowerOff size={14}/> : <Power size={14}/>} {t.is_active ? 'Inativar' : 'Ativar'}
                 </button>
@@ -194,7 +208,7 @@ export function GerenciamentoTab() {
                   {c.is_active ? 'Ativo' : 'Inativo'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={actionsStyle}>
                 <button className={`btn ${c.is_active ? 'btn-outline' : 'btn-success'}`} style={btnStyle} onClick={() => handleToggleCompany(c)}>
                   {c.is_active ? <PowerOff size={14}/> : <Power size={14}/>} {c.is_active ? 'Inativar' : 'Ativar'}
                 </button>
@@ -219,7 +233,7 @@ export function GerenciamentoTab() {
                   {u.is_active ? 'Ativo' : 'Inativo'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={actionsStyle}>
                 {!u.is_superuser && (
                   <>
                     <button className={`btn ${u.is_active ? 'btn-outline' : 'btn-success'}`} style={btnStyle} onClick={() => handleToggleUser(u)}>

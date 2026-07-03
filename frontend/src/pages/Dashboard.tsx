@@ -295,6 +295,16 @@ export default function Dashboard() {
               <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
             </div>
           </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Resultado</div>
+            <div style={{
+              fontSize: isMobile ? '0.95rem' : '1.5rem',
+              fontWeight: 700,
+              color: (parseFloat(data.kpis.monthly_income || '0') - parseFloat(data.kpis.monthly_expense || '0')) >= 0 ? '#22c55e' : 'var(--color-danger)',
+            }}>
+              {formatCurrency(parseFloat(data.kpis.monthly_income || '0') - parseFloat(data.kpis.monthly_expense || '0'))}
+            </div>
+          </div>
         </div>
       </div>
 

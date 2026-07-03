@@ -18,6 +18,7 @@ import {
 import { fetchAccounts } from '../api/accounts';
 import InvoiceModal from '../components/Invoices/InvoiceModal';
 import { useIsAdmin } from '../hooks/useIsAdmin';
+import { useViewMode } from '../contexts/ViewModeContext';
 
 function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
@@ -368,6 +369,7 @@ function normalizeFilterText(value: string) {
 
 export default function Invoices() {
   const isAdmin = useIsAdmin();
+  const { isMobile } = useViewMode();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
@@ -392,6 +394,9 @@ export default function Invoices() {
     end: lastOfMonth(),
   });
   const [draftFilters, setDraftFilters] = useState<InvoiceFilters>(filters);
+  const draftAllPeriod = !draftFilters.start && !draftFilters.end;
+  const [noteFilter, setNoteFilter] = useState<'' | 'note_issued' | 'note_pending'>('');
+  const [draftNoteFilter, setDraftNoteFilter] = useState(noteFilter);
 
   const queryClient = useQueryClient();
 
@@ -412,9 +417,17 @@ export default function Invoices() {
   };
 
   const visibleInvoices = useMemo(() => {
-    if (!sortKey) return invoices;
+    const filtered = noteFilter
+      ? invoices.filter((inv) => (
+          noteFilter === 'note_issued'
+            ? inv.status === 'issued' && inv.note_issued
+            : inv.status === 'issued' && !inv.note_issued
+        ))
+      : invoices;
+
+    if (!sortKey) return filtered;
     const dir = sortDir === 'asc' ? 1 : -1;
-    return [...invoices].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       switch (sortKey) {
         case 'number':
           return dir * a.number_display.localeCompare(b.number_display, 'pt-BR', { numeric: true });
@@ -432,7 +445,7 @@ export default function Invoices() {
           return 0;
       }
     });
-  }, [invoices, sortKey, sortDir]);
+  }, [invoices, sortKey, sortDir, noteFilter]);
 
   const totalFaturado = visibleInvoices
     .filter((inv) => inv.status !== 'cancelled')
@@ -552,7 +565,7 @@ export default function Invoices() {
       </div>
 
       {/* ── Cards de resumo ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Faturado</div>
           <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalFaturado)}</div>
@@ -607,20 +620,33 @@ export default function Invoices() {
                 </select>
               </div>
               <div>
+                <label className="label">Nota</label>
+                <select
+                  className="input"
+                  value={draftNoteFilter}
+                  onChange={(e) => setDraftNoteFilter(e.target.value as '' | 'note_issued' | 'note_pending')}
+                >
+                  <option value="">Todas</option>
+                  <option value="note_issued">Nota Emitida</option>
+                  <option value="note_pending">Nota Pendente</option>
+                </select>
+              </div>
+              <div>
                 <label className="label">Data Inicial</label>
                 <div style={{ position: 'relative' }}>
                   <input
                     ref={startDateRef}
                     type="date"
                     className="input"
-                    style={{ paddingRight: 36 }}
+                    disabled={draftAllPeriod}
+                    style={{ paddingRight: 36, opacity: draftAllPeriod ? 0.5 : 1 }}
                     value={draftFilters.start}
                     onChange={(e) => setDraftFilters((f) => ({ ...f, start: e.target.value }))}
                   />
                   <Calendar
                     size={16}
                     onClick={() => openDatePicker(startDateRef)}
-                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: draftAllPeriod ? 'default' : 'pointer', color: 'var(--color-text-muted)', opacity: draftAllPeriod ? 0.5 : 1 }}
                   />
                 </div>
               </div>
@@ -631,23 +657,41 @@ export default function Invoices() {
                     ref={endDateRef}
                     type="date"
                     className="input"
-                    style={{ paddingRight: 36 }}
+                    disabled={draftAllPeriod}
+                    style={{ paddingRight: 36, opacity: draftAllPeriod ? 0.5 : 1 }}
                     value={draftFilters.end}
                     onChange={(e) => setDraftFilters((f) => ({ ...f, end: e.target.value }))}
                   />
                   <Calendar
                     size={16}
                     onClick={() => openDatePicker(endDateRef)}
-                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', cursor: draftAllPeriod ? 'default' : 'pointer', color: 'var(--color-text-muted)', opacity: draftAllPeriod ? 0.5 : 1 }}
                   />
                 </div>
               </div>
+              <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={draftAllPeriod}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setDraftFilters((f) => ({ ...f, start: '', end: '' }));
+                    } else {
+                      setDraftFilters((f) => ({ ...f, start: firstOfMonth(), end: lastOfMonth() }));
+                    }
+                  }}
+                />
+                Todo o período (ignorar Data Inicial / Final)
+              </label>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => setFilters(draftFilters)}
+                onClick={() => {
+                  setFilters(draftFilters);
+                  setNoteFilter(draftNoteFilter);
+                }}
               >
                 Aplicar
               </button>
@@ -658,6 +702,8 @@ export default function Invoices() {
                   const cleared = { status: '', start: '', end: '' };
                   setDraftFilters(cleared);
                   setFilters(cleared);
+                  setDraftNoteFilter('');
+                  setNoteFilter('');
                 }}
               >
                 Limpar
@@ -686,12 +732,12 @@ export default function Invoices() {
                 <tr>
                   {sortableHeader('number', 'N\u00ba')}
                   {sortableHeader('status', 'Status')}
-                  <th>Nota</th>
+                  {!isMobile && <th>Nota</th>}
                   {sortableHeader('client_name', 'Cliente')}
-                  {sortableHeader('client_document', 'CPF / CNPJ')}
-                  {sortableHeader('issue_date', 'Emiss\u00e3o')}
-                  {sortableHeader('due_date', 'Vencimento')}
-                  <th style={{ textAlign: 'right' }}>Valor Bruto</th>
+                  {!isMobile && sortableHeader('client_document', 'CPF / CNPJ')}
+                  {!isMobile && sortableHeader('issue_date', 'Emiss\u00e3o')}
+                  {!isMobile && sortableHeader('due_date', 'Vencimento')}
+                  {!isMobile && <th style={{ textAlign: 'right' }}>Valor Bruto</th>}
                   <th style={{ textAlign: 'right' }}>Valor Líquido</th>
                   <th style={{ textAlign: 'center' }}>Ações</th>
                 </tr>
@@ -706,19 +752,21 @@ export default function Invoices() {
                       {inv.status === 'paid' && <span className="badge badge-success">Fatura Paga</span>}
                       {inv.status === 'cancelled' && <span className="badge badge-danger">Fatura Cancelada</span>}
                     </td>
-                    <td>
-                      {inv.status !== 'issued'
-                        ? <span className="badge" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--color-text-muted)' }}>—</span>
-                        : inv.note_issued
-                          ? <span className="badge badge-success">Nota Emitida</span>
-                          : <span className="badge badge-warning">Nota Pendente</span>
-                      }
-                    </td>
+                    {!isMobile && (
+                      <td>
+                        {inv.status !== 'issued'
+                          ? <span className="badge" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--color-text-muted)' }}>—</span>
+                          : inv.note_issued
+                            ? <span className="badge badge-success">Nota Emitida</span>
+                            : <span className="badge badge-warning">Nota Pendente</span>
+                        }
+                      </td>
+                    )}
                     <td style={{ fontWeight: 500 }}>{inv.client_name}</td>
-                    <td>{inv.client_document}</td>
-                    <td>{format(parseISO(inv.issue_date), 'dd/MM/yy')}</td>
-                    <td>{format(parseISO(inv.due_date), 'dd/MM/yy')}</td>
-                    <td style={{ textAlign: 'right' }}>{formatCurrency(inv.gross_value)}</td>
+                    {!isMobile && <td>{inv.client_document}</td>}
+                    {!isMobile && <td>{format(parseISO(inv.issue_date), 'dd/MM/yy')}</td>}
+                    {!isMobile && <td>{format(parseISO(inv.due_date), 'dd/MM/yy')}</td>}
+                    {!isMobile && <td style={{ textAlign: 'right' }}>{formatCurrency(inv.gross_value)}</td>}
                     <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(inv.net_value)}</td>
                     <td style={{ textAlign: 'center' }}>
                       <ActionsDropdown

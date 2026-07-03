@@ -169,6 +169,34 @@ describe('Invoices Page', () => {
     });
   });
 
+  it('clears the date range when "Todo o período" is checked and restores it when unchecked', async () => {
+    (invoicesApi.fetchInvoices as any).mockResolvedValue([]);
+
+    renderInvoices();
+
+    await waitFor(() => {
+      expect(invoicesApi.fetchInvoices).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByText('Filtros'));
+    const checkbox = screen.getByRole('checkbox', { name: /Todo o período/i });
+    expect(checkbox).not.toBeChecked();
+
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
+
+    await waitFor(() => {
+      expect(invoicesApi.fetchInvoices).toHaveBeenLastCalledWith(
+        expect.objectContaining({ start: '', end: '' })
+      );
+    });
+
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+  });
+
   it('only refetches with the draft filters after clicking "Aplicar"', async () => {
     (invoicesApi.fetchInvoices as any).mockResolvedValue([]);
 
@@ -210,6 +238,36 @@ describe('Invoices Page', () => {
       expect(invoicesApi.fetchInvoices).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: '', start: '', end: '' })
       );
+    });
+  });
+
+  it('filters rows by note status only after clicking "Aplicar"', async () => {
+    (invoicesApi.fetchInvoices as any).mockResolvedValue([
+      makeInvoice({ id: 1, client_name: 'Cliente A', status: 'issued', note_issued: true }),
+      makeInvoice({ id: 2, client_name: 'Cliente B', status: 'issued', note_issued: false }),
+      makeInvoice({ id: 3, client_name: 'Cliente C', status: 'paid', note_issued: false }),
+    ]);
+
+    renderInvoices();
+
+    await waitFor(() => {
+      expect(screen.getByText('Cliente A')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Cliente B')).toBeInTheDocument();
+    expect(screen.getByText('Cliente C')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Filtros'));
+    fireEvent.change(screen.getByDisplayValue('Todas'), { target: { value: 'note_issued' } });
+
+    // Changing the draft alone must not filter the visible rows yet.
+    expect(screen.getByText('Cliente B')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Cliente A')).toBeInTheDocument();
+      expect(screen.queryByText('Cliente B')).not.toBeInTheDocument();
+      expect(screen.queryByText('Cliente C')).not.toBeInTheDocument();
     });
   });
 
