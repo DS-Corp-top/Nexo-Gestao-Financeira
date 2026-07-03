@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type CSSProperties } from 'react';
+import { useMemo, useState, useEffect, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Search, Users, X, Loader2, Trash2, Pencil } from 'lucide-react';
@@ -119,14 +119,19 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
     queryFn: fetchAccounts,
     enabled: isOpen,
   });
-  const activeAccounts = accounts.filter((a) => a.is_active);
+  const activeAccounts = useMemo(() => accounts.filter((a) => a.is_active), [accounts]);
 
   useEffect(() => {
     setLaunchFinancial(!invoice || Boolean(invoice?.transaction || invoice?.expected_account));
   }, [invoice]);
 
   useEffect(() => {
-    if (!invoice?.expected_account) {
+    if (isOpen && !invoice) setSelectedAccount(null);
+  }, [isOpen, invoice]);
+
+  useEffect(() => {
+    if (!invoice) return;
+    if (!invoice.expected_account) {
       setSelectedAccount(null);
       return;
     }
