@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle2, FileText, Ban, Edit2, Printer, ReceiptText, Send, RefreshCw, ChevronDown, ChevronUp, MoreVertical, Trash2, Filter, X } from 'lucide-react';
 
 import {
   cancelInvoice,
@@ -377,6 +377,28 @@ function DataModal({ title, onClose, children }: { title: string; onClose: () =>
   );
 }
 
+type InvoiceColumnFilterKey = 'number' | 'status' | 'nfse_status' | 'client_name' | 'client_document' | 'issue_date' | 'due_date';
+
+type InvoiceColumnFilters = Record<InvoiceColumnFilterKey, string>;
+
+const emptyColumnFilters: InvoiceColumnFilters = {
+  number: '',
+  status: '',
+  nfse_status: '',
+  client_name: '',
+  client_document: '',
+  issue_date: '',
+  due_date: '',
+};
+
+function normalizeFilterText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 export default function Invoices() {
   const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
@@ -386,6 +408,9 @@ export default function Invoices() {
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<InvoiceColumnFilters>(emptyColumnFilters);
+  const [openColumnFilter, setOpenColumnFilter] = useState<InvoiceColumnFilterKey | null>(null);
+  const columnFilterRef = useRef<HTMLDivElement>(null);
 
   const [filters, setFilters] = useState<InvoiceFilters>({
     status: '',
@@ -402,7 +427,47 @@ export default function Invoices() {
 
   const { data: accounts } = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts });
 
-  const totalFaturado = invoices
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (columnFilterRef.current && !columnFilterRef.current.contains(e.target as Node)) {
+        setOpenColumnFilter(null);
+      }
+    }
+    if (openColumnFilter) document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [openColumnFilter]);
+
+  const visibleInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      const numberNeedle = normalizeFilterText(columnFilters.number);
+      if (numberNeedle && !normalizeFilterText(inv.number_display).includes(numberNeedle)) return false;
+
+      if (columnFilters.status && inv.status !== columnFilters.status) return false;
+
+      if (columnFilters.nfse_status) {
+        if (columnFilters.nfse_status === 'not_issued') {
+          if (inv.nfse_status) return false;
+        } else if (inv.nfse_status !== columnFilters.nfse_status) {
+          return false;
+        }
+      }
+
+      const clientNeedle = normalizeFilterText(columnFilters.client_name);
+      if (clientNeedle && !normalizeFilterText(inv.client_name).includes(clientNeedle)) return false;
+
+      const documentNeedle = columnFilters.client_document.replace(/\D/g, '');
+      if (documentNeedle && !inv.client_document.replace(/\D/g, '').includes(documentNeedle)) return false;
+
+      if (columnFilters.issue_date && inv.issue_date !== columnFilters.issue_date) return false;
+      if (columnFilters.due_date && inv.due_date !== columnFilters.due_date) return false;
+
+      return true;
+    });
+  }, [columnFilters, invoices]);
+
+  const hasColumnFilters = Object.values(columnFilters).some(Boolean);
+
+  const totalFaturado = visibleInvoices
     .filter((inv) => inv.status !== 'cancelled')
     .reduce((sum, inv) => sum + parseFloat(inv.net_value || '0'), 0);
 
@@ -490,6 +555,137 @@ export default function Invoices() {
   const handleGuide = async (invoice: Invoice) => { setGuideData(await fetchInvoiceNfseGuide(invoice.id)); };
   const handleStatus = async (invoice: Invoice) => { setStatusData({ invoice, status: await fetchInvoiceNfseStatus(invoice.id) }); };
 
+  const updateColumnFilter = (key: InvoiceColumnFilterKey, value: string) => {
+    setColumnFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const clearColumnFilter = (key: InvoiceColumnFilterKey) => {
+    setColumnFilters((current) => ({ ...current, [key]: '' }));
+  };
+
+  const renderColumnFilterControl = (key: InvoiceColumnFilterKey) => {
+    if (key === 'status') {
+      return (
+        <select className="input" value={columnFilters.status} onChange={(e) => updateColumnFilter('status', e.target.value)} autoFocus>
+          <option value="">Todos</option>
+          <option value="draft">Rascunho</option>
+          <option value="issued">Emitida</option>
+          <option value="paid">Paga</option>
+          <option value="cancelled">Cancelada</option>
+        </select>
+      );
+    }
+
+    if (key === 'nfse_status') {
+      return (
+        <select className="input" value={columnFilters.nfse_status} onChange={(e) => updateColumnFilter('nfse_status', e.target.value)} autoFocus>
+          <option value="">Todos</option>
+          <option value="not_issued">Nao emitida</option>
+          <option value="nfse_pending">Pendente</option>
+          <option value="nfse_processing">Processando</option>
+          <option value="nfse_issued">Emitida</option>
+          <option value="nfse_failed">Cancelada</option>
+        </select>
+      );
+    }
+
+    if (key === 'issue_date' || key === 'due_date') {
+      return (
+        <input
+          type="date"
+          className="input"
+          value={columnFilters[key]}
+          onChange={(e) => updateColumnFilter(key, e.target.value)}
+          autoFocus
+        />
+      );
+    }
+
+    const placeholders: Record<InvoiceColumnFilterKey, string> = {
+      number: 'Filtrar numero...',
+      status: '',
+      nfse_status: '',
+      client_name: 'Filtrar cliente...',
+      client_document: 'Filtrar CPF/CNPJ...',
+      issue_date: '',
+      due_date: '',
+    };
+
+    return (
+      <input
+        type="text"
+        className="input"
+        value={columnFilters[key]}
+        onChange={(e) => updateColumnFilter(key, e.target.value)}
+        placeholder={placeholders[key]}
+        autoFocus
+      />
+    );
+  };
+
+  const filterHeader = (key: InvoiceColumnFilterKey, label: string) => {
+    const active = Boolean(columnFilters[key]);
+    return (
+      <th style={{ position: 'relative' }}>
+        <button
+          type="button"
+          onClick={() => setOpenColumnFilter((current) => current === key ? null : key)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            width: '100%',
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            color: active ? 'var(--color-accent)' : 'inherit',
+            font: 'inherit',
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+          title={`Filtrar por ${label}`}
+        >
+          <span>{label}</span>
+          <Filter size={12} style={{ opacity: active ? 1 : 0.45 }} />
+        </button>
+
+        {openColumnFilter === key && (
+          <div
+            ref={columnFilterRef}
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              left: 0,
+              zIndex: 700,
+              width: key === 'client_name' ? 260 : 210,
+              padding: 'var(--space-sm)',
+              border: '1px solid var(--color-border-hover)',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-bg-card)',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.65)',
+              textTransform: 'none',
+              letterSpacing: 0,
+            }}
+          >
+            {renderColumnFilterControl(key)}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)' }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => clearColumnFilter(key)} disabled={!active}>
+                <X size={13} />
+                Limpar
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpenColumnFilter(null)}>
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+      </th>
+    );
+  };
+
   return (
     <div className="animate-fade-in">
       <style>{`input[type="date"]::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1); cursor: pointer; }`}</style>
@@ -509,7 +705,7 @@ export default function Invoices() {
         </div>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Quantidade</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{invoices.filter(i => i.status !== 'cancelled').length}</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{visibleInvoices.filter(i => i.status !== 'cancelled').length}</div>
         </div>
       </div>
 
@@ -571,7 +767,11 @@ export default function Invoices() {
               type="button"
               className="btn btn-secondary"
               style={{ width: '100%' }}
-              onClick={() => setFilters({ status: '', start: '', end: '' })}
+              onClick={() => {
+                setFilters({ status: '', start: '', end: '' });
+                setColumnFilters(emptyColumnFilters);
+                setOpenColumnFilter(null);
+              }}
             >
               Limpar
             </button>
@@ -591,25 +791,41 @@ export default function Invoices() {
             <h3 className="empty-state-title">Nenhuma fatura encontrada</h3>
             <p className="empty-state-text">Tente ajustar os filtros ou emita uma nova fatura.</p>
           </div>
+        ) : visibleInvoices.length === 0 ? (
+          <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
+            <FileText className="empty-state-icon" />
+            <h3 className="empty-state-title">Nenhuma fatura encontrada</h3>
+            <p className="empty-state-text">Nenhuma fatura combina com os filtros da tabela.</p>
+            {hasColumnFilters && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ marginTop: 'var(--space-md)' }}
+                onClick={() => setColumnFilters(emptyColumnFilters)}
+              >
+                Limpar filtros da tabela
+              </button>
+            )}
+          </div>
         ) : (
           <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
             <table className="table" style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr>
-                  <th>Nº</th>
-                  <th>Status</th>
-                  <th>Status NF-e</th>
-                  <th>Cliente</th>
-                  <th>CPF / CNPJ</th>
-                  <th>Emissão</th>
-                  <th>Vencimento</th>
+                  {filterHeader('number', 'N\u00ba')}
+                  {filterHeader('status', 'Status')}
+                  {filterHeader('nfse_status', 'Status NF-e')}
+                  {filterHeader('client_name', 'Cliente')}
+                  {filterHeader('client_document', 'CPF / CNPJ')}
+                  {filterHeader('issue_date', 'Emiss\u00e3o')}
+                  {filterHeader('due_date', 'Vencimento')}
                   <th style={{ textAlign: 'right' }}>Valor Bruto</th>
                   <th style={{ textAlign: 'right' }}>Valor Líquido</th>
                   <th style={{ textAlign: 'center' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => (
+                {visibleInvoices.map((inv) => (
                   <tr key={inv.id} style={{ opacity: inv.status === 'cancelled' ? 0.6 : 1 }}>
                     <td><strong style={{ cursor: 'pointer' }} onClick={() => handleOpenEdit(inv)}>{inv.number_display}</strong></td>
                     <td>
