@@ -47,7 +47,7 @@ export default function Transactions() {
   const { start, end } = getMonthBounds(monthParam);
 
   const [accountFilter, setAccountFilter] = useState('');
-  const [orderBy, setOrderBy] = useState('-date');
+  const [orderBy, setOrderBy] = useState('date');
   const navigate = useNavigate();
   const [clearingTx, setClearingTx] = useState<Transaction | null>(null);
   const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
