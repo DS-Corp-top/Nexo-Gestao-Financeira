@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Search, Users, X, Loader2, Trash2, Pencil } from 'lucide-react';
@@ -82,6 +82,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   // service code combobox
   const [serviceCode, setServiceCode] = useState(invoice?.service_code || '1.01');
@@ -170,7 +171,10 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
   useEffect(() => {
     function handle(e: MouseEvent) {
-      if (accountRef.current && !accountRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideTrigger = accountRef.current?.contains(target);
+      const insideMenu = accountMenuRef.current?.contains(target);
+      if (!insideTrigger && !insideMenu) {
         setAccountOpen(false);
       }
     }
@@ -257,6 +261,40 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           ? 'Dinheiro'
           : 'Cartão';
     return `${account.name} — ${accountType}`;
+  };
+
+  const getAccountMenuStyle = (): CSSProperties => {
+    const rect = accountRef.current?.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const estimatedHeight = activeAccounts.length === 0 ? 52 : Math.min(activeAccounts.length * 42 + 8, 220);
+
+    if (!rect) {
+      return {
+        position: 'fixed',
+        top: 12,
+        left: 12,
+        width: Math.max(240, Math.min(420, viewportWidth - 24)),
+        maxHeight: viewportHeight - 24,
+      };
+    }
+
+    const openDown = viewportHeight - rect.bottom - 12 >= estimatedHeight;
+    const top = openDown
+      ? rect.bottom + 4
+      : Math.max(12, rect.top - estimatedHeight - 4);
+    const left = Math.max(12, Math.min(rect.left, viewportWidth - rect.width - 12));
+    const maxHeight = openDown
+      ? Math.max(52, viewportHeight - top - 12)
+      : Math.max(52, rect.top - 16);
+
+    return {
+      position: 'fixed',
+      top,
+      left,
+      width: rect.width,
+      maxHeight: Math.min(220, maxHeight),
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -840,16 +878,13 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                       />
                     </button>
 
-                    {accountOpen && (
+                    {accountOpen && createPortal(
                       <div
+                        ref={accountMenuRef}
                         role="listbox"
                         style={{
-                          position: 'absolute',
-                          bottom: 'calc(100% + 4px)',
-                          left: 0,
-                          right: 0,
-                          zIndex: 500,
-                          maxHeight: 180,
+                          ...getAccountMenuStyle(),
+                          zIndex: 1300,
                           overflowY: 'auto',
                           background: 'var(--color-bg-card)',
                           border: '1px solid var(--color-border-hover)',
@@ -902,7 +937,8 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                             );
                           })
                         )}
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                   <select
