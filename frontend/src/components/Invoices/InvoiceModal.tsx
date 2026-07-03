@@ -842,7 +842,59 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
               {launchFinancial && (
                 <div style={{ marginTop: 'var(--space-sm)' }}>
-                  <div ref={accountRef} style={{ position: 'relative' }}>
+                  <div
+                    role="radiogroup"
+                    aria-label="Conta para o lançamento financeiro"
+                    style={{
+                      display: 'grid',
+                      gap: 8,
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: 8,
+                      background: 'var(--color-bg-input)',
+                    }}
+                  >
+                    {activeAccounts.length === 0 ? (
+                      <div style={{ padding: '8px 10px', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                        Nenhuma conta ativa encontrada.
+                      </div>
+                    ) : (
+                      activeAccounts.map((acc) => {
+                        const selected = selectedAccount?.id === acc.id;
+                        return (
+                          <label
+                            key={acc.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              minHeight: 40,
+                              padding: '8px 10px',
+                              border: '1px solid',
+                              borderColor: selected ? 'var(--color-border-hover)' : 'transparent',
+                              borderRadius: 'var(--radius-sm)',
+                              background: selected ? 'var(--color-accent-muted)' : 'transparent',
+                              color: 'var(--color-text-primary)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="expected_account"
+                              value={acc.id}
+                              checked={selected}
+                              onChange={() => setSelectedAccount(acc)}
+                              required={launchFinancial}
+                            />
+                            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.88rem' }}>
+                              {formatAccountLabel(acc)}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  <div ref={accountRef} style={{ display: 'none', position: 'relative' }}>
                     <button
                       type="button"
                       className="input"
