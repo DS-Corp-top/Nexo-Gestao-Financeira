@@ -423,6 +423,7 @@ export default function Invoices() {
     start: firstOfMonth(),
     end: lastOfMonth(),
   });
+  const [draftFilters, setDraftFilters] = useState<InvoiceFilters>(filters);
 
   const queryClient = useQueryClient();
 
@@ -624,8 +625,8 @@ export default function Invoices() {
                 <label className="label">Status</label>
                 <select
                   className="input"
-                  value={filters.status}
-                  onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+                  value={draftFilters.status}
+                  onChange={(e) => setDraftFilters((f) => ({ ...f, status: e.target.value }))}
                 >
                   <option value="">Todos</option>
                   <option value="draft">Rascunho</option>
@@ -642,8 +643,8 @@ export default function Invoices() {
                     type="date"
                     className="input"
                     style={{ paddingRight: 36 }}
-                    value={filters.start}
-                    onChange={(e) => setFilters((f) => ({ ...f, start: e.target.value }))}
+                    value={draftFilters.start}
+                    onChange={(e) => setDraftFilters((f) => ({ ...f, start: e.target.value }))}
                   />
                   <Calendar
                     size={16}
@@ -660,8 +661,8 @@ export default function Invoices() {
                     type="date"
                     className="input"
                     style={{ paddingRight: 36 }}
-                    value={filters.end}
-                    onChange={(e) => setFilters((f) => ({ ...f, end: e.target.value }))}
+                    value={draftFilters.end}
+                    onChange={(e) => setDraftFilters((f) => ({ ...f, end: e.target.value }))}
                   />
                   <Calendar
                     size={16}
@@ -671,14 +672,26 @@ export default function Invoices() {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ width: '100%' }}
-              onClick={() => setFilters({ status: '', start: '', end: '' })}
-            >
-              Limpar
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setFilters(draftFilters)}
+              >
+                Aplicar
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const cleared = { status: '', start: '', end: '' };
+                  setDraftFilters(cleared);
+                  setFilters(cleared);
+                }}
+              >
+                Limpar
+              </button>
+            </div>
           </div>
         )}
       </div>
