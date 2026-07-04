@@ -124,6 +124,7 @@ Dois workflows separados:
 
 - `backend-tests`: `manage.py check` + `pytest` (SQLite em memoria, sem servicos externos).
 - `frontend-tests`: `lint`, `test` (vitest) e `build` (tsc + vite).
+- `e2e-tests`: roda depois que os dois acima passam. Sobe backend (`migrate` + `seed_e2e` + `runserver`) e frontend (`vite dev`) de verdade via `webServer` do Playwright, e testa login -> navegacao -> criacao de uma transacao num navegador Chromium real. Ver `frontend/playwright.config.ts` e `frontend/e2e/`.
 
 `.github/workflows/deploy.yml` ("Deploy") dispara via `workflow_run` assim que o workflow "CI" termina com sucesso para um push direto em `main` (nao roda para PRs nem se algum teste falhar). Faz `git push` para o Heroku, reaproveitando os buildpacks Node+Python ja configurados no app.
 
@@ -163,4 +164,7 @@ Frontend:
 ```powershell
 npm run build
 npm run test
+npm run test:e2e
 ```
+
+`npm run test:e2e` sobe backend e frontend sozinho (via `webServer` do Playwright) e roda o teste de login -> navegacao -> criacao de transacao. Na primeira vez, instale os navegadores com `npx playwright install chromium`. Usa um usuario fixo (`e2e@example.com`), criado pelo comando `python manage.py seed_e2e` — nunca roda contra um dyno Heroku (o comando se recusa se a env var `DYNO` estiver setada).

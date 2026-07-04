@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -74,6 +74,7 @@ export default function Investments() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInv, setEditingInv] = useState<Investment | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [entryHistoryOpen, setEntryHistoryOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -231,10 +232,12 @@ export default function Investments() {
 
   const monthlyDeposited: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
   const monthlyWithdrawn: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
+  const monthlyEarnings: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
   for (const entry of monthEntries) {
     const currency = currencyByInvestment.get(entry.investment) || 'BRL';
     if (entry.entry_type === 'deposit') monthlyDeposited[currency] += parseAmount(entry.amount);
     if (entry.entry_type === 'withdrawal') monthlyWithdrawn[currency] += parseAmount(entry.amount);
+    if (entry.entry_type === 'dividend' || entry.entry_type === 'yield') monthlyEarnings[currency] += parseAmount(entry.amount);
   }
 
   const hasForeignCurrency = filtered.some((investment) => getCurrency(investment.currency) !== 'BRL');
@@ -258,6 +261,7 @@ export default function Investments() {
   const consolidatedEarningsBrl = convertTotalsToBrl(totalEarnings);
   const consolidatedNetBrl = convertTotalsToBrl(totalNet);
   const consolidatedMonthlyWithdrawnBrl = convertTotalsToBrl(monthlyWithdrawn);
+  const consolidatedMonthlyEarningsBrl = convertTotalsToBrl(monthlyEarnings);
 
   const renderCurrencyTotals = (totals: Record<Currency, number>, color: string) => {
     const visibleCurrencies = currencyOrder.filter((currency) => totals[currency] !== 0);
@@ -495,6 +499,9 @@ export default function Investments() {
         <button className="btn btn-primary" onClick={handleOpenNew}>
           <Plus size={18} /> Novo Investimento
         </button>
+        <button type="button" className="btn btn-secondary" onClick={() => setSummaryOpen(true)}>
+          <TrendingUp size={18} /> Ver resumo geral
+        </button>
       </div>
 
       {/* ── Aportes e Resgates do Mês ── */}
@@ -507,7 +514,7 @@ export default function Investments() {
           <ChevronRight size={18} />
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Aportado no Mês</div>
           {renderCurrencyTotals(monthlyDeposited, 'var(--color-success)')}
@@ -516,34 +523,56 @@ export default function Investments() {
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Resgatado no Mês</div>
           {renderConvertedBrlTotal(consolidatedMonthlyWithdrawnBrl, 'var(--color-danger)')}
         </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos no Mês</div>
+          {renderConvertedBrlTotal(consolidatedMonthlyEarningsBrl, 'var(--color-success)')}
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-        <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Aportado</div>
-          {renderCurrencyTotals(totalInvested, 'var(--color-text-primary)')}
+      {summaryOpen && (
+        <div className="modal-overlay" onClick={() => setSummaryOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: 920 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">Resumo geral</h2>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                  Totais consolidados dos investimentos filtrados
+                </div>
+              </div>
+              <button type="button" className="btn-ghost btn-icon" onClick={() => setSummaryOpen(false)} aria-label="Fechar resumo geral">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)' }}>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Aportado</div>
+                {renderCurrencyTotals(totalInvested, 'var(--color-text-primary)')}
+              </div>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Investido USD</div>
+                {renderForeignInvestedTotal('USD')}
+              </div>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Investido EUR</div>
+                {renderForeignInvestedTotal('EUR')}
+              </div>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Resgates</div>
+                {renderConvertedBrlTotal(consolidatedWithdrawnBrl, 'var(--color-danger)')}
+              </div>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos</div>
+                {renderConvertedBrlTotal(consolidatedEarningsBrl, 'var(--color-success)')}
+              </div>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Patrimônio Líquido</div>
+                {renderConsolidatedNet()}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Investido USD</div>
-          {renderForeignInvestedTotal('USD')}
-        </div>
-        <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Investido EUR</div>
-          {renderForeignInvestedTotal('EUR')}
-        </div>
-        <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Resgates</div>
-          {renderConvertedBrlTotal(consolidatedWithdrawnBrl, 'var(--color-danger)')}
-        </div>
-        <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos</div>
-          {renderConvertedBrlTotal(consolidatedEarningsBrl, 'var(--color-success)')}
-        </div>
-        <div className="card" style={{ padding: 'var(--space-md)' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Patrimônio Líquido</div>
-          {renderConsolidatedNet()}
-        </div>
-      </div>
+      )}
 
       {/* ── Filtros ── */}
       <div className="card" style={{ marginBottom: 'var(--space-md)', padding: 0, overflow: 'hidden' }}>

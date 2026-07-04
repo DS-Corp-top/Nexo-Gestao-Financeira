@@ -15,3 +15,6 @@ venv/
 frontend/.env.local
 staticfiles/
 media/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

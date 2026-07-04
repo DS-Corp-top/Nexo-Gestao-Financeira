@@ -30,7 +30,7 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
       await onConfirm(transaction.id, clearedDate, unlockPassword || undefined);
       onClose();
     } catch (err: any) {
-      console.error(err);
+      console.error('Falha ao baixar transação:', err.response?.status);
       alert(err.response?.data?.detail || 'Erro ao baixar transação');
     } finally {
       setLoading(false);
