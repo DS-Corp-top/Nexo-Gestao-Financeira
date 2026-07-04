@@ -13,7 +13,6 @@ import {
   FileText,
   Bell,
   PiggyBank,
-  BarChart2,
 } from 'lucide-react';
 import { fetchDashboard, type DashboardData } from '../api/dashboard';
 import {
@@ -188,11 +187,15 @@ export default function Dashboard() {
             </button>
           </div>
           <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 4 }}>
-            <button className="btn btn-ghost btn-icon" onClick={() => setChartsOpen(true)} title="Gráficos">
-              <BarChart2 size={20} />
+            <button className="btn btn-ghost btn-icon dashboard-chart-trigger" onClick={() => setChartsOpen(true)} aria-label="Abrir gráficos" title="Gráficos">
+              <span className="investment-summary-button-icon" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
             </button>
             <div style={{ position: 'relative' }}>
-              <button ref={bellButtonRef} className="btn btn-ghost btn-icon" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
+              <button ref={bellButtonRef} className="btn btn-ghost btn-icon dashboard-icon-trigger" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
                 <Bell size={20} />
                 {data.due_notifications.count > 0 && (
                   <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)', color: '#fff', fontSize: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', lineHeight: 1 }}>

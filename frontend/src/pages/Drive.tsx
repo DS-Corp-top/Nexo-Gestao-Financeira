@@ -146,18 +146,6 @@ export default function Drive() {
         </div>
         
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-start' }}>
-          <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 140 }}>
-            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Buscar arquivo..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: '100%', paddingLeft: 32, height: 40 }}
-            />
-          </div>
-          
           {!currentFolder && (
             <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 140 }}>
               <Filter size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
@@ -174,26 +162,38 @@ export default function Drive() {
               </select>
             </div>
           )}
+
+          <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 140 }}>
+            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+            <input 
+              type="text" 
+              className="input" 
+              placeholder="Buscar arquivo..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: '100%', paddingLeft: 32, height: 40 }}
+            />
+          </div>
           
           {!currentFolder && (
             <button 
-              className="btn btn-ghost" 
+              className="btn btn-ghost btn-icon drive-folder-trigger" 
               onClick={() => setIsFolderModalOpen(true)}
-              style={{ flex: '1 1 auto', whiteSpace: 'nowrap', justifyContent: 'center', height: 40 }}
+              aria-label="Nova pasta"
+              title="Nova pasta"
             >
-              <Plus size={18} style={{ marginRight: 4 }} /> Nova Pasta
+              <Plus size={20} />
             </button>
           )}
           
           <button 
-            className="btn btn-primary" 
+            className="btn btn-primary btn-icon drive-upload-trigger" 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadMutation.isPending}
-            style={{ flex: '1 1 auto', whiteSpace: 'nowrap', justifyContent: 'center', height: 40 }}
+            aria-label="Novo arquivo"
+            title="Novo arquivo"
           >
-            {uploadMutation.isPending ? 'Enviando...' : (
-              <><CloudUpload size={18} style={{ marginRight: 4 }} /> Novo Arquivo</>
-            )}
+            <CloudUpload size={20} style={{ opacity: uploadMutation.isPending ? 0.55 : 1 }} />
           </button>
           <input 
             type="file" 

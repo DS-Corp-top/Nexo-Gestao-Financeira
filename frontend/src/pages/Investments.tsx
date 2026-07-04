@@ -5,6 +5,21 @@ import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, Che
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   fetchInvestments, fetchInvestment, fetchInvestmentEntries, fetchInvestmentExchangeRates, createInvestment, updateInvestment, deleteInvestment,
   createInvestmentEntry, deleteInvestmentEntry, type Currency, type Investment
 } from '../api/investments';
@@ -33,6 +48,7 @@ const currencyLabels: Record<Currency, string> = {
   USD: 'Dolar',
   EUR: 'Euro',
 };
+const chartColors = ['#34d399', '#38bdf8', '#fbbf24', '#fb7185', '#a3e635', '#f97316', '#c084fc'];
 
 function getCurrency(currency?: Currency | null): Currency {
   return currency || 'BRL';
@@ -46,6 +62,19 @@ function formatCurrency(value: string | number | null, currency: Currency = 'BRL
 
 function parseAmount(value: string | number): number {
   return typeof value === 'string' ? parseFloat(value || '0') : value;
+}
+
+function formatCompactCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function shortChartLabel(value: string): string {
+  return value.length > 12 ? `${value.slice(0, 11)}...` : value;
 }
 
 function getCurrencyTotals(items: Investment[], getValue: (investment: Investment) => number): Record<Currency, number> {
@@ -262,6 +291,88 @@ export default function Investments() {
   const consolidatedNetBrl = convertTotalsToBrl(totalNet);
   const consolidatedMonthlyWithdrawnBrl = convertTotalsToBrl(monthlyWithdrawn);
   const consolidatedMonthlyEarningsBrl = convertTotalsToBrl(monthlyEarnings);
+  const convertValueToBrl = (value: number, currency: Currency) => {
+    const rate = currency === 'BRL' ? 1 : parseAmount(exchangeRates?.rates[currency] || 0);
+    return value * rate;
+  };
+  const chartValueLabel: Record<string, string> = {
+    invested: 'Aportado',
+    withdrawn: 'Resgatado',
+    earnings: 'Rendimentos',
+    net: 'Patrimônio',
+  };
+  const chartTooltipFormatter = (value: unknown, name: unknown) => [
+    formatCurrency(Number(value || 0), 'BRL'),
+    chartValueLabel[String(name)] || String(name),
+  ];
+
+  const investmentChartData = useMemo(() => (
+    filtered
+      .map((investment) => {
+        const currency = getCurrency(investment.currency);
+        const invested = convertValueToBrl(parseAmount(investment.total_invested || '0'), currency);
+        const withdrawn = convertValueToBrl(parseAmount(investment.total_withdrawn || '0'), currency);
+        const earnings = convertValueToBrl(parseAmount(investment.total_earnings || '0'), currency);
+        return {
+          name: investment.name,
+          invested,
+          withdrawn,
+          earnings,
+          net: invested - withdrawn + earnings,
+        };
+      })
+      .filter((item) => item.invested !== 0 || item.withdrawn !== 0 || item.earnings !== 0 || item.net !== 0)
+      .sort((a, b) => b.net - a.net)
+      .slice(0, 8)
+  ), [filtered, exchangeRates]);
+
+  const typeChartData = useMemo(() => {
+    const totalsByType = new Map<Investment['investment_type'], number>();
+    for (const investment of filtered) {
+      const currency = getCurrency(investment.currency);
+      const value = convertValueToBrl(
+        parseAmount(investment.total_invested || '0') -
+        parseAmount(investment.total_withdrawn || '0') +
+        parseAmount(investment.total_earnings || '0'),
+        currency
+      );
+      if (value <= 0) continue;
+      totalsByType.set(investment.investment_type, (totalsByType.get(investment.investment_type) || 0) + value);
+    }
+    return Array.from(totalsByType.entries())
+      .map(([type, value]) => ({ name: typeLabels[type], value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filtered, exchangeRates]);
+
+  const trendChartData = useMemo(() => {
+    const investmentsById = new Map(filtered.map((investment) => [investment.id, investment]));
+    const [year, month] = monthParam.split('-').map(Number);
+
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(year, month - 6 + index, 1);
+      const key = getMonthParam(date);
+      const { start, end } = getMonthBounds(key);
+      const totals = { invested: 0, withdrawn: 0, earnings: 0 };
+
+      for (const entry of allEntries) {
+        const investment = investmentsById.get(entry.investment);
+        if (!investment || entry.date < start || entry.date > end) continue;
+        const value = convertValueToBrl(parseAmount(entry.amount), getCurrency(investment.currency));
+        if (entry.entry_type === 'deposit') totals.invested += value;
+        if (entry.entry_type === 'withdrawal') totals.withdrawn += value;
+        if (entry.entry_type === 'dividend' || entry.entry_type === 'yield') totals.earnings += value;
+      }
+
+      return {
+        month: format(date, 'MMM/yy', { locale: ptBR }),
+        invested: totals.invested,
+        withdrawn: totals.withdrawn,
+        earnings: totals.earnings,
+        net: totals.invested - totals.withdrawn + totals.earnings,
+      };
+    });
+  }, [allEntries, filtered, exchangeRates, monthParam]);
+  const hasChartData = investmentChartData.length > 0 || typeChartData.length > 0 || trendChartData.some((item) => item.invested || item.withdrawn || item.earnings || item.net);
 
   const renderCurrencyTotals = (totals: Record<Currency, number>, color: string) => {
     const visibleCurrencies = currencyOrder.filter((currency) => totals[currency] !== 0);
@@ -496,11 +607,15 @@ export default function Investments() {
   return (
     <div className="animate-fade-in investments-page">
       <div className="page-header">
-        <button className="btn btn-primary" onClick={handleOpenNew}>
-          <Plus size={18} /> Novo Investimento
+        <button className="btn btn-primary btn-icon investment-add-trigger" onClick={handleOpenNew} aria-label="Novo investimento" title="Novo investimento">
+          <Plus size={20} />
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => setSummaryOpen(true)}>
-          <TrendingUp size={18} /> Ver resumo geral
+        <button type="button" className="btn btn-secondary btn-icon investment-summary-trigger" onClick={() => setSummaryOpen(true)} aria-label="Abrir resumo geral" title="Resumo geral">
+          <span className="investment-summary-button-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
         </button>
       </div>
 
@@ -514,7 +629,7 @@ export default function Investments() {
           <ChevronRight size={18} />
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+      <div className="investment-month-grid">
         <div className="card" style={{ padding: 'var(--space-md)' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Aportado no Mês</div>
           {renderCurrencyTotals(monthlyDeposited, 'var(--color-success)')}
@@ -530,8 +645,8 @@ export default function Investments() {
       </div>
 
       {summaryOpen && (
-        <div className="modal-overlay" onClick={() => setSummaryOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: 920 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay investment-summary-overlay" onClick={() => setSummaryOpen(false)}>
+          <div className="modal-content investment-summary-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h2 className="modal-title">Resumo geral</h2>
@@ -544,7 +659,7 @@ export default function Investments() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)' }}>
+            <div className="investment-summary-kpi-grid">
               <div className="card" style={{ padding: 'var(--space-md)' }}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Aportado</div>
                 {renderCurrencyTotals(totalInvested, 'var(--color-text-primary)')}
@@ -570,6 +685,71 @@ export default function Investments() {
                 {renderConsolidatedNet()}
               </div>
             </div>
+
+            {hasChartData ? (
+              <div className="investment-summary-charts">
+                <div className="investment-chart-card investment-chart-card-wide">
+                  <div className="investment-chart-head">
+                    <h3>Patrimônio por investimento</h3>
+                    <span>Top 8 em BRL</span>
+                  </div>
+                  <div className="investment-chart-area">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={investmentChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }} style={{ background: 'transparent' }}>
+                        <CartesianGrid stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="name" tickFormatter={shortChartLabel} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={formatCompactCurrency} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={72} />
+                        <Tooltip cursor={{ fill: 'transparent' }} formatter={chartTooltipFormatter} labelFormatter={(label) => String(label)} contentStyle={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text-primary)' }} />
+                        <Bar dataKey="net" name="net" fill="#34d399" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="investment-chart-card">
+                  <div className="investment-chart-head">
+                    <h3>Distribuição por tipo</h3>
+                    <span>Patrimônio líquido</span>
+                  </div>
+                  <div className="investment-chart-area investment-chart-area-pie">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart style={{ background: 'transparent' }}>
+                        <Pie data={typeChartData} dataKey="value" nameKey="name" innerRadius="48%" outerRadius="74%" paddingAngle={3}>
+                          {typeChartData.map((entry, index) => (
+                            <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value, name) => [formatCurrency(Number(value || 0), 'BRL'), String(name)]} contentStyle={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text-primary)' }} />
+                        <Legend iconType="circle" wrapperStyle={{ color: 'var(--color-text-secondary)', fontSize: 11 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="investment-chart-card">
+                  <div className="investment-chart-head">
+                    <h3>Tendência mensal</h3>
+                    <span>Últimos 6 meses</span>
+                  </div>
+                  <div className="investment-chart-area">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={trendChartData} margin={{ top: 8, right: 10, left: 0, bottom: 8 }} style={{ background: 'transparent' }}>
+                        <CartesianGrid stroke="var(--color-border)" vertical={false} />
+                        <XAxis dataKey="month" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={formatCompactCurrency} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={72} />
+                        <Tooltip formatter={chartTooltipFormatter} contentStyle={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--color-text-primary)' }} />
+                        <Legend iconType="circle" wrapperStyle={{ color: 'var(--color-text-secondary)', fontSize: 11 }} />
+                        <Line type="monotone" dataKey="invested" name="invested" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="earnings" name="earnings" stroke="#34d399" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="withdrawn" name="withdrawn" stroke="#fb7185" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="investment-chart-empty">Sem dados suficientes para gerar gráficos.</div>
+            )}
           </div>
         </div>
       )}

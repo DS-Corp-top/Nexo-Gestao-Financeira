@@ -16,7 +16,7 @@ import {
 import { fetchAccounts } from '../api/accounts';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Tags, ChevronDown } from 'lucide-react';
+import { Wallet, Tags, EllipsisVertical, Plus } from 'lucide-react';
 
 function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
@@ -193,11 +193,11 @@ export default function Transactions() {
 
         {/* Menu de Ações Rápidas */}
         <div ref={menuRef} style={{ position: 'relative', display: 'flex' }}>
-          <button className="btn btn-primary" onClick={() => navigate('/transactions/new')}>
-            + Nova transação
+          <button className="btn btn-primary btn-icon txn-quick-add-trigger" onClick={() => navigate('/transactions/new')} aria-label="Nova transação" title="Nova transação">
+            <Plus size={20} />
           </button>
-          <button className="btn btn-secondary" style={{ marginLeft: 'var(--space-sm)' }} onClick={() => setShowMenu(!showMenu)}>
-            Mais <ChevronDown size={16} />
+          <button className="btn btn-secondary btn-icon txn-quick-more-trigger" style={{ marginLeft: 'var(--space-sm)' }} onClick={() => setShowMenu(!showMenu)} aria-label="Abrir mais ações" title="Mais ações">
+            <EllipsisVertical size={18} />
           </button>
           
           {showMenu && (

@@ -538,8 +538,8 @@ export default function Invoices() {
       <style>{`input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0; pointer-events: none; }`}</style>
       <div className="page-header">
         {isAdmin && (
-          <button className="btn btn-primary" onClick={handleOpenNew}>
-            <Plus size={18} /> Nova Fatura
+          <button className="btn btn-primary btn-icon invoice-add-trigger" onClick={handleOpenNew} aria-label="Nova fatura" title="Nova fatura">
+            <Plus size={20} />
           </button>
         )}
       </div>
@@ -584,8 +584,8 @@ export default function Invoices() {
 
         {filtersOpen && (
           <div style={{ borderTop: '1px solid var(--color-border)', padding: 'var(--space-md)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-              <div>
+            <div className="invoice-filters-grid">
+              <div className="invoice-filter-field">
                 <label className="label">Status</label>
                 <select
                   className="input"
@@ -597,7 +597,7 @@ export default function Invoices() {
                   <option value="paid">Paga</option>
                 </select>
               </div>
-              <div>
+              <div className="invoice-filter-field">
                 <label className="label">Nota</label>
                 <select
                   className="input"
@@ -609,9 +609,9 @@ export default function Invoices() {
                   <option value="note_pending">Nota Pendente</option>
                 </select>
               </div>
-              <div>
+              <div className="invoice-filter-field">
                 <label className="label">Data Inicial</label>
-                <div style={{ position: 'relative' }}>
+                <div className="invoice-date-control">
                   <input
                     ref={startDateRef}
                     type="date"
@@ -628,9 +628,9 @@ export default function Invoices() {
                   />
                 </div>
               </div>
-              <div>
+              <div className="invoice-filter-field">
                 <label className="label">Data Final</label>
-                <div style={{ position: 'relative' }}>
+                <div className="invoice-date-control">
                   <input
                     ref={endDateRef}
                     type="date"
