@@ -2835,7 +2835,8 @@ input[type="radio"] {
     justify-content: center;
   }
 
-  .investments-page .page-header .investment-summary-trigger {
+  .investments-page .page-header .investment-summary-trigger,
+  .investments-page .page-header .investment-add-trigger {
     flex: 0 0 auto;
   }
 
