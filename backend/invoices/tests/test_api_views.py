@@ -71,6 +71,29 @@ class InvoiceApiViewSetTest(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["status"], Invoice.ISSUED)
 
+    def test_update_rejects_expected_account_from_another_tenant(self):
+        """IDOR: nao deve ser possivel vincular a fatura a uma conta de outro tenant."""
+        other_tenant = Tenant.objects.create(
+            name="Outro Tenant", slug="outro-tenant", owner=self.user, document="98765432100",
+        )
+        other_user = User.objects.create_user(username="outrouser", password="123")
+        other_account = Account.objects.create(
+            user=other_user,
+            tenant=other_tenant,
+            name="Conta Alheia",
+            account_type=Account.AccountType.BANK,
+        )
+        invoice = self._create_invoice()
+
+        response = self.client.patch(
+            f"/api/v1/invoices/{invoice.pk}/",
+            data={"expected_account": other_account.pk},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("expected_account", response.data)
+
     def test_pay_without_financial_launch_does_not_require_account(self):
         invoice = self._create_invoice()
         response = self.client.post(

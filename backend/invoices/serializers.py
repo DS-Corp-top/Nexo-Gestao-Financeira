@@ -172,6 +172,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 "expected_account": "Selecione a conta para lancar a fatura automaticamente no financeiro."
             })
 
+        selected_account = expected_account or existing_account
+        if selected_account and tenant and selected_account.tenant_id != tenant.pk:
+            raise serializers.ValidationError({
+                "expected_account": "Conta invalida para este tenant."
+            })
+
         selected_issuer_company = issuer_company or existing_issuer_company
         if selected_issuer_company and tenant and selected_issuer_company.tenant_id != tenant.pk:
             raise serializers.ValidationError({

@@ -61,8 +61,14 @@ class TenantProfileView(generics.RetrieveUpdateAPIView):
         sync_default_tenant_company(tenant)
 
 
-class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSet):
-    """List and create tenant memberships."""
+class TenantMembershipViewSet(generics.ListAPIView, viewsets.GenericViewSet):
+    """List tenant memberships.
+
+    New members are created exclusively through TenantInviteUserView, which
+    always provisions a brand-new user — creating a membership straight from
+    an arbitrary client-supplied user id would let a tenant admin attach any
+    existing account (and probe its email/name) without that user's consent.
+    """
     serializer_class = TenantMembershipSerializer
 
     def get_queryset(self):
@@ -74,11 +80,6 @@ class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSe
             .select_related("tenant", "user")
             .prefetch_related("company_accesses", "tenant__companies")
         )
-
-    def perform_create(self, serializer):
-        tenant = get_user_tenant(self.request.user, self.request)
-        require_tenant_admin(self.request.user, tenant)
-        serializer.save(tenant=tenant)
 
     @action(detail=True, methods=["patch"], url_path="member")
     def member(self, request, pk=None):

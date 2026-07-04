@@ -3,7 +3,7 @@ from .models import Document, Folder
 
 class FolderSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
-    
+
     class Meta:
         model = Folder
         fields = (
@@ -14,6 +14,12 @@ class FolderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def validate_company(self, value):
+        tenant = self.context.get("tenant")
+        if value and tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Empresa invalida para este tenant.")
+        return value
 
 class DocumentSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
@@ -40,6 +46,18 @@ class DocumentSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("user", "file_type", "file_size")
+
+    def validate_company(self, value):
+        tenant = self.context.get("tenant")
+        if value and tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Empresa invalida para este tenant.")
+        return value
+
+    def validate_folder(self, value):
+        tenant = self.context.get("tenant")
+        if value and tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Pasta invalida para este tenant.")
+        return value
 
     def get_file_url(self, obj):
         if not obj.file:

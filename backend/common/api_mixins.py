@@ -103,6 +103,11 @@ class TenantQuerySetMixin:
         qs = super().get_queryset()
         return qs.filter(**{self.tenant_field: self.get_tenant()})
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["tenant"] = self.get_tenant()
+        return context
+
     def _content_hidden(self):
         """True once get_tenant() has run and flagged this as a view-only
         superuser request. Content (list/detail) must not be exposed then —

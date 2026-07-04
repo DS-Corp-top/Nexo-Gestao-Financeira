@@ -74,3 +74,30 @@ def test_shopping_list_unauthenticated_returns_401(baker):
     url = reverse("api:shoppinglist-list")
     response = client.get(url)
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_create_shopping_item_rejects_shopping_list_from_another_tenant(baker):
+    """IDOR: nao deve ser possivel anexar um item a lista de outro tenant."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    other_tenant = baker.make("tenants.Tenant", document="11111111111", is_active=True)
+    other_user = baker.make("auth.User")
+    other_list = baker.make(
+        "shopping.ShoppingList", user=other_user, tenant=other_tenant, name="Lista Alheia"
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:shoppingitem-list")
+    response = client.post(
+        url,
+        {"shopping_list": other_list.id, "title": "Item injetado"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 400
+    assert "shopping_list" in response.data

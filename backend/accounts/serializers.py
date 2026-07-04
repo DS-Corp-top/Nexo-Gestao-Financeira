@@ -31,3 +31,9 @@ class CardMonthlyLimitSerializer(serializers.ModelSerializer):
         model = CardMonthlyLimit
         fields = ("id", "account", "year", "month", "amount", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_account(self, value):
+        tenant = self.context.get("tenant")
+        if tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Conta invalida para este tenant.")
+        return value

@@ -156,6 +156,7 @@ class TenantMembershipSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "tenant",
+            "user",
             "user_email",
             "user_username",
             "user_full_name",

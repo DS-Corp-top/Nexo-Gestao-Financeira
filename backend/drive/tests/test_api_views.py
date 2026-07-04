@@ -1,4 +1,5 @@
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 from django.urls import reverse
 
@@ -70,3 +71,32 @@ def test_delete_folder(baker):
     response = client.delete(url, HTTP_X_TENANT_ID=str(tenant.id))
 
     assert response.status_code == 204
+
+
+@pytest.mark.django_db
+def test_update_document_rejects_folder_from_another_tenant(baker):
+    """IDOR: nao deve ser possivel vincular o documento a pasta de outro tenant."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    other_tenant = baker.make("tenants.Tenant", document="11111111111", is_active=True)
+    other_folder = baker.make("drive.Folder", tenant=other_tenant, name="Pasta Alheia")
+
+    document = baker.make(
+        "drive.Document",
+        tenant=tenant,
+        user=user,
+        file=SimpleUploadedFile("doc.txt", b"conteudo"),
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:document-detail", args=[document.id])
+    response = client.patch(
+        url, {"folder": other_folder.id}, HTTP_X_TENANT_ID=str(tenant.id)
+    )
+
+    assert response.status_code == 400
+    assert "folder" in response.data

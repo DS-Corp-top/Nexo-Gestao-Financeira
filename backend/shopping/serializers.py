@@ -25,6 +25,12 @@ class ShoppingItemSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "purchased_at", "estimated_total", "created_at", "updated_at")
 
+    def validate_shopping_list(self, value):
+        tenant = self.context.get("tenant")
+        if tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Lista de compras invalida para este tenant.")
+        return value
+
 
 class ShoppingListSerializer(serializers.ModelSerializer):
     pending_count = serializers.IntegerField(read_only=True)

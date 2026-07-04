@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from common.api_mixins import get_user_tenant
+from tenants.models import TenantMembership
 from todos.models import Project, TodoItem
 
 
@@ -95,6 +96,22 @@ class TodoItemSerializer(serializers.ModelSerializer):
         if parent.parent_id:
             raise serializers.ValidationError("Subtarefas em mais de um nivel nao sao suportadas.")
         return parent
+
+    def validate_assigned_to(self, value):
+        if value is None:
+            return value
+        tenant = self.context.get("tenant")
+        if tenant and not TenantMembership.objects.filter(user=value, tenant=tenant).exists():
+            raise serializers.ValidationError("Usuario nao pertence a este tenant.")
+        return value
+
+    def validate_project(self, value):
+        if value is None:
+            return value
+        tenant = self.context.get("tenant")
+        if tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Projeto invalido para este tenant.")
+        return value
 
     def validate(self, attrs):
         parent = attrs.get("parent", self.instance.parent if self.instance else None)
