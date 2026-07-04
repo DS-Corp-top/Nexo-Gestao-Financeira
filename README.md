@@ -118,13 +118,16 @@ Como o frontend e a API ficam no mesmo dominio, CORS nao e necessario para o app
 
 ## CI/CD (GitHub Actions)
 
-`.github/workflows/ci.yml` roda em todo push/PR para `main`:
+Dois workflows separados:
+
+`.github/workflows/ci.yml` ("CI") roda em todo push/PR para `main`:
 
 - `backend-tests`: `manage.py check` + `pytest` (SQLite em memoria, sem servicos externos).
 - `frontend-tests`: `lint`, `test` (vitest) e `build` (tsc + vite).
-- `deploy`: so roda em push direto para `main` (nao em PR) e somente se os dois jobs acima passarem. Faz `git push` para o Heroku, reaproveitando os buildpacks Node+Python ja configurados no app.
 
-Para o job `deploy` funcionar, configure o secret do repositorio no GitHub (`Settings > Secrets and variables > Actions`):
+`.github/workflows/deploy.yml` ("Deploy") dispara via `workflow_run` assim que o workflow "CI" termina com sucesso para um push direto em `main` (nao roda para PRs nem se algum teste falhar). Faz `git push` para o Heroku, reaproveitando os buildpacks Node+Python ja configurados no app.
+
+Para o job `deploy` funcionar, configure o secret no GitHub Environment `nexo-gestao-financeira` (`Settings > Environments`) ou como secret do repositorio (`Settings > Secrets and variables > Actions`):
 
 - `HEROKU_API_KEY`: token gerado com `heroku authorizations:create --description "github-actions-nexo"` (nao usar `heroku auth:token`, que fica preso a sessao de login pessoal).
 

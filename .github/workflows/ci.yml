@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI
 
 on:
   push:
@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-
-env:
-  HEROKU_APP_NAME: nexo-gestao-financeira
 
 jobs:
   backend-tests:
@@ -57,20 +54,3 @@ jobs:
       - run: npm run test
 
       - run: npm run build
-
-  deploy:
-    name: Deploy to Heroku
-    needs: [backend-tests, frontend-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: nexo-gestao-financeira
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push to Heroku
-        env:
-          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        run: |
-          git push "https://heroku:${HEROKU_API_KEY}@git.heroku.com/${HEROKU_APP_NAME}.git" "HEAD:refs/heads/main" --force
