@@ -23,7 +23,7 @@ def env_list(name, default=""):
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-TESTING = "test" in sys.argv
+TESTING = "test" in sys.argv or "pytest" in sys.modules
 RUNSERVER = "runserver" in sys.argv
 HEROKU_DYNO = bool(os.getenv("DYNO"))
 
