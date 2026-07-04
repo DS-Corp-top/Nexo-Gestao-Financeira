@@ -193,7 +193,7 @@ export default function Transactions() {
 
         {/* Menu de Ações Rápidas */}
         <div ref={menuRef} style={{ position: 'relative', display: 'flex' }}>
-          <button className="btn btn-primary btn-icon txn-quick-add-trigger" onClick={() => navigate('/transactions/new')} aria-label="Nova transação" title="Nova transação">
+          <button className="btn btn-primary btn-icon txn-quick-add-trigger" onClick={() => navigate('/transactions/new')} aria-label="+ Nova transação" title="Nova transação">
             <Plus size={20} />
           </button>
           <button className="btn btn-secondary btn-icon txn-quick-more-trigger" style={{ marginLeft: 'var(--space-sm)' }} onClick={() => setShowMenu(!showMenu)} aria-label="Abrir mais ações" title="Mais ações">
