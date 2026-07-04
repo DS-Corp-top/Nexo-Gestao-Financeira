@@ -34,7 +34,7 @@ describe('Login Page', () => {
   });
 
   it('displays error on failed login', async () => {
-    (authApi.login as any).mockRejectedValueOnce(new Error('Invalid credentials'));
+    (authApi.login as any).mockRejectedValueOnce(new Error());
     
     renderLogin();
     

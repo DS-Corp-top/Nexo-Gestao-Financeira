@@ -74,12 +74,12 @@ O `Dockerfile` (raiz) compila o frontend e serve o build via Django/WhiteNoise n
 
 ## Deploy em um dyno Heroku
 
-Para rodar React + Django no mesmo dyno do app `nexo-django-drf`, use o repositório pela raiz e configure os buildpacks nesta ordem:
+Para rodar React + Django no mesmo dyno do app `nexo-gestao-financeira`, use o repositório pela raiz e configure os buildpacks nesta ordem:
 
 ```powershell
-heroku buildpacks:clear -a nexo-django-drf
-heroku buildpacks:add heroku/nodejs -a nexo-django-drf
-heroku buildpacks:add heroku/python -a nexo-django-drf
+heroku buildpacks:clear -a nexo-gestao-financeira
+heroku buildpacks:add heroku/nodejs -a nexo-gestao-financeira
+heroku buildpacks:add heroku/python -a nexo-gestao-financeira
 ```
 
 O build do Heroku executa:
@@ -101,20 +101,32 @@ Como fallback operacional para Heroku, `frontend/dist` pode ficar versionado. Ro
 Se o erro mostrar um caminho como `/frontend/dist/index.html`, remova a config var customizada para o Django usar o caminho correto do slug:
 
 ```powershell
-heroku config:unset FRONTEND_DIST_DIR -a nexo-django-drf
+heroku config:unset FRONTEND_DIST_DIR -a nexo-gestao-financeira
 ```
 
 Config minima:
 
 ```powershell
-heroku config:set DJANGO_DEBUG=false -a nexo-django-drf
-heroku config:set SERVE_REACT_APP=true -a nexo-django-drf
-heroku config:set DJANGO_ALLOWED_HOSTS=nexo-django-drf.herokuapp.com,nexo.dscorp.top -a nexo-django-drf
-heroku config:set DJANGO_CSRF_TRUSTED_ORIGINS=https://nexo-django-drf.herokuapp.com,https://nexo.dscorp.top -a nexo-django-drf
-heroku config:set VITE_API_URL=/api/v1 -a nexo-django-drf
+heroku config:set DJANGO_DEBUG=false -a nexo-gestao-financeira
+heroku config:set SERVE_REACT_APP=true -a nexo-gestao-financeira
+heroku config:set DJANGO_ALLOWED_HOSTS=nexo-gestao-financeira.herokuapp.com,nexo.dscorp.top -a nexo-gestao-financeira
+heroku config:set DJANGO_CSRF_TRUSTED_ORIGINS=https://nexo-gestao-financeira.herokuapp.com,https://nexo.dscorp.top -a nexo-gestao-financeira
+heroku config:set VITE_API_URL=/api/v1 -a nexo-gestao-financeira
 ```
 
 Como o frontend e a API ficam no mesmo dominio, CORS nao e necessario para o app em producao.
+
+## CI/CD (GitHub Actions)
+
+`.github/workflows/ci.yml` roda em todo push/PR para `main`:
+
+- `backend-tests`: `manage.py check` + `pytest` (SQLite em memoria, sem servicos externos).
+- `frontend-tests`: `lint`, `test` (vitest) e `build` (tsc + vite).
+- `deploy`: so roda em push direto para `main` (nao em PR) e somente se os dois jobs acima passarem. Faz `git push` para o Heroku, reaproveitando os buildpacks Node+Python ja configurados no app.
+
+Para o job `deploy` funcionar, configure o secret do repositorio no GitHub (`Settings > Secrets and variables > Actions`):
+
+- `HEROKU_API_KEY`: token gerado com `heroku authorizations:create --description "github-actions-nexo"` (nao usar `heroku auth:token`, que fica preso a sessao de login pessoal).
 
 ## Deploy separado
 
