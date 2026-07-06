@@ -103,7 +103,7 @@ export default function TransactionForm() {
         destination_account: type === 'transfer' ? Number(destinationAccount) : null,
         category: type !== 'transfer' && category ? Number(category) : null,
         recurrence_type: recurrenceType,
-        installment_count: recurrenceType === 'installment' && !isEditing ? Number(installmentCount) : null,
+        installment_count: recurrenceType === 'installment' ? Number(installmentCount) : null,
         recurrence_interval: 1,
         recurrence_interval_unit: 'month',
       };
