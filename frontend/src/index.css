@@ -211,18 +211,21 @@ input[type="datetime-local"].input::-webkit-calendar-picker-indicator {
 }
 
 select.input,
-select.select {
+select.select,
+select.clear-modal-date {
   color-scheme: dark;
 }
 
 select.input option,
-select.select option {
+select.select option,
+select.clear-modal-date option {
   background: #050505;
   color: #ffffff;
 }
 
 select.input option:checked,
-select.select option:checked {
+select.select option:checked,
+select.clear-modal-date option:checked {
   background: #111111;
   color: #ffffff;
 }

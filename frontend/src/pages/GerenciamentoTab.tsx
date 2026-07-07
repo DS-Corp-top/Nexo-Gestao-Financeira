@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Power, PowerOff, Trash2, AlertTriangle } from 'lucide-react';
 import { fetchSystemTenants, fetchSystemUsers, type SystemTenant, type SystemUser } from '../api/users';
@@ -250,7 +251,7 @@ export function GerenciamentoTab() {
         </div>
       )}
 
-      {confirmModal.isOpen && (
+      {confirmModal.isOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem', animation: 'fadeIn 0.2s ease' }}>
           <div className="card" style={{ maxWidth: 440, width: '100%', padding: '1.75rem', animation: 'slideUp 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -271,7 +272,8 @@ export function GerenciamentoTab() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

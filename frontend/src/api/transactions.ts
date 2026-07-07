@@ -78,8 +78,8 @@ export async function deleteTransaction({ id, unlock_password, scope = 'current'
   await api.delete(`/transactions/${id}/`, { data: { unlock_password, scope } });
 }
 
-export async function toggleTransactionCleared({ id, cleared_date, unlock_password }: { id: number, cleared_date?: string, unlock_password?: string }): Promise<Transaction> {
-  const { data } = await api.post<Transaction>(`/transactions/${id}/toggle_cleared/`, { cleared_date, unlock_password });
+export async function toggleTransactionCleared({ id, cleared_date, unlock_password, amount, account, description }: { id: number, cleared_date?: string, unlock_password?: string, amount?: string, account?: number, description?: string }): Promise<Transaction> {
+  const { data } = await api.post<Transaction>(`/transactions/${id}/toggle_cleared/`, { cleared_date, unlock_password, amount, account, description });
   return data;
 }
 

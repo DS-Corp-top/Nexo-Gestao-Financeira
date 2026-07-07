@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
@@ -587,7 +588,7 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
         </div>
       </div>
 
-      {showConfirmModal && (
+      {showConfirmModal && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '1rem', animation: 'fadeIn 0.2s ease' }}>
           <div className="card" style={{ maxWidth: 440, width: '100%', padding: '1.75rem', animation: 'slideUp 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -609,7 +610,8 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

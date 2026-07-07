@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from accounts.models import Account
 from transactions.models import ClosedMonth, Transaction
 
 
@@ -72,6 +73,9 @@ class TransactionToggleClearedSerializer(serializers.Serializer):
     """Serializer for the toggle_cleared action with custom date support."""
     cleared_date = serializers.DateField(required=False)
     unlock_password = serializers.CharField(write_only=True, required=False)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    account = serializers.PrimaryKeyRelatedField(queryset=Account.objects.all(), required=False)
+    description = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 
 class ClosedMonthSerializer(serializers.ModelSerializer):

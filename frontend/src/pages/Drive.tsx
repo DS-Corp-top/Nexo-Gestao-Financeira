@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchDocuments, uploadDocument, deleteDocument, fetchFolders, createFolder, deleteFolder, type Document, type Folder } from '../api/drive';
 import { fetchTenantCompanies } from '../api/tenant';
@@ -307,7 +308,7 @@ export default function Drive() {
       )}
 
       {/* Modal Nova Pasta */}
-      {isFolderModalOpen && (
+      {isFolderModalOpen && createPortal(
         <div className="modal-overlay">
           <div className="modal-content animate-fade-in" style={{ maxWidth: 400 }}>
             <div className="modal-header">
@@ -353,7 +354,8 @@ export default function Drive() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -427,15 +427,26 @@ export default function Transactions() {
         </div>
       </section>
 
-      <ClearTransactionModal
-        isOpen={!!clearingTx}
-        onClose={() => setClearingTx(null)}
-        transaction={clearingTx}
-        requireUnlockPassword={isMonthClosed}
-        onConfirm={async (id, date, unlockPassword) => {
-          await toggleMutation.mutateAsync({ id, cleared_date: date, unlock_password: unlockPassword });
-        }}
-      />
+      {clearingTx && createPortal(
+        <ClearTransactionModal
+          isOpen={!!clearingTx}
+          onClose={() => setClearingTx(null)}
+          transaction={clearingTx}
+          requireUnlockPassword={isMonthClosed}
+          accounts={accounts}
+          onConfirm={async (id, date, unlockPassword, overrides) => {
+            await toggleMutation.mutateAsync({
+              id,
+              cleared_date: date,
+              unlock_password: unlockPassword,
+              amount: overrides?.amount,
+              account: overrides?.account,
+              description: overrides?.description,
+            });
+          }}
+        />,
+        document.body
+      )}
 
       {deletingTx && createPortal(
         <div

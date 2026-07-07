@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Edit2, FolderPlus, List, MoreVertical, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-react';
 import {
@@ -746,7 +747,7 @@ export default function Notes() {
         </div>
       </div>
 
-      {showListForm && (
+      {showListForm && createPortal(
         <div
           className="modal-overlay"
           onClick={() => {
@@ -800,10 +801,11 @@ export default function Notes() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {viewingNote && (
+      {viewingNote && createPortal(
         <div className="modal-overlay" onClick={() => setViewingNote(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
             <div className="modal-header">
@@ -846,10 +848,11 @@ export default function Notes() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {confirmDelete && (
+      {confirmDelete && createPortal(
         <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
             <div className="modal-header">
@@ -868,10 +871,11 @@ export default function Notes() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {listToDelete && (
+      {listToDelete && createPortal(
         <div className="modal-overlay" onClick={() => setListToDelete(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
             <div className="modal-header">
@@ -890,7 +894,8 @@ export default function Notes() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

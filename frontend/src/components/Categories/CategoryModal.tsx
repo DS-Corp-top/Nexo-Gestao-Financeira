@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { type Category, type CreateCategoryPayload } from '../../api/categories';
 
 interface CategoryModalProps {
@@ -53,7 +54,7 @@ export default function CategoryModal({ category, isOpen, onClose, onSave, onDel
     }
   };
 
-  return (
+  return createPortal(
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
@@ -138,6 +139,7 @@ export default function CategoryModal({ category, isOpen, onClose, onSave, onDel
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, CheckCircle2, Circle, ShoppingCart, Trash2, ArrowLeft, Edit2 } from 'lucide-react';
 import {
@@ -24,7 +25,7 @@ function Modal({ title, onClose, onConfirm, confirmLabel = 'Salvar', children }:
   title: string; onClose: () => void; onConfirm: () => void;
   confirmLabel?: string; children: React.ReactNode;
 }) {
-  return (
+  return createPortal(
     <div style={OVERLAY} onClick={onClose}>
       <div className="card" style={{ width: '100%', maxWidth: 420, gap: '1rem', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>{title}</h3>
@@ -34,7 +35,8 @@ function Modal({ title, onClose, onConfirm, confirmLabel = 'Salvar', children }:
           <button className="btn btn-primary" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

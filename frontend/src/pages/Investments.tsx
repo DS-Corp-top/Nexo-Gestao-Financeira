@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
@@ -644,7 +645,7 @@ export default function Investments() {
         </div>
       </div>
 
-      {summaryOpen && (
+      {summaryOpen && createPortal(
         <div className="modal-overlay investment-summary-overlay" onClick={() => setSummaryOpen(false)}>
           <div className="modal-content investment-summary-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -751,7 +752,8 @@ export default function Investments() {
               <div className="investment-chart-empty">Sem dados suficientes para gerar gráficos.</div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Filtros ── */}

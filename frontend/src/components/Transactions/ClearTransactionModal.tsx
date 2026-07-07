@@ -5,19 +5,31 @@ interface ClearTransactionModalProps {
   transaction: Transaction | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (id: number, date: string, unlockPassword?: string) => Promise<void>;
+  onConfirm: (
+    id: number,
+    date: string,
+    unlockPassword?: string,
+    overrides?: { amount?: string; account?: number; description?: string }
+  ) => Promise<void>;
   requireUnlockPassword?: boolean;
+  accounts?: { id: number; name: string }[];
 }
 
-export default function ClearTransactionModal({ transaction, isOpen, onClose, onConfirm, requireUnlockPassword = false }: ClearTransactionModalProps) {
+export default function ClearTransactionModal({ transaction, isOpen, onClose, onConfirm, requireUnlockPassword = false, accounts = [] }: ClearTransactionModalProps) {
   const [clearedDate, setClearedDate] = useState('');
   const [unlockPassword, setUnlockPassword] = useState('');
+  const [amount, setAmount] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (transaction) {
       setClearedDate(transaction.date || new Date().toISOString().split('T')[0]);
       setUnlockPassword('');
+      setAmount(transaction.amount);
+      setAccountId(String(transaction.account));
+      setDescription(transaction.description || '');
     }
   }, [transaction]);
 
@@ -27,7 +39,11 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
     e.preventDefault();
     try {
       setLoading(true);
-      await onConfirm(transaction.id, clearedDate, unlockPassword || undefined);
+      await onConfirm(transaction.id, clearedDate, unlockPassword || undefined, {
+        amount,
+        account: accountId ? Number(accountId) : undefined,
+        description,
+      });
       onClose();
     } catch (err: any) {
       console.error('Falha ao baixar transação:', err.response?.status);
@@ -58,20 +74,54 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
         </div>
 
         <div className="clear-modal-summary">
-          <span>{transaction.account_name}</span>
+          <span>Original: {transaction.account_name}</span>
           <strong style={{ color: transaction.transaction_type === 'income' ? '#86efac' : '#fda4af' }}>
             {formatCurrency(transaction.amount)}
           </strong>
         </div>
 
         <form onSubmit={handleSubmit} className="clear-modal-form">
+          <label className="clear-modal-label" htmlFor={`modal-description-${transaction.id}`}>Descrição</label>
+          <input
+            id={`modal-description-${transaction.id}`}
+            className="clear-modal-date"
+            type="text"
+            autoFocus
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+
+          <label className="clear-modal-label" htmlFor={`modal-account-${transaction.id}`}>Conta</label>
+          <select
+            id={`modal-account-${transaction.id}`}
+            className="clear-modal-date"
+            required
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+          >
+            {accounts.map((acc) => (
+              <option key={acc.id} value={acc.id}>{acc.name}</option>
+            ))}
+          </select>
+
+          <label className="clear-modal-label" htmlFor={`modal-amount-${transaction.id}`}>Valor</label>
+          <input
+            id={`modal-amount-${transaction.id}`}
+            className="clear-modal-date"
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+
           <label className="clear-modal-label" htmlFor={`modal-cleared-date-${transaction.id}`}>Data da baixa</label>
           <input
             id={`modal-cleared-date-${transaction.id}`}
             className="clear-modal-date"
             type="date"
             required
-            autoFocus
             value={clearedDate}
             onChange={(e) => setClearedDate(e.target.value)}
           />

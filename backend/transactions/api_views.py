@@ -230,10 +230,32 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
                 from rest_framework.exceptions import ValidationError
                 raise ValidationError({"detail": "Mês fechado: informe sua senha para confirmar esta alteração."})
 
+            update_fields = ["date", "is_cleared", "is_ignored", "updated_at"]
+
+            if "amount" in serializer.validated_data:
+                new_amount = serializer.validated_data["amount"]
+                if new_amount <= 0:
+                    from rest_framework.exceptions import ValidationError
+                    raise ValidationError({"amount": "Informe um valor maior que zero."})
+                transaction.amount = new_amount
+                update_fields.append("amount")
+
+            if "account" in serializer.validated_data:
+                new_account = serializer.validated_data["account"]
+                if new_account.tenant_id != transaction.tenant_id:
+                    from rest_framework.exceptions import ValidationError
+                    raise ValidationError({"account": "Conta inválida para este cliente."})
+                transaction.account = new_account
+                update_fields.append("account")
+
+            if "description" in serializer.validated_data:
+                transaction.description = serializer.validated_data["description"]
+                update_fields.append("description")
+
             transaction.date = cleared_date
             transaction.is_cleared = True
             transaction.is_ignored = False
-            transaction.save(update_fields=["date", "is_cleared", "is_ignored", "updated_at"])
+            transaction.save(update_fields=update_fields)
 
         from transactions.serializers import TransactionSerializer
         return Response(
