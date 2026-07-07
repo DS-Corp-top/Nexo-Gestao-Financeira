@@ -3,18 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import Administration from './Administration';
-import * as tenantApi from '../api/tenant';
 import * as usersApi from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import { expectPortaledToBody } from '../test/portal';
 
-vi.mock('../api/tenant', async () => {
-  const actual = await vi.importActual<typeof import('../api/tenant')>('../api/tenant');
-  return {
-    ...actual,
-    fetchTenantCompanies: vi.fn(),
-  };
-});
 vi.mock('../api/users', async () => {
   const actual = await vi.importActual<typeof import('../api/users')>('../api/users');
   return {
@@ -47,7 +39,6 @@ describe('Administration Page - Backup Tab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({ user: { is_superuser: true }, isLoggedIn: true, refresh: vi.fn(), logout: vi.fn() });
-    (tenantApi.fetchTenantCompanies as any).mockResolvedValue([]);
     (usersApi.fetchTenantMembers as any).mockResolvedValue([]);
     (usersApi.fetchPendingUsers as any).mockResolvedValue([]);
     (usersApi.fetchSystemStats as any).mockResolvedValue({});

@@ -87,11 +87,6 @@ export async function fetchInvoices(filters?: InvoiceFilters): Promise<Invoice[]
   return data.results !== undefined ? data.results : data;
 }
 
-export async function fetchInvoice(id: number): Promise<Invoice> {
-  const { data } = await api.get<Invoice>(`/invoices/${id}/`);
-  return data;
-}
-
 export async function createInvoice(payload: CreateInvoicePayload): Promise<Invoice> {
   const { data } = await api.post<Invoice>('/invoices/', payload);
   return data;
@@ -119,11 +114,6 @@ export async function toggleInvoiceNoteIssued(id: number): Promise<Invoice> {
 export async function fetchClients(): Promise<Client[]> {
   const { data } = await api.get<any>('/clients/');
   return data.results !== undefined ? data.results : data;
-}
-
-export async function createClient(payload: Partial<Client>): Promise<Client> {
-  const { data } = await api.post<Client>('/clients/', payload);
-  return data;
 }
 
 export async function updateClient(id: number, payload: Partial<Client>): Promise<Client> {

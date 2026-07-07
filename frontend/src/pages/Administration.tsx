@@ -10,7 +10,6 @@ import {
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { fetchTenantCompanies, type TenantCompany } from '../api/tenant';
 import {
   approveUser,
   fetchPendingUsers,
@@ -139,7 +138,6 @@ function DashboardTab({
   users,
   isLoadingTenants,
   isLoadingUsers,
-  isLoadingPending,
 }: {
   members: TenantMember[];
   pendingUsers: PendingUser[];
@@ -149,7 +147,6 @@ function DashboardTab({
   users: SystemUser[];
   isLoadingTenants: boolean;
   isLoadingUsers: boolean;
-  isLoadingPending: boolean;
 }) {
   const recentTenants = tenants.slice(-5).reverse();
   const recentUsers = users.slice(-5).reverse();
@@ -207,32 +204,6 @@ function DashboardTab({
             <div>{recentUsers.map((u) => <UserRow key={`${u.id}-${u.tenant_slug}`} u={u} />)}</div>
           </SectionCard>
 
-          {false && (
-          <SectionCard
-            icon={Shield}
-            title={`Cadastros pendentes (${pendingUsers.length})`}
-            subtitle="Solicitações aguardando aprovação."
-            isLoading={isLoadingPending}
-            isEmpty={pendingUsers.length === 0}
-            emptyLabel="Nenhum cadastro pendente"
-          >
-            <div>
-              {pendingUsers.slice(0, 5).map((u) => (
-                <div key={u.id} style={listRowStyle}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                        {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
-                      </span>
-                      <PersonBadge type={u.person_type} />
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>{u.email}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-          )}
         </div>
       )}
     </div>
@@ -357,110 +328,6 @@ function CadastrosTab({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Empresas Tab ─────────────────────────────────────────────────────────────
-
-function EmpresasTab({ companies }: { companies: TenantCompany[] }) {
-  return (
-    <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
-      {/* Companies list */}
-      <div className="card" style={{ padding: 0 }}>
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderBottom: '1px solid var(--color-border)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-          }}
-        >
-          <Building2 size={20} style={{ color: 'var(--color-accent)' }} />
-          <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Empresas do tenant</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-              Todas as empresas vinculadas a este workspace.
-            </p>
-          </div>
-        </div>
-
-        {companies.length === 0 ? (
-          <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
-            <Building2 className="empty-state-icon" />
-            <h3 className="empty-state-title">Nenhuma empresa cadastrada</h3>
-            <p className="empty-state-text">Adicione empresas em Configurações → Empresa.</p>
-          </div>
-        ) : (
-          <div>
-            {companies.map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  padding: '1rem 1.25rem',
-                  borderBottom: '1px solid var(--color-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 'var(--radius-md)',
-                    background: 'rgba(122,191,0,0.1)',
-                    border: '1px solid rgba(122,191,0,0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Building2 size={16} style={{ color: 'var(--color-accent)' }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      marginBottom: 2,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-                      {c.sequence_number} — {c.name}
-                    </span>
-                    {c.is_default && (
-                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
-                        Padrão
-                      </span>
-                    )}
-                    {!c.is_active && (
-                      <span className="badge" style={{ fontSize: '0.7rem', opacity: 0.55 }}>
-                        Inativa
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <span>{formatDoc(c.document)}</span>
-                    {c.city && (
-                      <span>
-                        {c.city}
-                        {c.state ? `/${c.state}` : ''}
-                      </span>
-                    )}
-                    {c.email && <span>{c.email}</span>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
     </div>
   );
 }
@@ -747,23 +614,15 @@ function UserTable({ users }: { users: SystemUser[] }) {
 function ListagensTab({
   tenants,
   users,
-  pendingUsers,
   isLoadingTenants,
   isLoadingUsers,
-  isLoadingPending,
   isSuperuser,
-  onApprove,
-  isApprovePending,
 }: {
   tenants: SystemTenant[];
   users: SystemUser[];
-  pendingUsers: PendingUser[];
   isLoadingTenants: boolean;
   isLoadingUsers: boolean;
-  isLoadingPending: boolean;
   isSuperuser: boolean;
-  onApprove: (id: number) => void;
-  isApprovePending: boolean;
 }) {
   const [searchType, setSearchType] = useState<'tenant' | 'empresa' | 'usuario'>('tenant');
   const [searchTerm, setSearchTerm] = useState('');
@@ -891,46 +750,6 @@ function ListagensTab({
         <UserTable users={filteredUsers} />
       </SectionCard>
 
-      {false && (
-      <SectionCard
-        icon={Shield}
-        title={`Cadastros Pendentes (${pendingUsers.length})`}
-        subtitle="Solicitações de acesso aguardando aprovação."
-        isLoading={isLoadingPending}
-        isEmpty={pendingUsers.length === 0}
-        emptyLabel="Nenhum cadastro pendente"
-      >
-        <div>
-          {pendingUsers.map((u) => (
-            <div key={u.id} style={listRowStyle}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                    {u.first_name ? `${u.first_name}${u.last_name ? ' ' + u.last_name : ''}` : u.username}
-                  </span>
-                  <PersonBadge type={u.person_type} />
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <span>{u.email}</span>
-                  {u.document && <span>{u.person_type === 'pj' ? 'CNPJ' : 'CPF'}: {formatDoc(u.document)}</span>}
-                  {u.tenant_id && <span>Tenant: {u.tenant_id}</span>}
-                  <span>solicitado em {formatDate(u.date_joined)}</span>
-                </div>
-              </div>
-              <button
-                className="btn btn-primary"
-                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                onClick={() => onApprove(u.id)}
-                disabled={isApprovePending}
-              >
-                <CheckCircle2 size={16} />
-                Aprovar
-              </button>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-      )}
     </div>
   );
 }
@@ -947,11 +766,6 @@ export default function Administration() {
     queryKey: ['tenant-members'],
     queryFn: fetchTenantMembers,
     refetchInterval: 15000,
-  });
-
-  const { data: companies = [] } = useQuery({
-    queryKey: ['tenantCompanies'],
-    queryFn: fetchTenantCompanies,
   });
 
   const { data: pendingUsers = [], isLoading: pendingLoading } = useQuery({
@@ -1071,20 +885,15 @@ export default function Administration() {
           users={systemUsers}
           isLoadingTenants={tenantsLoading}
           isLoadingUsers={usersLoading}
-          isLoadingPending={pendingLoading}
         />
       )}
       {tab === 'listagens' && (
         <ListagensTab
           tenants={systemTenants}
           users={systemUsers}
-          pendingUsers={pendingUsers}
           isLoadingTenants={tenantsLoading}
           isLoadingUsers={usersLoading}
-          isLoadingPending={pendingLoading}
           isSuperuser={isSuperuser}
-          onApprove={(id) => approveMutation.mutate(id)}
-          isApprovePending={approveMutation.isPending}
         />
       )}
       {tab === 'cadastros' && (
@@ -1102,7 +911,6 @@ export default function Administration() {
       {tab === 'gerenciamento' && (
         <GerenciamentoTab />
       )}
-      {false && <EmpresasTab companies={companies} />}
     </div>
   );
 }

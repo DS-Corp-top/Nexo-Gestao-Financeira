@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.test import SimpleTestCase, TestCase
 
 from accounts.models import Account
 from common.balance import (
@@ -14,7 +14,6 @@ from common.balance import (
     calculate_user_balance,
 )
 from common.months import month_bounds, month_value_to_date, shift_month
-from common.security import resolve_safe_redirect_url
 from common.tenancy import assign_tenant, resolve_tenant
 from tenants.models import Tenant, TenantMembership
 from transactions.models import Transaction
@@ -41,64 +40,6 @@ class MonthHelpersTests(SimpleTestCase):
             month_bounds(date(2026, 12, 1)),
             (date(2026, 12, 1), date(2027, 1, 1)),
         )
-
-
-@override_settings(ALLOWED_HOSTS=["nexo.test"])
-class SafeRedirectTests(SimpleTestCase):
-    def setUp(self):
-        self.factory = RequestFactory()
-
-    def test_empty_destination_uses_fallback(self):
-        request = self.factory.get("/", HTTP_HOST="nexo.test")
-
-        result = resolve_safe_redirect_url(request, "  ", "/dashboard/")
-
-        self.assertEqual(result, "/dashboard/")
-
-    def test_local_destination_keeps_path_and_query_string(self):
-        request = self.factory.get("/", HTTP_HOST="nexo.test")
-
-        result = resolve_safe_redirect_url(
-            request,
-            "/transactions/?month=2026-06",
-            "/dashboard/",
-        )
-
-        self.assertEqual(result, "/transactions/?month=2026-06")
-
-    def test_external_and_scheme_relative_destinations_are_rejected(self):
-        request = self.factory.get("/", HTTP_HOST="nexo.test")
-
-        for destination in ("https://attacker.test/path", "//attacker.test/path"):
-            with self.subTest(destination=destination):
-                self.assertEqual(
-                    resolve_safe_redirect_url(request, destination, "/safe/"),
-                    "/safe/",
-                )
-
-    def test_secure_request_rejects_plain_http_destination(self):
-        request = self.factory.get("/", secure=True, HTTP_HOST="nexo.test")
-
-        result = resolve_safe_redirect_url(
-            request,
-            "http://nexo.test/transactions/",
-            "/safe/",
-        )
-
-        self.assertEqual(result, "/safe/")
-
-    def test_replacement_is_applied_before_validation(self):
-        request = self.factory.get("/", HTTP_HOST="nexo.test")
-
-        result = resolve_safe_redirect_url(
-            request,
-            "/old/42/?month=2026-06",
-            "/safe/",
-            replacements=(("/old/", "/new/"),),
-        )
-
-        self.assertEqual(result, "/new/42/?month=2026-06")
-
 
 class TenancyHelpersTests(SimpleTestCase):
     def test_resolve_tenant_prefers_explicit_tenant(self):

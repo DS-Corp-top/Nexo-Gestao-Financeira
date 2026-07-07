@@ -65,8 +65,3 @@ export async function logout(): Promise<void> {
   }
   window.location.href = '/login';
 }
-
-/** Always returns true — actual auth state is determined by fetchMe() success. */
-export function isAuthenticated(): boolean {
-  return true;
-}

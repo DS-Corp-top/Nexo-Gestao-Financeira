@@ -12,20 +12,6 @@ from categories.api_views import CategoryViewSet
 from dashboard.api_views import DashboardView
 from investments.api_views import BacenBanksView, InvestmentEntryViewSet, InvestmentExchangeRatesView, InvestmentViewSet
 from invoices.api_views import ClientViewSet, InvoiceViewSet
-"""API v1 URL configuration.
-
-All endpoints are mounted under /api/v1/ by the main urls.py.
-"""
-
-from django.urls import include, path
-from rest_framework.routers import DefaultRouter
-from users.api_views import CookieTokenRefreshView as TokenRefreshView
-
-from accounts.api_views import AccountViewSet, CardMonthlyLimitViewSet
-from categories.api_views import CategoryViewSet
-from dashboard.api_views import DashboardView
-from investments.api_views import BacenBanksView, InvestmentEntryViewSet, InvestmentExchangeRatesView, InvestmentViewSet
-from invoices.api_views import ClientViewSet, InvoiceViewSet
 from shopping.api_views import ShoppingItemViewSet, ShoppingListViewSet
 from tenants.api_views import (
     CepLookupView,

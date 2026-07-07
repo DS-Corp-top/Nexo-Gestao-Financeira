@@ -92,13 +92,3 @@ export async function fetchClosedMonths(params?: { year?: number; month?: number
   const { data } = await api.get<any>('/closed-months/', { params });
   return data.results !== undefined ? data.results : data;
 }
-
-export async function createClosedMonth(payload: { year: number; month: number; is_closed?: boolean }): Promise<ClosedMonth> {
-  const { data } = await api.post<ClosedMonth>('/closed-months/', payload);
-  return data;
-}
-
-export async function updateClosedMonth(id: number, payload: Partial<Pick<ClosedMonth, 'is_closed'>>): Promise<ClosedMonth> {
-  const { data } = await api.patch<ClosedMonth>(`/closed-months/${id}/`, payload);
-  return data;
-}
