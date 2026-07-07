@@ -53,9 +53,9 @@ E o backend deve permitir a origem do Vite:
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-## Docker (opcional)
+## Docker
 
-Alternativa local/self-hosted que nao interfere no deploy Heroku (que usa buildpacks lendo o `Procfile` da raiz, nao os arquivos Docker abaixo).
+O `Dockerfile` (raiz) compila o frontend e serve o build via Django/WhiteNoise no mesmo container. E usado tanto para rodar local/self-hosted via `docker-compose.yml` quanto para o deploy no Heroku (via `heroku.yml`, ver abaixo) — a mesma imagem em ambos os casos.
 
 ```powershell
 Copy-Item .env.example .env
@@ -70,39 +70,19 @@ Sobe 4 servicos:
 - `backend`: build multi-stage (React + Django), roda `migrate` e depois Gunicorn em `http://localhost:8000` (porta ajustavel via `WEB_PORT`)
 - `worker`: Celery, mesma imagem do backend
 
-O `Dockerfile` (raiz) compila o frontend e serve o build via Django/WhiteNoise no mesmo container, no mesmo padrao do dyno unico do Heroku. Dados de Postgres, Redis e uploads (`media/`) persistem em volumes nomeados.
+Dados de Postgres, Redis e uploads (`media/`) persistem em volumes nomeados.
 
-## Deploy em um dyno Heroku
+## Deploy em um dyno Heroku (Container Registry)
 
-Para rodar React + Django no mesmo dyno do app `nexo-gestao-financeira`, use o repositório pela raiz e configure os buildpacks nesta ordem:
+O deploy no Heroku usa o stack `container`: o `heroku.yml` da raiz descreve como buildar (o mesmo `Dockerfile` acima) e quais comandos rodar por tipo de dyno (`release`, `web`, `worker`).
 
-```powershell
-heroku buildpacks:clear -a nexo-gestao-financeira
-heroku buildpacks:add heroku/nodejs -a nexo-gestao-financeira
-heroku buildpacks:add heroku/python -a nexo-gestao-financeira
-```
-
-O build do Heroku executa:
-
-- `npm --prefix frontend ci`
-- `npm --prefix frontend run build`
-- `python manage.py collectstatic`
-
-Nos logs de deploy deve aparecer:
-
-```text
-[build] React build ready at /app/frontend/dist/index.html
-```
-
-O `Procfile` da raiz valida `frontend/dist/index.html` no release e depois sobe o Gunicorn apontando para `backend/nexo.wsgi`. Se aparecer `React build not found`, o buildpack Node.js nao rodou, rodou depois do Python, ou o deploy foi feito a partir da pasta `backend/` em vez da raiz do repositorio.
-
-Como fallback operacional para Heroku, `frontend/dist` pode ficar versionado. Rode `npm run build` antes do deploy quando quiser garantir que o slug contenha o React mesmo se o buildpack Node nao executar o build.
-
-Se o erro mostrar um caminho como `/frontend/dist/index.html`, remova a config var customizada para o Django usar o caminho correto do slug:
+Configuracao inicial do app (uma unica vez):
 
 ```powershell
-heroku config:unset FRONTEND_DIST_DIR -a nexo-gestao-financeira
+heroku stack:set container -a nexo-gestao-financeira
 ```
+
+A partir dai, cada `git push heroku main` (ou o job `deploy` do GitHub Actions) builda a imagem Docker a partir do `heroku.yml`/`Dockerfile` em vez de buildpacks. O `release` roda `check_react_build` + `migrate`; o `web` sobe o Gunicorn na porta `$PORT` do dyno; o `worker` sobe o Celery — os tres compartilham a mesma imagem.
 
 Config minima:
 
@@ -126,7 +106,7 @@ Dois workflows separados:
 - `frontend-tests`: `lint`, `test` (vitest) e `build` (tsc + vite).
 - `e2e-tests`: roda depois que os dois acima passam. Sobe backend (`migrate` + `seed_e2e` + `runserver`) e frontend (`vite dev`) de verdade via `webServer` do Playwright, e testa login -> navegacao -> criacao de uma transacao num navegador Chromium real. Ver `frontend/playwright.config.ts` e `frontend/e2e/`.
 
-`.github/workflows/deploy.yml` ("Deploy") dispara via `workflow_run` assim que o workflow "CI" termina com sucesso para um push direto em `main` (nao roda para PRs nem se algum teste falhar). Faz `git push` para o Heroku, reaproveitando os buildpacks Node+Python ja configurados no app.
+`.github/workflows/deploy.yml` ("Deploy") dispara via `workflow_run` assim que o workflow "CI" termina com sucesso para um push direto em `main` (nao roda para PRs nem se algum teste falhar). Faz `git push` para o Heroku, que builda a imagem Docker a partir do `heroku.yml` (stack `container` — ver secao acima).
 
 Para o job `deploy` funcionar, configure o secret no GitHub Environment `nexo-gestao-financeira` (`Settings > Environments`) ou como secret do repositorio (`Settings > Secrets and variables > Actions`):
 

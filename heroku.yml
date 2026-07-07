@@ -1,0 +1,7 @@
+build:
+  docker:
+    web: Dockerfile
+run:
+  release: python manage.py check_react_build && python manage.py migrate --noinput
+  web: gunicorn core.wsgi --bind 0.0.0.0:$PORT --workers 3 --threads 2 --worker-class gthread --log-file -
+  worker: celery -A core worker --loglevel=info --concurrency=2
