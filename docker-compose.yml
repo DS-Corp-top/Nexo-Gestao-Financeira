@@ -31,6 +31,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    image: nexo-gestao-financeira:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -52,11 +53,9 @@ services:
       - media_data:/app/backend/media
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    # Sem build: proprio - reaproveita a imagem buildada pelo backend.
+    # "docker compose build worker" sozinho nao faz nada; use "docker compose up --build".
+    image: nexo-gestao-financeira:latest
     restart: unless-stopped
     env_file:
       - .env
