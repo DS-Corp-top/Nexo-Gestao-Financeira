@@ -7,7 +7,7 @@ date_start/date_end range chosen by the user in the Reports page.
 from datetime import date as date_cls, timedelta
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import DecimalField, Sum
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -21,6 +21,26 @@ from investments.models import Investment, InvestmentEntry
 from transactions.models import Transaction
 
 ZERO = Decimal("0.00")
+TWO_PLACES = Decimal("0.01")
+AMOUNT_FIELD = DecimalField(max_digits=12, decimal_places=2)
+
+
+def _money(value):
+    """Render a Decimal as a "X.XX" string for the API response.
+
+    SQLite (used in CI; Postgres is used locally via Docker) doesn't
+    preserve decimal_places through Coalesce(Sum(...), 0.00) when the
+    aggregate matches zero rows — it comes back as Decimal('0') instead of
+    Decimal('0.00'), even with output_field pinned to a DecimalField. str()
+    on an unscaled Decimal drops the trailing zeros ("0" instead of "0.00"),
+    which breaks any consumer expecting a fixed 2-decimal money string.
+    Quantizing before str() fixes it regardless of backend.
+    """
+    return str(value.quantize(TWO_PLACES))
+
+
+def _sum_amount(queryset):
+    return queryset.aggregate(total=Coalesce(Sum("amount"), ZERO, output_field=AMOUNT_FIELD))["total"]
 
 
 def _parse_date(raw_value, field_name):
@@ -74,12 +94,8 @@ class TransactionsReportView(APIView):
             )
             closing_balance = calculate_user_balance(request.user, cutoff_date=date_end, tenant=tenant)
 
-        total_income = qs.filter(
-            transaction_type=Transaction.TransactionType.INCOME
-        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-        total_expense = qs.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE
-        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        total_income = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.INCOME))
+        total_expense = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.EXPENSE))
 
         transactions = [] if masked else [
             {
@@ -87,7 +103,7 @@ class TransactionsReportView(APIView):
                 "date": t.date.isoformat(),
                 "description": t.description or "Sem descrição",
                 "transaction_type": t.transaction_type,
-                "amount": str(t.amount),
+                "amount": _money(t.amount),
                 "account": t.account.name if t.account else None,
                 "category": t.category.name if t.category else None,
                 "is_cleared": t.is_cleared,
@@ -99,10 +115,10 @@ class TransactionsReportView(APIView):
             "date_start": date_start.isoformat(),
             "date_end": date_end.isoformat(),
             "account": account.name if account else None,
-            "opening_balance": str(opening_balance),
-            "closing_balance": str(closing_balance),
-            "total_income": str(total_income),
-            "total_expense": str(total_expense),
+            "opening_balance": _money(opening_balance),
+            "closing_balance": _money(closing_balance),
+            "total_income": _money(total_income),
+            "total_expense": _money(total_expense),
             "transactions": transactions,
         })
 
@@ -123,34 +139,30 @@ class SummaryReportView(APIView):
             date__lte=date_end,
         )
 
-        total_income = qs.filter(
-            transaction_type=Transaction.TransactionType.INCOME
-        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-        total_expense = qs.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE
-        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        total_income = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.INCOME))
+        total_expense = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.EXPENSE))
 
         expense_by_category = [
-            {"name": row["category__name"] or "Sem categoria", "total": str(row["total"])}
+            {"name": row["category__name"] or "Sem categoria", "total": _money(row["total"])}
             for row in qs.filter(transaction_type=Transaction.TransactionType.EXPENSE)
             .values("category__name")
-            .annotate(total=Coalesce(Sum("amount"), ZERO))
+            .annotate(total=Coalesce(Sum("amount"), ZERO, output_field=AMOUNT_FIELD))
             .order_by("-total")
         ]
         income_by_category = [
-            {"name": row["category__name"] or "Sem categoria", "total": str(row["total"])}
+            {"name": row["category__name"] or "Sem categoria", "total": _money(row["total"])}
             for row in qs.filter(transaction_type=Transaction.TransactionType.INCOME)
             .values("category__name")
-            .annotate(total=Coalesce(Sum("amount"), ZERO))
+            .annotate(total=Coalesce(Sum("amount"), ZERO, output_field=AMOUNT_FIELD))
             .order_by("-total")
         ]
 
         return Response({
             "date_start": date_start.isoformat(),
             "date_end": date_end.isoformat(),
-            "total_income": str(total_income),
-            "total_expense": str(total_expense),
-            "balance": str(total_income - total_expense),
+            "total_income": _money(total_income),
+            "total_expense": _money(total_expense),
+            "balance": _money(total_income - total_expense),
             "expense_by_category": [] if masked else expense_by_category,
             "income_by_category": [] if masked else income_by_category,
         })
@@ -174,16 +186,16 @@ class InvestmentsReportView(APIView):
             tenant=tenant, date__gte=date_start, date__lte=date_end
         )
 
-        def _sum(investment_id, entry_types):
-            return entries_qs.filter(
-                investment_id=investment_id, entry_type__in=entry_types
-            ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        def _sum_for(investment_id, entry_types):
+            return _sum_amount(
+                entries_qs.filter(investment_id=investment_id, entry_type__in=entry_types)
+            )
 
         investments = []
         for investment in investments_qs.order_by("name"):
-            deposited = _sum(investment.pk, [InvestmentEntry.EntryType.DEPOSIT])
-            withdrawn = _sum(investment.pk, [InvestmentEntry.EntryType.WITHDRAWAL])
-            earnings = _sum(
+            deposited = _sum_for(investment.pk, [InvestmentEntry.EntryType.DEPOSIT])
+            withdrawn = _sum_for(investment.pk, [InvestmentEntry.EntryType.WITHDRAWAL])
+            earnings = _sum_for(
                 investment.pk, [InvestmentEntry.EntryType.DIVIDEND, InvestmentEntry.EntryType.YIELD]
             )
             if deposited == ZERO and withdrawn == ZERO and earnings == ZERO:
@@ -194,10 +206,10 @@ class InvestmentsReportView(APIView):
                 "investment_type": investment.investment_type,
                 "investment_type_display": investment.get_investment_type_display(),
                 "broker": investment.broker,
-                "total_invested": str(deposited),
-                "total_withdrawn": str(withdrawn),
-                "total_earnings": str(earnings),
-                "net_invested": str(deposited - withdrawn),
+                "total_invested": _money(deposited),
+                "total_withdrawn": _money(withdrawn),
+                "total_earnings": _money(earnings),
+                "net_invested": _money(deposited - withdrawn),
             })
 
         total_invested = sum((Decimal(i["total_invested"]) for i in investments), ZERO)
@@ -208,10 +220,10 @@ class InvestmentsReportView(APIView):
             "date_start": date_start.isoformat(),
             "date_end": date_end.isoformat(),
             "investments": [] if masked else investments,
-            "total_invested": str(total_invested),
-            "total_withdrawn": str(total_withdrawn),
-            "total_earnings": str(total_earnings),
-            "net_invested": str(total_invested - total_withdrawn),
+            "total_invested": _money(total_invested),
+            "total_withdrawn": _money(total_withdrawn),
+            "total_earnings": _money(total_earnings),
+            "net_invested": _money(total_invested - total_withdrawn),
         })
 
 
@@ -245,7 +257,7 @@ class DREReportView(APIView):
             date__gte=date_start,
             date__lte=date_end,
         )
-        total_income = income_qs.aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        total_income = _sum_amount(income_qs)
 
         expense_qs = Transaction.objects.filter(
             tenant=tenant,
@@ -259,17 +271,17 @@ class DREReportView(APIView):
 
         def _by_category(qs):
             return [
-                {"name": row["category__name"] or "Sem categoria", "total": str(row["total"])}
+                {"name": row["category__name"] or "Sem categoria", "total": _money(row["total"])}
                 for row in qs.values("category__name")
-                .annotate(total=Coalesce(Sum("amount"), ZERO))
+                .annotate(total=Coalesce(Sum("amount"), ZERO, output_field=AMOUNT_FIELD))
                 .order_by("-total")
             ]
 
         costs_by_category = _by_category(cost_qs)
         operating_by_category = _by_category(operating_qs)
 
-        total_cost = cost_qs.aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-        total_operating_expenses = operating_qs.aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        total_cost = _sum_amount(cost_qs)
+        total_operating_expenses = _sum_amount(operating_qs)
 
         gross_profit = total_income - total_cost
         net_result = gross_profit - total_operating_expenses
@@ -277,11 +289,11 @@ class DREReportView(APIView):
         return Response({
             "date_start": date_start.isoformat(),
             "date_end": date_end.isoformat(),
-            "total_income": str(total_income),
+            "total_income": _money(total_income),
             "costs_by_category": [] if masked else costs_by_category,
-            "total_cost": str(total_cost),
-            "gross_profit": str(gross_profit),
+            "total_cost": _money(total_cost),
+            "gross_profit": _money(gross_profit),
             "operating_expenses": [] if masked else operating_by_category,
-            "total_operating_expenses": str(total_operating_expenses),
-            "net_result": str(net_result),
+            "total_operating_expenses": _money(total_operating_expenses),
+            "net_result": _money(net_result),
         })
