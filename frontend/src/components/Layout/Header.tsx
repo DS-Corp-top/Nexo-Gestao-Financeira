@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Menu, Building2, ChevronDown, LogOut, ArrowLeft, Settings } from 'lucide-react';
+import { Menu, Building2, ChevronDown, LogOut, ArrowLeft, Settings, Bell, BellOff } from 'lucide-react';
 import { fetchTenantCompanies } from '../../api/tenant';
 import { fetchAllCompanies, type AllCompanyItem } from '../../api/system';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 interface HeaderProps {
   title: string;
@@ -32,6 +33,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
   const location = useLocation();
   const { user, tenant, logout, refresh } = useAuth();
   const queryClient = useQueryClient();
+  const push = usePushNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
   const [tenantMenuOpen, setTenantMenuOpen] = useState(false);
   const [activeCompanyId, setActiveCompanyId] = useState<number | null>(() => {
@@ -467,6 +469,41 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                   </span>
                 </div>
               </div>
+
+              {push.permission !== 'unsupported' && (
+                <button
+                  onClick={() => { push.subscribed ? push.unsubscribe() : push.subscribe(); }}
+                  disabled={push.loading || push.permission === 'denied'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.55rem',
+                    width: '100%',
+                    padding: '0.62rem 0.72rem',
+                    fontSize: '0.82rem',
+                    lineHeight: 1.25,
+                    color: push.permission === 'denied' ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: '1px solid var(--color-border)',
+                    cursor: push.permission === 'denied' ? 'default' : 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { if (push.permission !== 'denied') e.currentTarget.style.background = 'var(--color-surface-hover, rgba(255,255,255,0.05))'; }}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                  title={push.permission === 'denied' ? 'Bloqueado nas configurações do navegador' : undefined}
+                >
+                  {push.subscribed ? <Bell size={15} /> : <BellOff size={15} />}
+                  <span>
+                    {push.permission === 'denied'
+                      ? 'Notificações bloqueadas no navegador'
+                      : push.subscribed
+                        ? 'Notificações ativadas'
+                        : 'Ativar notificações'}
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={() => { setMenuOpen(false); logout(); }}

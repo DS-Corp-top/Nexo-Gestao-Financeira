@@ -22,6 +22,7 @@ from tenants.api_views import (
     TenantResetView,
 )
 from notes.api_views import NoteListViewSet, NoteViewSet
+from notifications.api_views import PushSubscribeView, PushUnsubscribeView, VapidPublicKeyView
 from drive.api_views import DocumentViewSet, FolderViewSet
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoItemViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
@@ -100,6 +101,11 @@ urlpatterns = [
 
     # CEP lookup
     path("cep/<str:cep>/", CepLookupView.as_view(), name="cep_lookup"),
+
+    # Web Push notifications
+    path("push/vapid-public-key/", VapidPublicKeyView.as_view(), name="push_vapid_public_key"),
+    path("push/subscribe/", PushSubscribeView.as_view(), name="push_subscribe"),
+    path("push/unsubscribe/", PushUnsubscribeView.as_view(), name="push_unsubscribe"),
 
     # Router-registered viewsets
     path("", include(router.urls)),

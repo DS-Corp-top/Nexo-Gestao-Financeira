@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -105,6 +106,7 @@ INSTALLED_APPS = [
     "todos.apps.TodosConfig",
     "notes.apps.NotesConfig",
     "drive.apps.DriveConfig",
+    "notifications.apps.NotificationsConfig",
 ] + (["django_browser_reload"] if RUNSERVER else [])
 
 MIDDLEWARE = [
@@ -408,6 +410,19 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_SOFT_TIME_LIMIT = 240   # 4 min — SoftTimeLimitExceeded (capturável)
 CELERY_TASK_TIME_LIMIT = 270        # 4.5 min — kill forçado (fallback)
+CELERY_BEAT_SCHEDULE = {
+    "send-due-expense-push-reminders": {
+        "task": "notifications.tasks.send_due_expense_reminders",
+        "schedule": crontab(hour=8, minute=0),
+    },
+}
+
+# Web Push (VAPID) — chaves geradas com `python -m py_vapid --gen`, ou
+# vapid.gen_vapid_key() do pacote py-vapid. A chave publica tambem e servida
+# ao frontend via /api/v1/push/vapid-public-key/.
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:contato@dscorp.top")
 
 # Cache — usa Redis se disponível e acessível (necessário para rate limiting em
 # múltiplos dynos). Caso contrário, cai para memória local (single-process).

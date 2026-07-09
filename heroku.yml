@@ -11,3 +11,8 @@ run:
     command:
       - celery -A core worker --loglevel=info --concurrency=2
     image: web
+  # Sem processo "beat" aqui de proposito (evita pagar um dyno so pra isso).
+  # Os lembretes de contas a vencer (notifications/tasks.py) sao disparados
+  # no Heroku pelo addon Heroku Scheduler, chamando diariamente:
+  #   python manage.py send_due_push_notifications
+  # Localmente (docker compose) quem dispara isso e o servico "beat".

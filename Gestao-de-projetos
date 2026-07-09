@@ -1,0 +1,58 @@
+1. Tipos de Correções (Fixes e Patches)
+•	Hotfix: Correção urgente aplicada direto em produção para resolver falhas críticas fora do ciclo normal.
+•	Warmfix: Correção de prioridade média para erros em produção que não são catastróficos, mas exigem pressa.
+•	Coldfix: Correção de bugs não urgentes em produção, acumulada para a próxima grande atualização programada.
+•	Bug-fix: Termo genérico para a correção de falhas encontradas em ambientes de desenvolvimento ou testes.
+•	Patch: Pacote planejado que reúne múltiplos fixes e atualizações de segurança para o usuário final.
+•	Quick-fix: Solução rápida (às vezes temporária) aplicada diretamente no código para contornar um problema.
+•	Workaround: Solução alternativa que não corrige o código, mas desvia do erro para manter o sistema funcional.
+
+2. Evoluções, Melhorias e Manutenção
+•	Feature: Desenvolvimento e entrega de uma funcionalidade totalmente nova para o usuário.
+•	Refactor: Reescrita do código interno para melhorar legibilidade e desempenho, sem alterar o comportamento visível.
+•	Chore: Tarefas de manutenção rotineiras que não mexem no código do produto (ex: atualizar bibliotecas ou documentação).
+•	Enhancement: Melhoria ou otimização de uma funcionalidade que já existe e funciona no sistema.
+•	Rollback: Ato de reverter o sistema para uma versão anterior estável após uma atualização malsucedida.
+•	Style: Alterações exclusivas de formatação, espaços ou ponto-e-vírgula que não afetam a lógica do código.
+•	Build / CI: Modificações nos arquivos de configuração de deploy, scripts de automação ou ferramentas de build.
+
+1. Padrões de Commit (Conventional Commits)
+O Conventional Commits usa os termos que vimos para padronizar as mensagens de histórico do Git. A estrutura básica é: <tipo>(<escopo opcional>): <descrição curta>. [1, 2, 3]
+•	fix: Corrige um bug (equivale ao bug-fix, hotfix, etc.).
+o	Exemplo: fix(auth): corrige expiração do token de acesso
+•	feat: Introduz uma nova funcionalidade (feature).
+o	Exemplo: feat(pix): adiciona opção de pagamento via QR Code [1]
+•	refactor: Alteração de código que não corrige bug nem adiciona funcionalidade.
+o	Exemplo: refactor(users): otimiza query de busca no banco [1, 2]
+•	chore: Mudanças em ferramentas de build, configurações ou pacotes (tarefas rotineiras).
+o	Exemplo: chore(deps): atualiza biblioteca axios para v1.6.0 [1, 2]
+•	docs: Alterações apenas na documentação (como o README). [1]
+•	style: Mudanças que não afetam o significado do código (espaços, formatação, ponto e vírgula). [1, 2, 3]
+•	perf: Mudança de código que melhora o desempenho. [1]
+test: Adição ou correção de testes existentes.
+
+
+
+2. Gerenciamento de Branches no Git (Trunk-Based, sem develop)
+•	Para organizar onde cada alteração entra e sai, o fluxo de ramificação (branches) dita o isolamento do código:
+•	main: Única linha permanente. Código estável e testado, o que está (ou vai direto) para produção. Toda branch nasce dela e volta pra ela via PR.
+•	feature/*: Criada a partir da main. Usada para criar novas funcionalidades. (Ex: feature/login-social).
+•	bugfix/*: Criada a partir da main. Usada para corrigir bugs encontrados em ambiente de testes ou desenvolvimento. (Ex: bugfix/erro-calculo-frete).
+•	hotfix/*: Criada a partir da main. Usada para corrigir erros críticos em produção de forma imediata. (Ex: hotfix/vulnerabilidade-login)
+
+
+3. Organização em Metodologias Ágeis (Jira, Trello, ClickUp)
+No gerenciamento ágil (como Scrum ou Kanban), essas alterações são categorizadas em cartões (cards) usando Labels (Etiquetas) ou Issue Types (Tipos de Tarefa) para priorização:
+[ Quadro Kanban ]
++-------------------+-------------------+-------------------+
+
+| A Fazer (To Do)   | Em Progresso      | Concluído (Done)  |
++-------------------+-------------------+-------------------+
+
+| 🔴 [HOTFIX] Erro  | 🟡 [BUG] Falha    | 🟢 [FEAT] Tela de |
+|     no Checkout   |     no Rodapé     |     Perfil        |
++-------------------+-------------------+-------------------+
+Matriz de Prioridade Ágil:
+1.	Blocker / Crítico (Hotfix): Para tudo. Aloca-se um desenvolvedor imediatamente para resolver o problema que está quebrando o sistema em produção.
+2.	Major / Alto (Warmfix / Bugfix): Entra no topo da Sprint atual ou no próximo deploy planejado.
+3.	Minor / Baixo (Coldfix / Enhancement): Vai para o Backlog para ser priorizado em Sprints futuras, pois o usuário consegue conviver com o problema.

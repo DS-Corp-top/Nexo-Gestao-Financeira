@@ -18,6 +18,12 @@ export default defineConfig(({ mode }) => {
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/favicon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
@@ -45,26 +51,8 @@ export default defineConfig(({ mode }) => {
           },
         ],
       },
-      workbox: {
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
-          {
-            urlPattern: /\/api\/.*/i,
-            handler: 'NetworkOnly',
-          },
-        ],
-      },
+      // Cache/precache logic (incl. runtime caching) now lives in src/sw.ts —
+      // injectManifest strategy ignores the `workbox` generateSW options.
     }),
   ],
   server: {

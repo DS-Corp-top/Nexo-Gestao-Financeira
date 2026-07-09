@@ -73,6 +73,26 @@ services:
     volumes:
       - media_data:/app/backend/media
 
+  beat:
+    # Agenda diaria (ver CELERY_BEAT_SCHEDULE em core/settings.py) que
+    # dispara o lembrete de contas a vencer. Sem build proprio, mesma
+    # ideia do worker: reaproveita a imagem buildada pelo backend.
+    image: nexo-gestao-financeira:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-nexo}:${POSTGRES_PASSWORD:-nexo}@db:5432/${POSTGRES_DB:-nexo}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    command: celery -A core beat --loglevel=info
+
 volumes:
   postgres_data:
   redis_data:
