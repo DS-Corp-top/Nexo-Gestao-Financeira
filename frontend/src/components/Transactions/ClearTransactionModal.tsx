@@ -58,7 +58,7 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+    <div className="modal-overlay">
       <div className="app-modal-content clear-modal">
         <div className="clear-modal-head">
           <div>
