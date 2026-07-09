@@ -59,7 +59,7 @@ export default function Login() {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg-primary)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} className="animate-fade-in">
         <div style={{ width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--space-xl)', animation: 'pulse 2s infinite', background: 'white' }}>
-           <img src="/icons/icon-512.png" alt="Nexo Logo" style={{ width: 80, height: 80, objectFit: 'contain' }} />
+           <img src="/logo-text.png" alt="Nexo Logo" style={{ width: 120, height: 48, objectFit: 'contain' }} />
         </div>
         <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 'var(--space-sm)', color: 'var(--color-text-primary)' }}>
           Bem-vindo, {user?.first_name || 'Usuário'}!

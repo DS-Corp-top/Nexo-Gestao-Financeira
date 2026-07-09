@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogo from '../components/BrandLogo';
 import {
   ArrowRight, BarChart3, CreditCard, FileText,
   ShoppingCart, TrendingUp, Shield, Smartphone, Zap, Monitor,
@@ -219,7 +220,16 @@ function AppPreview() {
           <div style={{ display: 'flex', minHeight: 360 }}>
             {/* sidebar */}
             <div style={{ width: 140, flexShrink: 0, borderRight: '1px solid rgba(255,255,255,0.07)', padding: '14px 0', background: '#050505' }}>
-              <p style={{ padding: '0 14px 10px', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>nexo</p>
+              <div style={{ padding: '0 14px 10px' }}>
+                <BrandLogo
+                  width={74}
+                  height={24}
+                  padding="0"
+                  borderRadius={8}
+                  invert
+                  scale={1}
+                />
+              </div>
               {navLinks.map((l, i) => (
                 <div key={l} style={{
                   padding: '7px 14px',
@@ -347,6 +357,11 @@ const features = [
 ];
 
 /* ── Page ────────────────────────────────────────── */
+const heroBrandMarks = [
+  { width: 360, height: 122, top: '7%', left: '3%', opacity: 0.24, rotate: '-10deg' },
+  { width: 500, height: 168, top: '9%', right: '0%', opacity: 0.18, rotate: '12deg' },
+];
+
 export default function Landing() {
   const { isLoggedIn, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -374,7 +389,15 @@ export default function Landing() {
         background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
       }}>
-        <span style={{ fontWeight: 900, fontSize: '1.5rem', letterSpacing: '-0.04em' }}>nexo</span>
+        <BrandLogo
+          width={124}
+          height={40}
+          padding="0"
+          borderRadius={12}
+          invert
+          scale={1}
+          style={{ flexShrink: 0 }}
+        />
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <Link to="/login" className="btn btn-secondary" style={{ padding: '0.55rem 1.4rem', fontSize: '0.95rem' }}>Entrar</Link>
           <Link to="/register" className="btn btn-primary" style={{ padding: '0.55rem 1.4rem', fontSize: '0.95rem' }}>Criar conta</Link>
@@ -386,6 +409,23 @@ export default function Landing() {
         <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
           <div style={{ position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '120%', height: '70%', background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%)' }} />
           <div style={{ position: 'absolute', top: '30%', right: '-10%', width: 400, height: 400, background: 'radial-gradient(circle, rgba(96,165,250,0.07) 0%, transparent 60%)' }} />
+          {heroBrandMarks.map((mark, index) => (
+            <BrandLogo
+              key={index}
+              width={mark.width}
+              height={mark.height}
+              invert
+              style={{
+                position: 'absolute',
+                top: mark.top,
+                left: mark.left,
+                right: mark.right,
+                opacity: mark.opacity,
+                transform: `rotate(${mark.rotate})`,
+                filter: 'blur(0.2px) drop-shadow(0 0 18px rgba(255,255,255,0.08))',
+              }}
+            />
+          ))}
         </div>
 
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 900, margin: '0 auto', padding: 'clamp(4rem, 10vw, 7rem) clamp(1rem, 4vw, 2.5rem) clamp(3rem, 6vw, 5rem)', textAlign: 'center' }}>
@@ -410,6 +450,18 @@ export default function Landing() {
               Solicitar acesso <ArrowRight size={16} />
             </Link>
             <Link to="/login" className="btn btn-secondary btn-lg" style={{ fontSize: '0.95rem' }}>Já tenho conta</Link>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '2.5rem', opacity: 0.82 }}>
+            {[1, 2, 3].map((item) => (
+              <BrandLogo
+                key={item}
+                width={item === 2 ? 118 : 96}
+                height={item === 2 ? 40 : 32}
+                invert
+                style={{ opacity: item === 2 ? 1 : 0.55 }}
+              />
+            ))}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -509,7 +561,14 @@ export default function Landing() {
 
       {/* Footer */}
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '1.5rem clamp(1rem, 4vw, 2.5rem)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <span style={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.03em', color: 'rgba(255,255,255,0.6)' }}>nexo</span>
+        <BrandLogo
+          width={96}
+          height={32}
+          padding="0"
+          borderRadius={10}
+          invert
+          scale={1}
+        />
         <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} Nexo Gestão Financeira</span>
         <div style={{ display: 'flex', gap: '1.25rem' }}>
           <Link to="/login" style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>Entrar</Link>

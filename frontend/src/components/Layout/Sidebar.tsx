@@ -15,6 +15,7 @@ import {
   CloudUpload,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import BrandLogo from '../BrandLogo';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -64,7 +65,15 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
 
       <aside className={`app-sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         <div className="nav-brand">
-          <span className="nav-brand-text">Nexo</span>
+          <BrandLogo
+            width={collapsed ? 36 : 112}
+            height={collapsed ? 36 : 36}
+            padding="0"
+            borderRadius={10}
+            invert
+            scale={1}
+            style={{ flexShrink: 0 }}
+          />
           <button
             className="sidebar-collapse-btn"
             onClick={onToggleCollapse}

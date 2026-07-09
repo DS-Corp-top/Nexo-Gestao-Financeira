@@ -7,7 +7,7 @@ from core.spa import ReactAppView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("favicon.ico", RedirectView.as_view(url=f"{settings.STATIC_URL}icons/favicon.png", permanent=False), name="favicon"),
+    path("favicon.ico", RedirectView.as_view(url=f"{settings.STATIC_URL}icons/favicon.png?v=round-1", permanent=False), name="favicon"),
     path("api/v1/", include("core.api_urls")),
 ]
 
