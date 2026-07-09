@@ -14,7 +14,8 @@ User = get_user_model()
 
 class InvoiceApiViewSetTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="apiuser", password="123")
+        # Fatura de Serviços é restrito a superusuários (ver invoices/api_views.py).
+        self.user = User.objects.create_user(username="apiuser", password="123", is_superuser=True)
         self.tenant = Tenant.objects.create(
             name="API Tenant",
             slug="api-tenant",

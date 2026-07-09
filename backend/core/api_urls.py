@@ -24,6 +24,7 @@ from tenants.api_views import (
 from notes.api_views import NoteListViewSet, NoteViewSet
 from notifications.api_views import PushSubscribeView, PushUnsubscribeView, VapidPublicKeyView
 from drive.api_views import DocumentViewSet, FolderViewSet
+from reports.api_views import DREReportView, InvestmentsReportView, SummaryReportView, TransactionsReportView
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoItemViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
 from users.api_views import (
@@ -106,6 +107,12 @@ urlpatterns = [
     path("push/vapid-public-key/", VapidPublicKeyView.as_view(), name="push_vapid_public_key"),
     path("push/subscribe/", PushSubscribeView.as_view(), name="push_subscribe"),
     path("push/unsubscribe/", PushUnsubscribeView.as_view(), name="push_unsubscribe"),
+
+    # Reports
+    path("reports/transactions/", TransactionsReportView.as_view(), name="report_transactions"),
+    path("reports/summary/", SummaryReportView.as_view(), name="report_summary"),
+    path("reports/investments/", InvestmentsReportView.as_view(), name="report_investments"),
+    path("reports/dre/", DREReportView.as_view(), name="report_dre"),
 
     # Router-registered viewsets
     path("", include(router.urls)),

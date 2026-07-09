@@ -13,9 +13,11 @@ from invoices.service_codes import SERVICE_CODES
 from invoices.services import invoice_transaction_description, sync_invoice_transaction
 from tenants.models import TenantMembership
 from tenants.serializers import TenantCompanySerializer, TenantSerializer
+from users.api_views import IsSuperuser
 
 
 class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
+    permission_classes = [IsSuperuser]
     queryset = Invoice.objects.select_related("expected_account", "issuer_company").all()
     serializer_class = InvoiceSerializer
     search_fields = ("client_name", "client_document", "service_description")
@@ -222,6 +224,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         return Response([{"code": c, "description": d} for c, d in SERVICE_CODES])
 
 class ClientViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
+    permission_classes = [IsSuperuser]
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
     search_fields = ("name", "document", "email")

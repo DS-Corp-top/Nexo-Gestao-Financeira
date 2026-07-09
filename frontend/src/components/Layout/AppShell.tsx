@@ -14,6 +14,7 @@ const pageTitles: Record<string, string> = {
   '/accounts': 'Contas',
   '/categories': 'Categorias',
   '/invoices': 'Fatura de Serviços',
+  '/reports': 'Relatórios',
   '/shopping': 'Lista de Compras',
   '/drive': 'Drive',
   '/investments': 'Investimentos',

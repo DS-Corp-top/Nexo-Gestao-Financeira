@@ -15,6 +15,7 @@ import TransactionForm from './pages/TransactionForm';
 import Shopping from './pages/Shopping';
 import Investments from './pages/Investments';
 import Invoices from './pages/Invoices';
+import Reports from './pages/Reports';
 import Administration from './pages/Administration';
 import Todos from './pages/Todos';
 import Notes from './pages/Notes';
@@ -55,7 +56,8 @@ export default function App() {
               <Route path="transactions/:id/edit" element={<TransactionForm />} />
               <Route path="accounts" element={<Accounts />} />
               <Route path="categories" element={<Categories />} />
-              <Route path="invoices" element={<Invoices />} />
+              <Route path="invoices" element={<ProtectedRoute requireSuperuser><Invoices /></ProtectedRoute>} />
+              <Route path="reports" element={<Reports />} />
               <Route path="shopping" element={<Shopping />} />
               <Route path="drive" element={<Drive />} />
               <Route path="investments" element={<Investments />} />

@@ -18,6 +18,7 @@ import { fetchAccounts } from '../api/accounts';
 import InvoiceModal from '../components/Invoices/InvoiceModal';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import { useViewMode } from '../contexts/ViewModeContext';
+import { writePrintDocument } from '../utils/printDocument';
 
 function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
@@ -137,8 +138,8 @@ function buildPrintHtml(data: InvoicePrintData): string {
 <body>
 
 <div class="print-actions" style="display:flex;gap:12px;margin-bottom:28px;">
-  <button class="print-btn" onclick="window.print()">&#128438; Imprimir</button>
-  <button class="print-btn" style="background:#e5e7eb;color:#111;" onclick="window.close()">&#10006; Fechar</button>
+  <button id="print-doc-print-btn" class="print-btn">&#128438; Imprimir</button>
+  <button id="print-doc-close-btn" class="print-btn" style="background:#e5e7eb;color:#111;">&#10006; Fechar</button>
 </div>
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:22px;border-bottom:2px solid #111;margin-bottom:22px">
@@ -511,9 +512,7 @@ export default function Invoices() {
     }
     printWindow.document.write('<p>Carregando...</p>');
     const data = await fetchInvoicePrintData(invoice.id);
-    printWindow.document.open();
-    printWindow.document.write(buildPrintHtml(data));
-    printWindow.document.close();
+    writePrintDocument(printWindow, buildPrintHtml(data));
   };
   const sortableHeader = (key: InvoiceSortKey, label: string) => {
     const active = sortKey === key;

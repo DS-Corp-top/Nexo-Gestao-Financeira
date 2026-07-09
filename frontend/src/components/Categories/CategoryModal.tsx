@@ -19,6 +19,9 @@ export default function CategoryModal({ category, isOpen, onClose, onSave, onDel
   const [categoryType, setCategoryType] = useState<'income' | 'expense'>(
     category?.category_type || 'expense'
   );
+  const [expenseKind, setExpenseKind] = useState<'operating' | 'cost'>(
+    category?.expense_kind || 'operating'
+  );
 
   if (!isOpen) return null;
 
@@ -31,6 +34,7 @@ export default function CategoryModal({ category, isOpen, onClose, onSave, onDel
       await onSave({
         name,
         category_type: categoryType,
+        expense_kind: categoryType === 'expense' ? expenseKind : 'operating',
       });
       onClose();
     } catch (err: any) {
@@ -114,6 +118,37 @@ export default function CategoryModal({ category, isOpen, onClose, onSave, onDel
               </label>
             </div>
           </div>
+
+          {categoryType === 'expense' && (
+            <div style={{ marginBottom: 'var(--space-lg)' }}>
+              <label className="label">Natureza da Despesa</label>
+              <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="expenseKind"
+                    value="operating"
+                    checked={expenseKind === 'operating'}
+                    onChange={() => setExpenseKind('operating')}
+                  />
+                  <span>Despesa Operacional</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="expenseKind"
+                    value="cost"
+                    checked={expenseKind === 'cost'}
+                    onChange={() => setExpenseKind('cost')}
+                  />
+                  <span>Custo do Serviço/Produto</span>
+                </label>
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                Usado no DRE Gerencial para separar Lucro Bruto de Despesas Operacionais.
+              </span>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             {category && onDelete ? (

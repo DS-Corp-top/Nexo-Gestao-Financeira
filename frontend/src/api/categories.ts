@@ -4,6 +4,7 @@ export interface Category {
   id: number;
   name: string;
   category_type: 'income' | 'expense';
+  expense_kind: 'operating' | 'cost';
   created_at: string;
 }
 

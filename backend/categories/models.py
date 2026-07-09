@@ -9,6 +9,10 @@ class Category(models.Model):
         INCOME = "income", "Receita"
         EXPENSE = "expense", "Despesa"
 
+    class ExpenseKind(models.TextChoices):
+        OPERATING = "operating", "Despesa Operacional"
+        COST = "cost", "Custo do Serviço/Produto"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -26,6 +30,13 @@ class Category(models.Model):
         "Tipo",
         max_length=20,
         choices=CategoryType.choices,
+    )
+    expense_kind = models.CharField(
+        "Natureza da despesa",
+        max_length=20,
+        choices=ExpenseKind.choices,
+        default=ExpenseKind.OPERATING,
+        help_text="Usado no DRE Gerencial para separar Custo do Serviço de Despesa Operacional. Ignorado para categorias de receita.",
     )
     created_at = models.DateTimeField("Criada em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizada em", auto_now=True)

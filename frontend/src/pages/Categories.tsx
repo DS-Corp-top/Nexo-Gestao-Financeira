@@ -86,7 +86,14 @@ export default function Categories() {
               }}
               className="hover-bg"
             >
-              <span>{cat.name}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {cat.name}
+                {cat.category_type === 'expense' && cat.expense_kind === 'cost' && (
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '1px 7px', borderRadius: 'var(--radius-full)', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                    Custo
+                  </span>
+                )}
+              </span>
               {isAdmin && (
                 <button
                   className="btn-ghost btn-icon"

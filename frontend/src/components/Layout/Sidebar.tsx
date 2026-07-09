@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   FileText,
+  FileBarChart,
   ShoppingCart,
   TrendingUp,
   Settings,
@@ -19,7 +20,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
-  { to: '/invoices', icon: FileText, label: 'Fatura de Serviços' },
+  { to: '/reports', icon: FileBarChart, label: 'Relatórios' },
   { to: '/shopping', icon: ShoppingCart, label: 'Lista de Compras' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
   { to: '/notes', icon: StickyNote, label: 'Anotações' },
@@ -40,6 +41,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
   const items = [
     ...navItems,
     ...(canManageTenantSettings ? [{ to: '/settings/company', icon: Settings, label: 'Configurações' }] : []),
+    ...(canManageSystem ? [{ to: '/invoices', icon: FileText, label: 'Fatura de Serviços' }] : []),
     ...(canManageSystem ? [{ to: '/admin', icon: ShieldCheck, label: 'Administração' }] : []),
   ];
 

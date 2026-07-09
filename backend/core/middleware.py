@@ -24,6 +24,8 @@ class FinancialMaskingMiddleware:
         "credit_card_limit", "consolidated_balance", "balance_after_pending",
         "total_gross", "total",
         "current_balance", "pending_bank_total", "monthly_income_total", "monthly_expense_total",
+        "opening_balance", "closing_balance", "total_income", "total_expense",
+        "net_result", "total_cost", "gross_profit", "total_operating_expenses",
     })
 
     def __init__(self, get_response):
