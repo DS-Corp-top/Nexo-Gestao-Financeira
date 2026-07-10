@@ -921,6 +921,9 @@ function ProjectsList({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-secondary)' }}>Projetos</h2>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button type="button" className="btn btn-primary" style={{ height: 34, padding: '0 1rem', fontSize: '0.82rem' }} onClick={() => { setShowForm(true); setEditingProject(null); }}>
+            <Plus size={15} /> Novo projeto
+          </button>
           <button
             type="button"
             className="btn"
@@ -934,9 +937,6 @@ function ProjectsList({
                 {finished.length}
               </span>
             )}
-          </button>
-          <button type="button" className="btn btn-primary" style={{ height: 34, padding: '0 1rem', fontSize: '0.82rem' }} onClick={() => { setShowForm(true); setEditingProject(null); }}>
-            <Plus size={15} /> Novo projeto
           </button>
         </div>
       </div>
