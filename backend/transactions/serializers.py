@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from accounts.models import Account
+from categories.models import Category
 from transactions.models import ClosedMonth, Transaction
 
 
@@ -75,6 +76,7 @@ class TransactionToggleClearedSerializer(serializers.Serializer):
     unlock_password = serializers.CharField(write_only=True, required=False)
     amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     account = serializers.PrimaryKeyRelatedField(queryset=Account.objects.all(), required=False)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False, allow_null=True)
     description = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 

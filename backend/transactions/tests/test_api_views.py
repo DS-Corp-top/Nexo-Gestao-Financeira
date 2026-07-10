@@ -119,3 +119,153 @@ class TransactionApiViewSetTest(TestCase):
         self.assertTrue(all(occ.category_id == self.new_category.id for occ in occurrences))
         self.assertTrue(all(occ.description == "Academia Premium" for occ in occurrences))
         self.assertTrue(all(occ.is_ignored is False for occ in occurrences[1:]))
+
+    def test_toggle_cleared_allows_changing_category(self):
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="100.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Mercado",
+            is_cleared=False,
+        )
+
+        response = self.client.post(
+            f"/api/v1/transactions/{transaction.pk}/toggle_cleared/",
+            data={
+                "cleared_date": "2026-07-11",
+                "category": self.new_category.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        transaction.refresh_from_db()
+        self.assertTrue(transaction.is_cleared)
+        self.assertEqual(transaction.category_id, self.new_category.id)
+
+    def test_toggle_cleared_allows_clearing_category(self):
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="100.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Mercado",
+            is_cleared=False,
+        )
+
+        response = self.client.post(
+            f"/api/v1/transactions/{transaction.pk}/toggle_cleared/",
+            data={
+                "cleared_date": "2026-07-11",
+                "category": None,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        transaction.refresh_from_db()
+        self.assertIsNone(transaction.category_id)
+
+    def test_toggle_cleared_rejects_category_from_other_tenant(self):
+        other_user = User.objects.create_user(username="othertxnuser", password="123")
+        other_tenant = Tenant.objects.create(
+            name="Outro Tenant",
+            slug="outro-tenant-transacoes",
+            owner=other_user,
+            document="98765432100",
+        )
+        other_category = Category.objects.create(
+            user=other_user,
+            tenant=other_tenant,
+            name="Categoria Alheia",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="100.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Mercado",
+            is_cleared=False,
+        )
+
+        response = self.client.post(
+            f"/api/v1/transactions/{transaction.pk}/toggle_cleared/",
+            data={
+                "cleared_date": "2026-07-11",
+                "category": other_category.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        transaction.refresh_from_db()
+        self.assertEqual(transaction.category_id, self.category.id)
+
+    def test_toggle_cleared_rejects_category_with_mismatched_type(self):
+        income_category = Category.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Categoria Receita",
+            category_type=Category.CategoryType.INCOME,
+        )
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="100.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Mercado",
+            is_cleared=False,
+        )
+
+        response = self.client.post(
+            f"/api/v1/transactions/{transaction.pk}/toggle_cleared/",
+            data={
+                "cleared_date": "2026-07-11",
+                "category": income_category.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        transaction.refresh_from_db()
+        self.assertEqual(transaction.category_id, self.category.id)
+
+    def test_toggle_cleared_rejects_category_on_transfer(self):
+        transfer = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.TRANSFER,
+            amount="100.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            destination_account=self.new_account,
+            description="Transferencia",
+            is_cleared=False,
+        )
+
+        response = self.client.post(
+            f"/api/v1/transactions/{transfer.pk}/toggle_cleared/",
+            data={
+                "cleared_date": "2026-07-11",
+                "category": self.category.pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        transfer.refresh_from_db()
+        self.assertIsNone(transfer.category_id)

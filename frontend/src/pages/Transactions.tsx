@@ -14,6 +14,7 @@ import {
   type Transaction
 } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
+import { fetchCategories } from '../api/categories';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, Tags, EllipsisVertical, Plus } from 'lucide-react';
@@ -91,6 +92,11 @@ export default function Transactions() {
 
   // Handle paginated or direct array responses for accounts
   const accounts = Array.isArray(accountsData) ? accountsData : (accountsData as any)?.results || [];
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+  });
 
   const { data: summary } = useQuery({
     queryKey: ['statement_summary', monthParam],
@@ -434,6 +440,7 @@ export default function Transactions() {
           transaction={clearingTx}
           requireUnlockPassword={isMonthClosed}
           accounts={accounts}
+          categories={categories}
           onConfirm={async (id, date, unlockPassword, overrides) => {
             await toggleMutation.mutateAsync({
               id,
@@ -441,6 +448,7 @@ export default function Transactions() {
               unlock_password: unlockPassword,
               amount: overrides?.amount,
               account: overrides?.account,
+              category: overrides?.category,
               description: overrides?.description,
             });
           }}

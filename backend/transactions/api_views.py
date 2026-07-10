@@ -248,6 +248,19 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
                 transaction.account = new_account
                 update_fields.append("account")
 
+            if "category" in serializer.validated_data:
+                new_category = serializer.validated_data["category"]
+                if new_category is not None:
+                    from rest_framework.exceptions import ValidationError
+                    if transaction.transaction_type == Transaction.TransactionType.TRANSFER:
+                        raise ValidationError({"category": "Transferência não deve possuir categoria."})
+                    if new_category.tenant_id != transaction.tenant_id:
+                        raise ValidationError({"category": "Categoria inválida para este cliente."})
+                    if new_category.category_type != transaction.transaction_type:
+                        raise ValidationError({"category": "Categoria incompatível com o tipo da transação."})
+                transaction.category = new_category
+                update_fields.append("category")
+
             if "description" in serializer.validated_data:
                 transaction.description = serializer.validated_data["description"]
                 update_fields.append("description")

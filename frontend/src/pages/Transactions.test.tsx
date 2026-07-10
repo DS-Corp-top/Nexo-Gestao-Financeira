@@ -6,6 +6,7 @@ import '@testing-library/jest-dom';
 import Transactions from './Transactions';
 import * as transactionsApi from '../api/transactions';
 import * as accountsApi from '../api/accounts';
+import * as categoriesApi from '../api/categories';
 import type { Transaction } from '../api/transactions';
 import { expectPortaledToBody } from '../test/portal';
 
@@ -16,6 +17,7 @@ vi.mock('../api/transactions', async () => {
     fetchTransactions: vi.fn(),
     fetchStatementSummary: vi.fn(),
     fetchClosedMonths: vi.fn(),
+    toggleTransactionCleared: vi.fn(),
   };
 });
 vi.mock('../api/accounts', async () => {
@@ -23,6 +25,13 @@ vi.mock('../api/accounts', async () => {
   return {
     ...actual,
     fetchAccounts: vi.fn(),
+  };
+});
+vi.mock('../api/categories', async () => {
+  const actual = await vi.importActual<typeof import('../api/categories')>('../api/categories');
+  return {
+    ...actual,
+    fetchCategories: vi.fn(),
   };
 });
 
@@ -74,6 +83,7 @@ describe('Transactions Page', () => {
     });
     (transactionsApi.fetchClosedMonths as any).mockResolvedValue([]);
     (accountsApi.fetchAccounts as any).mockResolvedValue([]);
+    (categoriesApi.fetchCategories as any).mockResolvedValue([]);
   });
 
   it('renders the ClearTransactionModal outside the page container when opened', async () => {
@@ -86,5 +96,48 @@ describe('Transactions Page', () => {
     const modalRoot = heading.closest('.app-modal-content') as HTMLElement;
     expect(modalRoot).not.toBeNull();
     expectPortaledToBody(modalRoot, container);
+  });
+
+  it('allows changing the category when clearing a transaction', async () => {
+    (accountsApi.fetchAccounts as any).mockResolvedValue([{ id: 1, name: 'Conta Teste' }]);
+    (categoriesApi.fetchCategories as any).mockResolvedValue([
+      { id: 10, name: 'Mercado', category_type: 'expense', expense_kind: 'operating', created_at: '' },
+      { id: 20, name: 'Lazer', category_type: 'expense', expense_kind: 'operating', created_at: '' },
+      { id: 30, name: 'Salário', category_type: 'income', expense_kind: 'operating', created_at: '' },
+    ]);
+    (transactionsApi.toggleTransactionCleared as any).mockResolvedValue(makeTransaction({ is_cleared: true, category: 20 }));
+
+    renderTransactions();
+
+    fireEvent.click(await screen.findByLabelText('Ações da transação'));
+    fireEvent.click(await screen.findByText('Baixar'));
+
+    await screen.findByText('Compra teste', { selector: 'h3' });
+
+    const categorySelect = await screen.findByLabelText('Categoria');
+    expect(screen.queryByText('Salário')).not.toBeInTheDocument();
+    fireEvent.change(categorySelect, { target: { value: '20' } });
+
+    fireEvent.click(screen.getByText('Confirmar baixa'));
+
+    await vi.waitFor(() => {
+      expect(transactionsApi.toggleTransactionCleared).toHaveBeenCalled();
+    });
+    const call = (transactionsApi.toggleTransactionCleared as any).mock.calls[0][0];
+    expect(call.category).toBe(20);
+  });
+
+  it('does not show a category field when clearing a transfer', async () => {
+    (transactionsApi.fetchTransactions as any).mockResolvedValue([
+      makeTransaction({ transaction_type: 'transfer', description: 'Transferencia teste', display_title: 'Transferencia teste' }),
+    ]);
+
+    renderTransactions();
+
+    fireEvent.click(await screen.findByLabelText('Ações da transação'));
+    fireEvent.click(await screen.findByText('Baixar'));
+
+    await screen.findByText('Transferencia teste', { selector: 'h3' });
+    expect(screen.queryByLabelText('Categoria')).not.toBeInTheDocument();
   });
 });

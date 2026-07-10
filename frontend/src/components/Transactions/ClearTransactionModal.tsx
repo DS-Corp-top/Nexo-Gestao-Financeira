@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { type Transaction } from '../../api/transactions';
+import { type Category } from '../../api/categories';
 
 interface ClearTransactionModalProps {
   transaction: Transaction | null;
@@ -9,17 +10,19 @@ interface ClearTransactionModalProps {
     id: number,
     date: string,
     unlockPassword?: string,
-    overrides?: { amount?: string; account?: number; description?: string }
+    overrides?: { amount?: string; account?: number; description?: string; category?: number | null }
   ) => Promise<void>;
   requireUnlockPassword?: boolean;
   accounts?: { id: number; name: string }[];
+  categories?: Category[];
 }
 
-export default function ClearTransactionModal({ transaction, isOpen, onClose, onConfirm, requireUnlockPassword = false, accounts = [] }: ClearTransactionModalProps) {
+export default function ClearTransactionModal({ transaction, isOpen, onClose, onConfirm, requireUnlockPassword = false, accounts = [], categories = [] }: ClearTransactionModalProps) {
   const [clearedDate, setClearedDate] = useState('');
   const [unlockPassword, setUnlockPassword] = useState('');
   const [amount, setAmount] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,11 +32,15 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
       setUnlockPassword('');
       setAmount(transaction.amount);
       setAccountId(String(transaction.account));
+      setCategoryId(transaction.category ? String(transaction.category) : '');
       setDescription(transaction.description || '');
     }
   }, [transaction]);
 
   if (!isOpen || !transaction) return null;
+
+  const isTransfer = transaction.transaction_type === 'transfer';
+  const categoryOptions = categories.filter((c) => c.category_type === transaction.transaction_type);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +50,7 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
         amount,
         account: accountId ? Number(accountId) : undefined,
         description,
+        category: isTransfer ? undefined : (categoryId ? Number(categoryId) : null),
       });
       onClose();
     } catch (err: any) {
@@ -103,6 +111,23 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
               <option key={acc.id} value={acc.id}>{acc.name}</option>
             ))}
           </select>
+
+          {!isTransfer && (
+            <>
+              <label className="clear-modal-label" htmlFor={`modal-category-${transaction.id}`}>Categoria</label>
+              <select
+                id={`modal-category-${transaction.id}`}
+                className="clear-modal-date"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">Sem categoria</option>
+                {categoryOptions.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </>
+          )}
 
           <label className="clear-modal-label" htmlFor={`modal-amount-${transaction.id}`}>Valor</label>
           <input
