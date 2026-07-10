@@ -1,5 +1,14 @@
 import api from './client';
 
+export interface NoteSubtask {
+  id: number;
+  note: number;
+  title: string;
+  is_done: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Note {
   id: number;
   note_list: number | null;
@@ -8,6 +17,9 @@ export interface Note {
   content: string;
   color: string;
   is_pinned: boolean;
+  subtasks: NoteSubtask[];
+  subtasks_total: number;
+  subtasks_done: number;
   created_at: string;
   updated_at: string;
 }
@@ -70,4 +82,23 @@ export async function updateNote(id: number, payload: Partial<NotePayload>): Pro
 
 export async function deleteNote(id: number): Promise<void> {
   await api.delete(`/notes/${id}/`);
+}
+
+export async function createNoteSubtask(payload: { note: number; title: string }): Promise<NoteSubtask> {
+  const { data } = await api.post<NoteSubtask>('/note-subtasks/', payload);
+  return data;
+}
+
+export async function updateNoteSubtask(id: number, payload: Partial<Pick<NoteSubtask, 'title' | 'is_done'>>): Promise<NoteSubtask> {
+  const { data } = await api.patch<NoteSubtask>(`/note-subtasks/${id}/`, payload);
+  return data;
+}
+
+export async function toggleNoteSubtask(id: number): Promise<NoteSubtask> {
+  const { data } = await api.post<NoteSubtask>(`/note-subtasks/${id}/toggle/`);
+  return data;
+}
+
+export async function deleteNoteSubtask(id: number): Promise<void> {
+  await api.delete(`/note-subtasks/${id}/`);
 }

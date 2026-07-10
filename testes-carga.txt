@@ -21,7 +21,7 @@ k6 run scripts/k6-test.js
 # defina a variável $env:BASE_URL com o link alvo ANTES de rodar o k6.
 
 $env:K6_WEB_DASHBOARD="true"
-$env:BASE_URL="https://nexo.dscorp.top/login"
+$env:BASE_URL="https://appnexo.top/login"
 k6 run scripts/k6-test.js
 
 # --------------------------------------------------------
@@ -49,4 +49,4 @@ locust
 # Passo 3: Acessar o Dashboard
 # Abra no navegador: http://localhost:8089
 # Preencha a quantidade de usuários desejada e clique em "Start swarming".
-# DICA: Em "Host", coloque apenas o link raiz do alvo (ex: https://nexo.dscorp.top ou http://localhost:5173).
+# DICA: Em "Host", coloque apenas o link raiz do alvo (ex: https://appnexo.top ou http://localhost:5173).

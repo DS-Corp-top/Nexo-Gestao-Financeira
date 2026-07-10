@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from notes.models import Note, NoteList
+from notes.models import Note, NoteList, NoteSubtask
 
 
 class NoteListSerializer(serializers.ModelSerializer):
@@ -15,8 +15,31 @@ class NoteListSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "notes_count", "created_at", "updated_at")
 
 
+class NoteSubtaskSerializer(serializers.ModelSerializer):
+    def validate_note(self, note):
+        request = self.context.get("request")
+        tenant = self.context.get("tenant") or (getattr(request, "tenant", None) if request else None)
+        requested_tenant_id = None
+        if request is not None:
+            requested_tenant_id = request.headers.get("X-Tenant-ID") or request.META.get("HTTP_X_TENANT_ID")
+
+        if requested_tenant_id and str(note.tenant_id) != str(requested_tenant_id):
+            raise serializers.ValidationError("Anotação inválida para este cliente.")
+        if tenant is not None and note.tenant_id != tenant.id:
+            raise serializers.ValidationError("Anotação inválida para este cliente.")
+        return note
+
+    class Meta:
+        model = NoteSubtask
+        fields = ("id", "note", "title", "is_done", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
 class NoteSerializer(serializers.ModelSerializer):
     note_list_name = serializers.CharField(source="note_list.name", read_only=True)
+    subtasks = NoteSubtaskSerializer(many=True, read_only=True)
+    subtasks_total = serializers.IntegerField(read_only=True)
+    subtasks_done = serializers.IntegerField(read_only=True)
 
     def validate_note_list(self, note_list):
         if note_list is None:
@@ -44,6 +67,9 @@ class NoteSerializer(serializers.ModelSerializer):
             "content",
             "color",
             "is_pinned",
+            "subtasks",
+            "subtasks_total",
+            "subtasks_done",
             "created_at",
             "updated_at",
         )

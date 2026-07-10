@@ -63,7 +63,7 @@ class Note(models.Model):
         verbose_name="Lista",
     )
     title = models.CharField("Título", max_length=200, blank=True)
-    content = models.TextField("Conteúdo")
+    content = models.TextField("Conteúdo", blank=True, default="")
     color = models.CharField("Cor", max_length=7, default="#fef08a")
     is_pinned = models.BooleanField("Fixada", default=False)
     created_at = models.DateTimeField("Criada em", auto_now_add=True)
@@ -80,6 +80,54 @@ class Note(models.Model):
 
     def __str__(self):
         return self.title or self.content[:50]
+
+    @property
+    def subtasks_total(self) -> int:
+        return len(self.subtasks.all())
+
+    @property
+    def subtasks_done(self) -> int:
+        return sum(1 for subtask in self.subtasks.all() if subtask.is_done)
+
+    def save(self, *args, **kwargs):
+        assign_tenant(self)
+        super().save(*args, **kwargs)
+
+
+class NoteSubtask(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="note_subtasks",
+    )
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        related_name="note_subtasks",
+        null=True,
+        blank=True,
+    )
+    note = models.ForeignKey(
+        Note,
+        on_delete=models.CASCADE,
+        related_name="subtasks",
+        verbose_name="Anotação",
+    )
+    title = models.CharField("Título", max_length=200)
+    is_done = models.BooleanField("Concluída", default=False)
+    created_at = models.DateTimeField("Criada em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizada em", auto_now=True)
+
+    class Meta:
+        ordering = ("is_done", "created_at")
+        verbose_name = "Subtarefa"
+        verbose_name_plural = "Subtarefas"
+        indexes = [
+            models.Index(fields=("tenant", "note"), name="note_subtask_tenant_note_idx"),
+        ]
+
+    def __str__(self):
+        return self.title
 
     def save(self, *args, **kwargs):
         assign_tenant(self)

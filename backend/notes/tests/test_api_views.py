@@ -59,6 +59,25 @@ def test_create_note_with_auth(baker):
 
 
 @pytest.mark.django_db
+def test_create_note_with_title_only(baker):
+    """Criacao de nota apenas com titulo (sem conteudo) deve retornar 201."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-list")
+    payload = {"title": "So titulo", "content": ""}
+    response = client.post(url, payload, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 201
+    assert response.data["title"] == "So titulo"
+    assert response.data["content"] == ""
+
+
+@pytest.mark.django_db
 def test_update_note(baker):
     """Atualizacao de nota deve funcionar."""
     user = baker.make("auth.User")
@@ -74,6 +93,87 @@ def test_update_note(baker):
 
     assert response.status_code == 200
     assert response.data["is_pinned"] is True
+
+
+@pytest.mark.django_db
+def test_create_subtask_for_note(baker):
+    """Criacao de subtarefa vinculada a uma nota deve retornar 201."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    note = baker.make("notes.Note", user=user, tenant=tenant, title="Lista de tarefas")
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-subtask-list")
+    payload = {"note": note.id, "title": "Comprar leite"}
+    response = client.post(url, payload, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 201
+    assert response.data["title"] == "Comprar leite"
+    assert response.data["is_done"] is False
+
+
+@pytest.mark.django_db
+def test_subtask_rejects_note_from_other_tenant(baker):
+    """Subtarefa nao pode ser vinculada a uma nota de outro tenant."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    other_tenant = baker.make("tenants.Tenant", document="11111111111", is_active=True)
+    other_note = baker.make("notes.Note", tenant=other_tenant, title="Nota alheia")
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-subtask-list")
+    payload = {"note": other_note.id, "title": "Tentativa"}
+    response = client.post(url, payload, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_toggle_subtask(baker):
+    """Acao toggle deve inverter is_done da subtarefa."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    note = baker.make("notes.Note", user=user, tenant=tenant)
+    subtask = baker.make("notes.NoteSubtask", user=user, tenant=tenant, note=note, is_done=False)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-subtask-toggle", args=[subtask.id])
+    response = client.post(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    assert response.data["is_done"] is True
+
+
+@pytest.mark.django_db
+def test_note_includes_nested_subtasks_and_counts(baker):
+    """Nota retornada pela API deve incluir subtarefas e contadores."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    note = baker.make("notes.Note", user=user, tenant=tenant, title="Com subtarefas")
+    baker.make("notes.NoteSubtask", user=user, tenant=tenant, note=note, title="Item 1", is_done=True)
+    baker.make("notes.NoteSubtask", user=user, tenant=tenant, note=note, title="Item 2", is_done=False)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-detail", args=[note.id])
+    response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    assert len(response.data["subtasks"]) == 2
+    assert response.data["subtasks_total"] == 2
+    assert response.data["subtasks_done"] == 1
 
 
 @pytest.mark.django_db

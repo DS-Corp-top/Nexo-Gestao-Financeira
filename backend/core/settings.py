@@ -64,15 +64,18 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", _allowed_hosts_default)
 if HEROKU_DYNO and ".herokuapp.com" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(".herokuapp.com")
 
-default_primary_host = "nexo.dscorp.top"
-if default_primary_host not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append(default_primary_host)
+default_primary_hosts = ["appnexo.top", "www.appnexo.top"]
+for _host in default_primary_hosts:
+    if _host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_host)
 
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 if HEROKU_DYNO and not any("herokuapp.com" in origin for origin in CSRF_TRUSTED_ORIGINS):
     CSRF_TRUSTED_ORIGINS.append("https://*.herokuapp.com")
-if f"https://{default_primary_host}" not in CSRF_TRUSTED_ORIGINS:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{default_primary_host}")
+for _host in default_primary_hosts:
+    _origin = f"https://{_host}"
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
 
 PUBLIC_SIGNUP_ENABLED = env_bool(
     "PUBLIC_SIGNUP_ENABLED",

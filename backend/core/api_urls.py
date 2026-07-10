@@ -21,7 +21,7 @@ from tenants.api_views import (
     TenantProfileView,
     TenantResetView,
 )
-from notes.api_views import NoteListViewSet, NoteViewSet
+from notes.api_views import NoteListViewSet, NoteSubtaskViewSet, NoteViewSet
 from notifications.api_views import PushSubscribeView, PushUnsubscribeView, VapidPublicKeyView
 from drive.api_views import DocumentViewSet, FolderViewSet
 from reports.api_views import DREReportView, InvestmentsReportView, SummaryReportView, TransactionsReportView
@@ -62,6 +62,7 @@ router.register("todo-projects", ProjectViewSet, basename="todo-project")
 router.register("todos", TodoItemViewSet, basename="todo")
 router.register("note-lists", NoteListViewSet, basename="note-list")
 router.register("notes", NoteViewSet, basename="note")
+router.register("note-subtasks", NoteSubtaskViewSet, basename="note-subtask")
 router.register("drive/folders", FolderViewSet, basename="folder")
 router.register("drive/documents", DocumentViewSet, basename="document")
 

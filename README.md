@@ -89,8 +89,8 @@ Config minima:
 ```powershell
 heroku config:set DJANGO_DEBUG=false -a nexo-gestao-financeira
 heroku config:set SERVE_REACT_APP=true -a nexo-gestao-financeira
-heroku config:set DJANGO_ALLOWED_HOSTS=nexo-gestao-financeira.herokuapp.com,nexo.dscorp.top -a nexo-gestao-financeira
-heroku config:set DJANGO_CSRF_TRUSTED_ORIGINS=https://nexo-gestao-financeira.herokuapp.com,https://nexo.dscorp.top -a nexo-gestao-financeira
+heroku config:set DJANGO_ALLOWED_HOSTS=nexo-gestao-financeira.herokuapp.com,appnexo.top,www.appnexo.top -a nexo-gestao-financeira
+heroku config:set DJANGO_CSRF_TRUSTED_ORIGINS=https://nexo-gestao-financeira.herokuapp.com,https://appnexo.top,https://www.appnexo.top -a nexo-gestao-financeira
 heroku config:set VITE_API_URL=/api/v1 -a nexo-gestao-financeira
 ```
 

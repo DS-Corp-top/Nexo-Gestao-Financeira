@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit2, FolderPlus, List, MoreVertical, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-react';
+import { CheckSquare, Edit2, FolderPlus, List, MoreVertical, Pin, PinOff, Plus, Search, Square, StickyNote, Trash2, X } from 'lucide-react';
 import {
   createNote,
   createNoteList,
+  createNoteSubtask,
   deleteNote,
   deleteNoteList,
+  deleteNoteSubtask,
   fetchNoteLists,
   fetchNotes,
+  toggleNoteSubtask,
   updateNote,
   updateNoteList,
   type Note,
@@ -43,7 +46,7 @@ function NoteForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!content.trim()) return;
+        if (!title.trim()) return;
         onSubmit({
           note_list: noteList || null,
           title: title.trim(),
@@ -73,10 +76,11 @@ function NoteForm({
 
       <input
         className="input"
-        placeholder="Título (opcional)"
+        placeholder="Título"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         autoFocus
+        required
         style={{
           background: 'var(--color-bg-elevated)',
           color: 'var(--color-text-primary)',
@@ -85,10 +89,9 @@ function NoteForm({
       />
       <textarea
         className="input"
-        placeholder="Escreva sua anotação..."
+        placeholder="Escreva sua anotação... (opcional)"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        required
         rows={4}
         style={{
           resize: 'vertical',
@@ -100,7 +103,7 @@ function NoteForm({
       />
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
         <button type="button" className="btn" onClick={onCancel}>Cancelar</button>
-        <button type="submit" className="btn btn-primary" disabled={isLoading || !content.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={isLoading || !title.trim()}>
           {isLoading
             ? <span className="spinner" style={{ width: 16, height: 16 }} />
             : (initial?.id ? 'Salvar' : 'Criar')}
@@ -291,22 +294,31 @@ function NoteCard({
         </div>
       )}
 
-      <p
-        style={{
-          fontSize: '0.85rem',
-          color: 'var(--color-text-primary)',
-          flex: 1,
-          whiteSpace: 'pre-wrap',
-          lineHeight: 1.45,
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitLineClamp: note.title ? 4 : 5,
-          WebkitBoxOrient: 'vertical',
-          margin: 0,
-        }}
-      >
-        {note.content}
-      </p>
+      {note.content && (
+        <p
+          style={{
+            fontSize: '0.85rem',
+            color: 'var(--color-text-primary)',
+            flex: 1,
+            whiteSpace: 'pre-wrap',
+            lineHeight: 1.45,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: note.title ? 4 : 5,
+            WebkitBoxOrient: 'vertical',
+            margin: 0,
+          }}
+        >
+          {note.content}
+        </p>
+      )}
+
+      {note.subtasks_total > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+          <CheckSquare size={13} />
+          {note.subtasks_done}/{note.subtasks_total} subtarefas
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: 'auto', paddingTop: '0.45rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', flex: 1 }}>
@@ -338,6 +350,7 @@ export default function Notes() {
   const [editingList, setEditingList] = useState<NoteList | null>(null);
   const [listName, setListName] = useState('');
   const [listToDelete, setListToDelete] = useState<NoteList | null>(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ['notes'],
@@ -374,6 +387,55 @@ export default function Notes() {
       invalidate();
     },
   });
+
+  const createSubtaskMutation = useMutation({
+    mutationFn: createNoteSubtask,
+    onSuccess: (subtask) => {
+      invalidate();
+      setViewingNote((current) => current && current.id === subtask.note
+        ? { ...current, subtasks: [...current.subtasks, subtask], subtasks_total: current.subtasks_total + 1 }
+        : current);
+      setNewSubtaskTitle('');
+    },
+  });
+
+  const toggleSubtaskMutation = useMutation({
+    mutationFn: toggleNoteSubtask,
+    onSuccess: (subtask) => {
+      invalidate();
+      setViewingNote((current) => current && current.id === subtask.note
+        ? {
+            ...current,
+            subtasks: current.subtasks.map((s) => (s.id === subtask.id ? subtask : s)),
+            subtasks_done: current.subtasks_done + (subtask.is_done ? 1 : -1),
+          }
+        : current);
+    },
+  });
+
+  const deleteSubtaskMutation = useMutation({
+    mutationFn: deleteNoteSubtask,
+    onSuccess: (_data, deletedId) => {
+      invalidate();
+      setViewingNote((current) => {
+        if (!current) return current;
+        const removed = current.subtasks.find((s) => s.id === deletedId);
+        if (!removed) return current;
+        return {
+          ...current,
+          subtasks: current.subtasks.filter((s) => s.id !== deletedId),
+          subtasks_total: current.subtasks_total - 1,
+          subtasks_done: current.subtasks_done - (removed.is_done ? 1 : 0),
+        };
+      });
+    },
+  });
+
+  const handleAddSubtask = (noteId: number) => {
+    const title = newSubtaskTitle.trim();
+    if (!title) return;
+    createSubtaskMutation.mutate({ note: noteId, title });
+  };
 
   const createListMutation = useMutation({
     mutationFn: createNoteList,
@@ -449,6 +511,11 @@ export default function Notes() {
     setEditingNote(note);
     setViewingNote(null);
     setShowForm(false);
+  };
+
+  const handleOpenNote = (note: Note) => {
+    setNewSubtaskTitle('');
+    setViewingNote(note);
   };
 
   const handleTogglePin = (note: Note) => {
@@ -713,7 +780,7 @@ export default function Notes() {
                   <NoteCard
                     key={note.id}
                     note={note}
-                    onOpen={() => setViewingNote(note)}
+                    onOpen={() => handleOpenNote(note)}
                     onEdit={() => handleEdit(note)}
                     onDelete={() => { setViewingNote(null); setConfirmDelete(note); }}
                     onTogglePin={() => handleTogglePin(note)}
@@ -735,7 +802,7 @@ export default function Notes() {
                   <NoteCard
                     key={note.id}
                     note={note}
-                    onOpen={() => setViewingNote(note)}
+                    onOpen={() => handleOpenNote(note)}
                     onEdit={() => handleEdit(note)}
                     onDelete={() => { setViewingNote(null); setConfirmDelete(note); }}
                     onTogglePin={() => handleTogglePin(note)}
@@ -829,8 +896,78 @@ export default function Notes() {
               </button>
             </div>
 
-            <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.65, fontSize: '0.95rem', color: 'var(--color-text-primary)', maxHeight: '55vh', overflowY: 'auto', paddingRight: '0.25rem', marginBottom: 'var(--space-lg)', wordBreak: 'break-word' }}>
-              {viewingNote.content}
+            {viewingNote.content && (
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.65, fontSize: '0.95rem', color: 'var(--color-text-primary)', maxHeight: '55vh', overflowY: 'auto', paddingRight: '0.25rem', marginBottom: 'var(--space-lg)', wordBreak: 'break-word' }}>
+                {viewingNote.content}
+              </div>
+            )}
+
+            <div style={{ marginBottom: 'var(--space-lg)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                <CheckSquare size={13} /> Subtarefas
+                {viewingNote.subtasks_total > 0 && ` · ${viewingNote.subtasks_done}/${viewingNote.subtasks_total}`}
+              </div>
+
+              {viewingNote.subtasks.length > 0 && (
+                <div style={{ display: 'grid', gap: '0.3rem', marginBottom: '0.6rem' }}>
+                  {viewingNote.subtasks.map((subtask) => (
+                    <div key={subtask.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSubtaskMutation.mutate(subtask.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: subtask.is_done ? 'var(--color-success)' : 'var(--color-text-muted)', display: 'flex' }}
+                        title={subtask.is_done ? 'Marcar como pendente' : 'Marcar como concluída'}
+                      >
+                        {subtask.is_done ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </button>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontSize: '0.88rem',
+                          color: subtask.is_done ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
+                          textDecoration: subtask.is_done ? 'line-through' : 'none',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {subtask.title}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => deleteSubtaskMutation.mutate(subtask.id)}
+                        title="Excluir subtarefa"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.15rem', color: 'var(--color-text-muted)' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddSubtask(viewingNote.id);
+                }}
+                style={{ display: 'flex', gap: '0.4rem' }}
+              >
+                <input
+                  className="input"
+                  placeholder="Adicionar subtarefa..."
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  style={{ height: 34, fontSize: '0.85rem' }}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-secondary"
+                  aria-label="Adicionar subtarefa"
+                  disabled={!newSubtaskTitle.trim() || createSubtaskMutation.isPending}
+                  style={{ height: 34, padding: '0 0.7rem' }}
+                >
+                  <Plus size={15} />
+                </button>
+              </form>
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
