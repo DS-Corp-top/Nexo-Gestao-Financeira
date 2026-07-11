@@ -87,6 +87,10 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg-primary);
+  /* iOS reveals this element's background during the rubber-band overscroll
+     bounce — without it, pulling down at the top flashes white. */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -96,6 +100,7 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
 #root {
