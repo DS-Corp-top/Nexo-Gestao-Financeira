@@ -234,6 +234,14 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# WhiteNoise keeps its own hardcoded extension->mimetype table (ignores the
+# stdlib mimetypes module) and it has no entry for .webmanifest, so it falls
+# back to application/octet-stream. Safari/iOS silently ignores a manifest
+# served with the wrong content type, which breaks standalone PWA install.
+WHITENOISE_MIMETYPES = {
+    ".webmanifest": "application/manifest+json",
+}
+
 SERVE_REACT_APP = env_bool("SERVE_REACT_APP", default=not RUNSERVER)
 
 _frontend_dist_candidates = []

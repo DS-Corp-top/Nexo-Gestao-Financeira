@@ -26,31 +26,10 @@ export default defineConfig(({ mode }) => {
       },
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/favicon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
-      manifest: {
-        name: 'Nexo Gestão Financeira',
-        short_name: 'Nexo',
-        description: 'Gestão financeira pessoal e empresarial',
-        theme_color: '#0b0b0f',
-        background_color: '#0b0b0f',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
-        lang: 'pt-BR',
-        icons: [
-          {
-            src: '/icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '/icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
-        ],
-      },
+      // The web app manifest is hand-maintained at public/manifest.webmanifest
+      // and linked directly from index.html — `manifest: false` stops the
+      // plugin from generating a second, duplicate manifest + <link> tag.
+      manifest: false,
       // Cache/precache logic (incl. runtime caching) now lives in src/sw.ts —
       // injectManifest strategy ignores the `workbox` generateSW options.
     }),
