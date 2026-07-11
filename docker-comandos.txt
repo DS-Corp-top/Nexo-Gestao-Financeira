@@ -1,4 +1,0 @@
-docker compose logs -f          # segue em tempo real (como "tail -f")
-docker compose logs -f backend  # só o serviço backend
-docker compose logs --tail 50   # só as últimas 50 linhas
-docker compose logs -f backend worker  # múltiplos serviços

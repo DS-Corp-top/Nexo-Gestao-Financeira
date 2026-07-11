@@ -34,7 +34,7 @@ const EXPECTED_MODULE_LINKS = [
 // Configurações, Administração) renders in both menus.
 const SUPERUSER_AUTH = {
   user: { is_superuser: true },
-  tenant: { role: 'owner' },
+  tenant: { role: 'owner', person_type: 'pj' },
 };
 
 describe('Sidebar and BottomNav stay in sync with every top-level module', () => {
@@ -87,5 +87,38 @@ describe('Sidebar and BottomNav stay in sync with every top-level module', () =>
     const bottomNavHrefs = within(panel).getAllByRole('link').map((el) => el.getAttribute('href')).sort();
 
     expect(bottomNavHrefs).toEqual(sidebarHrefs.filter((href) => href !== '/dashboard'));
+  });
+});
+
+describe('Fatura de Serviços is restricted to PJ tenants', () => {
+  const SUPERUSER_PF_AUTH = {
+    user: { is_superuser: true },
+    tenant: { role: 'owner', person_type: 'pf' },
+  };
+
+  beforeEach(() => {
+    (useAuth as any).mockReturnValue(SUPERUSER_PF_AUTH);
+  });
+
+  it('hides the link in Sidebar for a PF tenant, even for superusers', () => {
+    render(
+      <MemoryRouter>
+        <Sidebar isOpen={false} onClose={() => {}} collapsed={false} onToggleCollapse={() => {}} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('link', { name: /Fatura de Serviços/ })).not.toBeInTheDocument();
+  });
+
+  it('hides the link in BottomNav "more" menu for a PF tenant, even for superusers', () => {
+    render(
+      <MemoryRouter>
+        <BottomNav />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Menu/ }));
+
+    expect(screen.queryByRole('link', { name: /Fatura de Serviços/ })).not.toBeInTheDocument();
   });
 });

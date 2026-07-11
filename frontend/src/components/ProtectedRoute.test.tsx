@@ -9,14 +9,14 @@ const authMock = vi.hoisted(() => ({
 
 vi.mock('../contexts/AuthContext', () => authMock);
 
-function renderProtected(requireSuperuser = false) {
+function renderProtected(requireSuperuser = false, requirePJ = false) {
   return render(
     <MemoryRouter initialEntries={['/private']}>
       <Routes>
         <Route
           path="/private"
           element={
-            <ProtectedRoute requireSuperuser={requireSuperuser}>
+            <ProtectedRoute requireSuperuser={requireSuperuser} requirePJ={requirePJ}>
               <div>Conteudo protegido</div>
             </ProtectedRoute>
           }
@@ -78,6 +78,32 @@ describe('ProtectedRoute', () => {
     });
 
     renderProtected(true);
+
+    expect(screen.getByText('Conteudo protegido')).toBeInTheDocument();
+  });
+
+  it('redirects PF tenants from PJ-only routes', () => {
+    authMock.useAuth.mockReturnValue({
+      isLoading: false,
+      isLoggedIn: true,
+      user: { is_superuser: true },
+      tenant: { person_type: 'pf' },
+    });
+
+    renderProtected(true, true);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('renders protected content for PJ tenants on PJ-only routes', () => {
+    authMock.useAuth.mockReturnValue({
+      isLoading: false,
+      isLoggedIn: true,
+      user: { is_superuser: true },
+      tenant: { person_type: 'pj' },
+    });
+
+    renderProtected(true, true);
 
     expect(screen.getByText('Conteudo protegido')).toBeInTheDocument();
   });

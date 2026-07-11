@@ -56,7 +56,7 @@ export default function App() {
               <Route path="transactions/:id/edit" element={<TransactionForm />} />
               <Route path="accounts" element={<Accounts />} />
               <Route path="categories" element={<Categories />} />
-              <Route path="invoices" element={<ProtectedRoute requireSuperuser><Invoices /></ProtectedRoute>} />
+              <Route path="invoices" element={<ProtectedRoute requireSuperuser requirePJ><Invoices /></ProtectedRoute>} />
               <Route path="reports" element={<Reports />} />
               <Route path="shopping" element={<Shopping />} />
               <Route path="drive" element={<Drive />} />

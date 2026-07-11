@@ -39,10 +39,11 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
   const { user, tenant } = useAuth();
   const canManageTenantSettings = Boolean(user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin');
   const canManageSystem = Boolean(user?.is_superuser);
+  const isPJTenant = tenant?.person_type === 'pj';
   const items = [
     ...navItems,
     ...(canManageTenantSettings ? [{ to: '/settings/company', icon: Settings, label: 'Configurações' }] : []),
-    ...(canManageSystem ? [{ to: '/invoices', icon: FileText, label: 'Fatura de Serviços' }] : []),
+    ...(canManageSystem && isPJTenant ? [{ to: '/invoices', icon: FileText, label: 'Fatura de Serviços' }] : []),
     ...(canManageSystem ? [{ to: '/admin', icon: ShieldCheck, label: 'Administração' }] : []),
   ];
 

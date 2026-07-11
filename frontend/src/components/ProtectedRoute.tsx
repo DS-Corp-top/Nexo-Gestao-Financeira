@@ -6,10 +6,12 @@ export default function ProtectedRoute({
   children,
   requireSuperuser = false,
   requireAdmin = false,
+  requirePJ = false,
 }: {
   children: ReactNode;
   requireSuperuser?: boolean;
   requireAdmin?: boolean;
+  requirePJ?: boolean;
 }) {
   const { isLoggedIn, isLoading, user, tenant } = useAuth();
 
@@ -31,6 +33,10 @@ export default function ProtectedRoute({
 
   const isAdmin = user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin';
   if (requireAdmin && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (requirePJ && tenant?.person_type !== 'pj') {
     return <Navigate to="/dashboard" replace />;
   }
 

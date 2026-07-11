@@ -9,6 +9,7 @@ export default function BottomNav() {
   const { user, tenant } = useAuth();
   const canManageTenantSettings = Boolean(user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin');
   const canManageSystem = Boolean(user?.is_superuser);
+  const isPJTenant = tenant?.person_type === 'pj';
 
   // Se for Desktop, o CSS vai ocultar essa barra automaticamente usando .txn-bottom-nav { display: none }
   return (
@@ -65,7 +66,7 @@ export default function BottomNav() {
               <span className="txn-more-icon"><FileBarChart size={20} /></span>
               Relatórios
             </Link>
-            {canManageSystem && (
+            {canManageSystem && isPJTenant && (
               <Link to="/invoices" className={`txn-more-link ${location.pathname.startsWith('/invoices') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
                 <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg></span>
                 Fatura de Serviços
