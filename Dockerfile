@@ -33,4 +33,4 @@ RUN DJANGO_SECRET_KEY=docker-build-only python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD exec gunicorn core.wsgi --bind 0.0.0.0:${PORT:-8000} --workers 3 --threads 2 --worker-class gthread --log-file -
+CMD exec gunicorn core.wsgi --bind 0.0.0.0:${PORT:-8000} --workers 3 --threads 2 --worker-class gthread --log-file - --access-logfile - --access-logformat '%(h)s %(r)s %(s)s %(L)ss'

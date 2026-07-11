@@ -274,17 +274,59 @@ if SERVE_REACT_APP:
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-_BUCKETEER_BUCKET = os.getenv("BUCKETEER_BUCKET_NAME")
-if _BUCKETEER_BUCKET:
-    AWS_ACCESS_KEY_ID = os.getenv("BUCKETEER_AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("BUCKETEER_AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = _BUCKETEER_BUCKET
-    AWS_S3_REGION_NAME = os.getenv("BUCKETEER_AWS_REGION", "us-east-1")
+# STORAGE_PROVIDER picks the media backend at runtime — swapping cloud
+# providers is just a config var change, no code/deploy change needed as
+# long as the target provider's credentials are also set. Defaults to "s3"
+# when BUCKETEER_BUCKET_NAME is present so existing Heroku/Bucketeer setups
+# keep working without adding STORAGE_PROVIDER explicitly.
+STORAGE_PROVIDER = os.getenv(
+    "STORAGE_PROVIDER", "s3" if os.getenv("BUCKETEER_BUCKET_NAME") else "local"
+).lower()
+
+if STORAGE_PROVIDER == "s3":
+    # Bucketeer (Heroku addon) names its config vars with a BUCKETEER_ prefix;
+    # plain AWS_* is supported too for a non-Heroku S3 bucket.
+    AWS_STORAGE_BUCKET_NAME = os.getenv("BUCKETEER_BUCKET_NAME") or os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_ACCESS_KEY_ID = os.getenv("BUCKETEER_AWS_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("BUCKETEER_AWS_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_S3_REGION_NAME = os.getenv("BUCKETEER_AWS_REGION") or os.getenv("AWS_S3_REGION_NAME", "us-east-1")
     AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False
     AWS_QUERYSTRING_AUTH = True
     MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/"
     _DEFAULT_FILE_BACKEND = "storages.backends.s3boto3.S3Boto3Storage"
+
+elif STORAGE_PROVIDER == "gcs":
+    GS_BUCKET_NAME = os.getenv("GS_BUCKET_NAME")
+    GS_PROJECT_ID = os.getenv("GS_PROJECT_ID") or None
+    GS_DEFAULT_ACL = None
+    GS_FILE_OVERWRITE = False
+    GS_QUERYSTRING_AUTH = True
+    # Credentials: either a path to a service-account JSON file
+    # (GOOGLE_APPLICATION_CREDENTIALS, read automatically by the Google SDK)
+    # or the JSON contents inline via GS_CREDENTIALS_JSON (handy on Heroku,
+    # where you can't ship a credentials file).
+    _gcs_credentials_json = os.getenv("GS_CREDENTIALS_JSON")
+    if _gcs_credentials_json:
+        import json as _json
+
+        from google.oauth2 import service_account as _gcs_service_account
+
+        GS_CREDENTIALS = _gcs_service_account.Credentials.from_service_account_info(
+            _json.loads(_gcs_credentials_json)
+        )
+    MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/media/"
+    _DEFAULT_FILE_BACKEND = "storages.backends.gcloud.GoogleCloudStorage"
+
+elif STORAGE_PROVIDER == "azure":
+    AZURE_ACCOUNT_NAME = os.getenv("AZURE_ACCOUNT_NAME")
+    AZURE_ACCOUNT_KEY = os.getenv("AZURE_ACCOUNT_KEY")
+    AZURE_CONTAINER = os.getenv("AZURE_CONTAINER")
+    AZURE_OVERWRITE_FILES = False
+    AZURE_URL_EXPIRATION_SECS = None
+    MEDIA_URL = f"https://{AZURE_ACCOUNT_NAME}.blob.core.windows.net/{AZURE_CONTAINER}/media/"
+    _DEFAULT_FILE_BACKEND = "storages.backends.azure_storage.AzureStorage"
+
 else:
     _DEFAULT_FILE_BACKEND = "django.core.files.storage.FileSystemStorage"
 

@@ -6,7 +6,7 @@ run:
     command:
       - python manage.py check_react_build && python manage.py migrate --noinput
     image: web
-  web: gunicorn core.wsgi --bind 0.0.0.0:$PORT --workers 3 --threads 2 --worker-class gthread --log-file -
+  web: gunicorn core.wsgi --bind 0.0.0.0:$PORT --workers 3 --threads 2 --worker-class gthread --log-file - --access-logfile - --access-logformat '%(h)s %(r)s %(s)s %(L)ss'
   worker:
     command:
       - celery -A core worker --loglevel=info --concurrency=2

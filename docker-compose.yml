@@ -48,7 +48,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "python manage.py migrate --noinput &&
-             gunicorn core.wsgi --bind 0.0.0.0:8000 --workers 3 --threads 2 --worker-class gthread --log-file -"
+             gunicorn core.wsgi --bind 0.0.0.0:8000 --workers 3 --threads 2 --worker-class gthread --log-file - --access-logfile - --access-logformat '%(h)s %(r)s %(s)s %(L)ss'"
     volumes:
       - media_data:/app/backend/media
 
