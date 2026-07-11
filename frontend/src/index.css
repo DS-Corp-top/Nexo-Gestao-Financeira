@@ -554,11 +554,13 @@ select.clear-modal-date option:checked {
 
 /* Sidebar Navigation */
 .nav-brand {
-  padding: var(--space-lg);
+  height: var(--header-height);
+  padding: 0 var(--space-lg);
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .nav-brand-text {
