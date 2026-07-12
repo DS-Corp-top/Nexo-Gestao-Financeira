@@ -127,6 +127,27 @@ describe('Transactions Page', () => {
     expect(call.category).toBe(20);
   });
 
+  it('opens Contas/Categorias as an overlay modal instead of navigating away', async () => {
+    const { container } = renderTransactions();
+
+    fireEvent.click(await screen.findByLabelText('Abrir mais ações'));
+    fireEvent.click(await screen.findByText('Contas'));
+
+    const accountsHeading = await screen.findByText('Contas', { selector: '.modal-title' });
+    const modalRoot = accountsHeading.closest('.modal-overlay') as HTMLElement;
+    expect(modalRoot).not.toBeNull();
+    expectPortaledToBody(modalRoot, container);
+    // Still on the transactions page — this didn't navigate away.
+    expect(window.location.pathname).not.toBe('/accounts');
+
+    fireEvent.click(screen.getByRole('button', { name: '×' }));
+    expect(screen.queryByText('Contas', { selector: '.modal-title' })).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByLabelText('Abrir mais ações'));
+    fireEvent.click(await screen.findByText('Categorias'));
+    expect(await screen.findByText('Categorias', { selector: '.modal-title' })).toBeInTheDocument();
+  });
+
   it('does not show a category field when clearing a transfer', async () => {
     (transactionsApi.fetchTransactions as any).mockResolvedValue([
       makeTransaction({ transaction_type: 'transfer', description: 'Transferencia teste', display_title: 'Transferencia teste' }),

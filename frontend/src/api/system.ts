@@ -17,10 +17,11 @@ export async function fetchAllCompanies(): Promise<AllCompanyItem[]> {
   return data;
 }
 
-export async function uploadBackupFile(file: File): Promise<{ detail: string }> {
+export async function uploadBackupFile(file: File, password: string): Promise<{ detail: string }> {
   const formData = new FormData();
   formData.append('file', file);
-  
+  formData.append('password', password);
+
   const { data } = await api.post<{ detail: string }>('/system/restore-backup/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',

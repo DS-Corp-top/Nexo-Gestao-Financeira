@@ -5,6 +5,7 @@ export interface Folder {
   name: string;
   company: number | null;
   company_name: string | null;
+  parent: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,12 +26,12 @@ export interface Document {
   updated_at: string;
 }
 
-export async function fetchFolders(params?: { company?: string }) {
+export async function fetchFolders(params?: { company?: string; parent?: string }) {
   const { data } = await api.get<{ results: Folder[]; count: number }>('/drive/folders/', { params });
   return data;
 }
 
-export async function createFolder(payload: { name: string; company?: string }) {
+export async function createFolder(payload: { name: string; company?: string; parent?: string }) {
   const { data } = await api.post<Folder>('/drive/folders/', payload);
   return data;
 }

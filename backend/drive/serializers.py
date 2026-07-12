@@ -1,6 +1,30 @@
 from rest_framework import serializers
 from .models import Document, Folder
 
+_DOCUMENT_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
+# Denylist (not allowlist) — Drive stores arbitrary business documents (PDFs,
+# spreadsheets, images, etc.), so we only block file types that are dangerous
+# to host/serve rather than restrict to a fixed set of "safe" extensions.
+_DOCUMENT_BLOCKED_EXTENSIONS = {
+    "html", "htm", "svg", "xhtml", "shtml",
+    "js", "mjs", "php", "phtml", "asp", "aspx", "jsp",
+    "exe", "dll", "msi", "bat", "cmd", "com", "scr", "vbs", "ps1", "sh",
+}
+
+
+def validate_document_file(file):
+    if file is None:
+        return file
+    ext = (file.name.rsplit(".", 1)[-1].lower()) if "." in file.name else ""
+    if ext in _DOCUMENT_BLOCKED_EXTENSIONS:
+        raise serializers.ValidationError(
+            f"Tipo de arquivo não permitido: .{ext}."
+        )
+    if file.size > _DOCUMENT_MAX_BYTES:
+        raise serializers.ValidationError("O arquivo deve ter no máximo 50 MB.")
+    return file
+
+
 class FolderSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
 
@@ -11,6 +35,7 @@ class FolderSerializer(serializers.ModelSerializer):
             "name",
             "company",
             "company_name",
+            "parent",
             "created_at",
             "updated_at",
         )
@@ -21,11 +46,29 @@ class FolderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Empresa invalida para este tenant.")
         return value
 
+    def validate_parent(self, value):
+        tenant = self.context.get("tenant")
+        if value and tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Pasta pai inválida para este tenant.")
+        if value and self.instance and value.pk == self.instance.pk:
+            raise serializers.ValidationError("Uma pasta não pode ser pai dela mesma.")
+        return value
+
+    def validate(self, attrs):
+        # A subfolder always belongs to the same company as its parent — the
+        # parent's company is the source of truth, not whatever the client
+        # sent (mirrors how Document.save() inherits company from its folder).
+        parent = attrs.get("parent", getattr(self.instance, "parent", None))
+        if parent is not None:
+            attrs["company"] = parent.company
+        return attrs
+
 class DocumentSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
     user_name = serializers.CharField(source='user.get_full_name', read_only=True, allow_null=True)
     folder_name = serializers.CharField(source='folder.name', read_only=True, allow_null=True)
     file_url = serializers.SerializerMethodField()
+    file = serializers.FileField(validators=[validate_document_file])
     
     class Meta:
         model = Document

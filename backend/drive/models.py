@@ -20,6 +20,13 @@ class Folder(models.Model):
         null=True,
         blank=True,
     )
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        related_name="subfolders",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
@@ -29,6 +36,7 @@ class Folder(models.Model):
         verbose_name_plural = "Pastas"
         indexes = [
             models.Index(fields=("tenant", "company", "name")),
+            models.Index(fields=("tenant", "parent")),
         ]
 
     def __str__(self):

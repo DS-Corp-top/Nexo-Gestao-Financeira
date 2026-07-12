@@ -16,6 +16,8 @@ import {
 import { fetchAccounts } from '../api/accounts';
 import { fetchCategories } from '../api/categories';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
+import Accounts from './Accounts';
+import Categories from './Categories';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, Tags, EllipsisVertical, Plus } from 'lucide-react';
 
@@ -56,6 +58,7 @@ export default function Transactions() {
   const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [quickView, setQuickView] = useState<'accounts' | 'categories' | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -224,10 +227,10 @@ export default function Transactions() {
               minWidth: '200px',
               boxShadow: 'var(--shadow-lg)'
             }}>
-              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { navigate('/accounts'); setShowMenu(false); }}>
+              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setQuickView('accounts'); setShowMenu(false); }}>
                 <Wallet size={16} /> Contas
               </button>
-              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { navigate('/categories'); setShowMenu(false); }}>
+              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setQuickView('categories'); setShowMenu(false); }}>
                 <Tags size={16} /> Categorias
               </button>
             </div>
@@ -567,6 +570,23 @@ export default function Transactions() {
                 OK
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {quickView && createPortal(
+        <div className="modal-overlay" onClick={() => setQuickView(null)}>
+          <div
+            className="modal-content animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 960, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title">{quickView === 'accounts' ? 'Contas' : 'Categorias'}</h2>
+              <button className="btn-ghost btn-icon" onClick={() => setQuickView(null)}>×</button>
+            </div>
+            {quickView === 'accounts' ? <Accounts /> : <Categories />}
           </div>
         </div>,
         document.body

@@ -14,6 +14,24 @@ class FolderViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering_fields = ["created_at", "name"]
     ordering = ["name"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        # Same convention as DocumentViewSet: explicit 'parent' shows that
+        # folder's direct children; otherwise only root-level folders.
+        parent_id = self.request.query_params.get("parent")
+        if parent_id:
+            qs = qs.filter(parent_id=parent_id)
+        else:
+            qs = qs.filter(parent__isnull=True)
+        return qs
+
+    def perform_create(self, serializer):
+        # Folder has no `user` field (unlike Document), so it can't use the
+        # mixin's default perform_create — that unconditionally passes
+        # user=self.request.user, which Folder.objects.create() rejects.
+        serializer.save(tenant=self.get_tenant())
+
 class DocumentViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer

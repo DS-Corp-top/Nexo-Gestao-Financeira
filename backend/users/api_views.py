@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
@@ -12,6 +14,14 @@ from tenants.models import TenantMembership
 from users.serializers import PendingUserSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
+audit_logger = logging.getLogger("nexo.audit")
+
+
+def _client_ip(request):
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "unknown")
 
 _COOKIE_SECURE = not getattr(settings, "DEBUG", False)
 _ACCESS_COOKIE = "access_token"
@@ -437,12 +447,28 @@ class RestoreBackupView(APIView):
         if not file_obj:
             return Response({"detail": "Nenhum arquivo enviado."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Step-up confirmation: restoring a backup overwrites the whole
+        # database, so a stolen/forged superuser session alone isn't enough —
+        # the caller must also re-type their password.
+        password = request.data.get("password") or ""
+        if not password or not request.user.check_password(password):
+            audit_logger.warning(
+                "restore_backup denied (wrong/missing password): user=%s ip=%s filename=%s",
+                request.user.username, _client_ip(request), file_obj.name,
+            )
+            return Response({"detail": "Senha incorreta."}, status=status.HTTP_403_FORBIDDEN)
+
         db_settings = settings.DATABASES['default']
         if 'postgresql' not in db_settings['ENGINE']:
             return Response(
                 {"detail": "O sistema atual não está utilizando PostgreSQL."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        audit_logger.warning(
+            "restore_backup started: user=%s ip=%s filename=%s",
+            request.user.username, _client_ip(request), file_obj.name,
+        )
 
         tmp_path = None
         result = None
@@ -578,9 +604,17 @@ class RestoreBackupView(APIView):
                 result = run_pg_command(cmd, env)
 
             if result is not None and result.returncode == 0:
+                audit_logger.warning(
+                    "restore_backup succeeded: user=%s ip=%s filename=%s",
+                    request.user.username, _client_ip(request), file_obj.name,
+                )
                 return Response({"detail": "Backup restaurado com sucesso!"}, status=status.HTTP_200_OK)
             else:
                 error_output = summarize_restore_error(result) if result is not None else "Falha sem retorno do processo de restore."
+                audit_logger.warning(
+                    "restore_backup failed: user=%s ip=%s filename=%s error=%s",
+                    request.user.username, _client_ip(request), file_obj.name, error_output,
+                )
                 return Response(
                     {
                         "detail": "Erro ao restaurar backup. Verifique se o arquivo e um dump valido do PostgreSQL.",
@@ -588,12 +622,11 @@ class RestoreBackupView(APIView):
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
-                return Response(
-                    {"detail": "Erro ao restaurar backup. Verifique se o arquivo é um dump válido do pg_dump."},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
-                
         except Exception as e:
+            audit_logger.warning(
+                "restore_backup errored: user=%s ip=%s filename=%s error=%s",
+                request.user.username, _client_ip(request), file_obj.name, str(e),
+            )
             return Response({"detail": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
             if tmp_path and os.path.exists(tmp_path):

@@ -3,29 +3,34 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchDocuments, uploadDocument, deleteDocument, fetchFolders, createFolder, deleteFolder, type Document, type Folder } from '../api/drive';
 import { fetchTenantCompanies } from '../api/tenant';
-import { CloudUpload, File, Trash2, Download, Search, Filter, Folder as FolderIcon, Plus, ChevronRight } from 'lucide-react';
+import { CloudUpload, File, Trash2, Download, Search, Filter, Folder as FolderIcon, FolderUp, Plus, ChevronRight } from 'lucide-react';
 
 export default function Drive() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [folderUploadProgress, setFolderUploadProgress] = useState<{ done: number; total: number; currentName: string } | null>(null);
+
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [search, setSearch] = useState('');
-  
-  const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
+
+  // Ancestors from root to the folder currently open, e.g. [] at root,
+  // [A] inside A, [A, B] inside A/B. The last entry is the active folder.
+  const [folderPath, setFolderPath] = useState<Folder[]>([]);
+  const currentFolder = folderPath[folderPath.length - 1] ?? null;
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderCompany, setNewFolderCompany] = useState('');
-  
+
   const { data: companies } = useQuery({
     queryKey: ['tenantCompanies'],
     queryFn: fetchTenantCompanies,
   });
 
   const { data: foldersData, isLoading: loadingFolders } = useQuery({
-    queryKey: ['drive-folders', selectedCompany],
-    queryFn: () => fetchFolders({ company: selectedCompany || undefined }),
-    enabled: !currentFolder && !search // Only show folders at root and when not searching
+    queryKey: ['drive-folders', selectedCompany, currentFolder?.id],
+    queryFn: () => fetchFolders({ company: selectedCompany || undefined, parent: currentFolder ? currentFolder.id.toString() : undefined }),
+    enabled: !search // Folders show at any level, just not while searching
   });
 
   const { data: documentsData, isLoading: loadingDocs } = useQuery({
@@ -86,12 +91,81 @@ export default function Drive() {
     }
   };
 
+  const handleFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files ? Array.from(e.target.files) : [];
+    if (fileList.length === 0) return;
+
+    const companyId = currentFolder ? (currentFolder.company?.toString() || '') : selectedCompany;
+    const relativePathOf = (file: File) => (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+
+    setFolderUploadProgress({ done: 0, total: fileList.length, currentName: 'Preparando pastas...' });
+    try {
+      // Collect every distinct directory path (e.g. a file at "Top/Sub/x.txt"
+      // contributes "Top" and "Top/Sub"), so the real nested structure gets
+      // recreated as actual subfolders instead of dumping everything flat.
+      const dirPaths = new Set<string>();
+      for (const file of fileList) {
+        const segments = relativePathOf(file).split('/').slice(0, -1);
+        let acc = '';
+        for (const segment of segments) {
+          acc = acc ? `${acc}/${segment}` : segment;
+          dirPaths.add(acc);
+        }
+      }
+
+      // Create shallower folders first so deeper ones can reference their
+      // parent's id.
+      const sortedDirs = Array.from(dirPaths).sort((a, b) => a.split('/').length - b.split('/').length);
+      const folderIdByPath = new Map<string, number>();
+      for (const dirPath of sortedDirs) {
+        const segments = dirPath.split('/');
+        const name = segments[segments.length - 1];
+        const parentPath = segments.slice(0, -1).join('/');
+        const parentId = parentPath ? folderIdByPath.get(parentPath) : currentFolder?.id;
+        const created = await createFolder({
+          name,
+          company: companyId || undefined,
+          parent: parentId ? parentId.toString() : undefined,
+        });
+        folderIdByPath.set(dirPath, created.id);
+      }
+
+      let failed = 0;
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setFolderUploadProgress({ done: i, total: fileList.length, currentName: relativePathOf(file) });
+        const segments = relativePathOf(file).split('/');
+        const dirPath = segments.slice(0, -1).join('/');
+        const targetFolderId = dirPath ? folderIdByPath.get(dirPath) : currentFolder?.id;
+        try {
+          await uploadDocument(file, companyId, targetFolderId ? targetFolderId.toString() : undefined);
+        } catch {
+          failed += 1;
+        }
+        setFolderUploadProgress({ done: i + 1, total: fileList.length, currentName: relativePathOf(file) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['drive-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['drive-folders'] });
+      if (failed > 0) {
+        alert(`${failed} de ${fileList.length} arquivo(s) não puderam ser enviados.`);
+      }
+    } catch (err: any) {
+      alert('Erro ao enviar pasta: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setFolderUploadProgress(null);
+      if (folderInputRef.current) {
+        folderInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
-    await createFolderMutation.mutateAsync({ 
-      name: newFolderName.trim(), 
-      company: newFolderCompany || undefined 
+    await createFolderMutation.mutateAsync({
+      name: newFolderName.trim(),
+      company: currentFolder ? (currentFolder.company?.toString() || undefined) : (newFolderCompany || undefined),
+      parent: currentFolder ? currentFolder.id.toString() : undefined,
     });
   };
 
@@ -119,7 +193,7 @@ export default function Drive() {
   const docs = documentsData?.results || [];
   const folders = foldersData?.results || [];
   
-  const isLoading = loadingDocs || (loadingFolders && !currentFolder && !search);
+  const isLoading = loadingDocs || (loadingFolders && !search);
 
   return (
     <div className="animate-fade-in">
@@ -129,19 +203,33 @@ export default function Drive() {
             <CloudUpload size={24} />
             Drive
           </h2>
-          {currentFolder && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              <button 
-                className="btn-ghost" 
-                style={{ padding: '2px 6px', fontSize: '0.85rem' }} 
-                onClick={() => setCurrentFolder(null)}
+          {folderPath.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: '0.85rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
+              <button
+                className="btn-ghost"
+                style={{ padding: '2px 6px', fontSize: '0.85rem' }}
+                onClick={() => setFolderPath([])}
               >
                 Início
               </button>
-              <ChevronRight size={14} />
-              <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
-                {currentFolder.name}
-              </span>
+              {folderPath.map((folder, idx) => (
+                <span key={folder.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <ChevronRight size={14} />
+                  {idx === folderPath.length - 1 ? (
+                    <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>
+                      {folder.name}
+                    </span>
+                  ) : (
+                    <button
+                      className="btn-ghost"
+                      style={{ padding: '2px 6px', fontSize: '0.85rem' }}
+                      onClick={() => setFolderPath(folderPath.slice(0, idx + 1))}
+                    >
+                      {folder.name}
+                    </button>
+                  )}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -176,32 +264,54 @@ export default function Drive() {
             />
           </div>
           
-          {!currentFolder && (
-            <button 
-              className="btn btn-ghost btn-icon drive-folder-trigger" 
-              onClick={() => setIsFolderModalOpen(true)}
-              aria-label="Nova pasta"
-              title="Nova pasta"
-            >
-              <Plus size={20} />
-            </button>
-          )}
+          <button
+            className="btn btn-ghost btn-icon drive-folder-trigger"
+            onClick={() => setIsFolderModalOpen(true)}
+            aria-label="Nova pasta"
+            title="Nova pasta"
+          >
+            <Plus size={20} />
+          </button>
           
-          <button 
-            className="btn btn-primary btn-icon drive-upload-trigger" 
+          <button
+            className="btn btn-primary btn-icon drive-upload-trigger"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploadMutation.isPending}
+            disabled={uploadMutation.isPending || !!folderUploadProgress}
             aria-label="Novo arquivo"
             title="Novo arquivo"
           >
             <CloudUpload size={20} style={{ opacity: uploadMutation.isPending ? 0.55 : 1 }} />
           </button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            style={{ display: 'none' }} 
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
             onChange={handleFileChange}
           />
+
+          <button
+            className="btn btn-primary btn-icon drive-upload-folder-trigger"
+            onClick={() => folderInputRef.current?.click()}
+            disabled={uploadMutation.isPending || !!folderUploadProgress}
+            aria-label="Upload de pasta"
+            title="Upload de pasta completa"
+          >
+            <FolderUp size={20} style={{ opacity: folderUploadProgress ? 0.55 : 1 }} />
+          </button>
+          <input
+            type="file"
+            ref={(el) => {
+              folderInputRef.current = el;
+              if (el) {
+                el.setAttribute('webkitdirectory', '');
+                el.setAttribute('directory', '');
+              }
+            }}
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleFolderChange}
+          />
+
         </div>
       </div>
 
@@ -219,13 +329,13 @@ export default function Drive() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
-          {/* Folders (only show if not searching and not inside a folder) */}
-          {!currentFolder && !search && folders.map(folder => (
-            <div 
-              key={`folder-${folder.id}`} 
-              className="card" 
+          {/* Folders (only hidden while searching — otherwise shown at every level) */}
+          {!search && folders.map(folder => (
+            <div
+              key={`folder-${folder.id}`}
+              className="card"
               style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)', cursor: 'pointer', border: '1px solid var(--color-border)', transition: 'border-color 0.2s' }}
-              onClick={() => setCurrentFolder(folder)}
+              onClick={() => setFolderPath([...folderPath, folder])}
               onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-accent)'}
               onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
             >
@@ -329,22 +439,31 @@ export default function Drive() {
                     autoFocus
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Vincular a uma Empresa</label>
-                  <select 
-                    className="input" 
-                    value={newFolderCompany}
-                    onChange={(e) => setNewFolderCompany(e.target.value)}
-                  >
-                    <option value="">Geral / Todas as Empresas</option>
-                    {companies?.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Arquivos enviados para dentro desta pasta herdarão automaticamente esta empresa.
-                  </p>
-                </div>
+                {currentFolder ? (
+                  <div className="form-group">
+                    <label className="form-label">Empresa</label>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                      Herdada da pasta "{currentFolder.name}": <strong>{currentFolder.company_name || 'Geral / Todas'}</strong>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label">Vincular a uma Empresa</label>
+                    <select
+                      className="input"
+                      value={newFolderCompany}
+                      onChange={(e) => setNewFolderCompany(e.target.value)}
+                    >
+                      <option value="">Geral / Todas as Empresas</option>
+                      {companies?.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Arquivos e subpastas dentro desta pasta herdarão automaticamente esta empresa.
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setIsFolderModalOpen(false)}>Cancelar</button>
@@ -353,6 +472,36 @@ export default function Drive() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de progresso do upload de pasta */}
+      {folderUploadProgress && createPortal(
+        <div className="modal-overlay">
+          <div className="modal-content animate-fade-in" style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h3>Enviando pasta...</h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {folderUploadProgress.currentName}
+              </p>
+              <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--color-bg-elevated)', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${folderUploadProgress.total ? (folderUploadProgress.done / folderUploadProgress.total) * 100 : 0}%`,
+                    height: '100%',
+                    background: 'var(--color-accent)',
+                    transition: 'width 0.2s ease',
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 10, textAlign: 'right' }}>
+                {folderUploadProgress.done}/{folderUploadProgress.total} arquivo(s)
+              </p>
+            </div>
           </div>
         </div>,
         document.body

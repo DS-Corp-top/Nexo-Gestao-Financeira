@@ -339,6 +339,7 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   if (!isSuperuser) {
@@ -356,7 +357,7 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
     setIsUploading(true);
     setMessage(null);
     try {
-      const res = await uploadBackupFile(file!);
+      const res = await uploadBackupFile(file!, confirmPassword);
       setMessage({ text: res.detail || 'Backup restaurado com sucesso!', type: 'success' });
       setFile(null);
     } catch (err: any) {
@@ -369,6 +370,7 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
       setMessage({ text: errorText, type: 'error' });
     } finally {
       setIsUploading(false);
+      setConfirmPassword('');
     }
   };
 
@@ -467,12 +469,29 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
               O banco de dados atual será <strong>completamente substituído</strong> pelo backup selecionado. Todos os dados existentes serão perdidos permanentemente.
             </p>
-            <div style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', padding: '0.6rem 0.85rem', marginBottom: '1.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)', wordBreak: 'break-all' }}>
+            <div style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', padding: '0.6rem 0.85rem', marginBottom: '1.25rem', fontSize: '0.8rem', color: 'var(--color-text-muted)', wordBreak: 'break-all' }}>
               {file?.name}
             </div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--color-text-secondary)' }}>
+              Confirme sua senha para continuar
+            </label>
+            <input
+              type="password"
+              className="input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoFocus
+              style={{ width: '100%', marginBottom: '1.5rem' }}
+              placeholder="Sua senha"
+            />
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button className="btn" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
-              <button className="btn" style={{ background: '#ff6b6b', color: '#fff', border: 'none' }} onClick={executeUpload}>
+              <button className="btn" onClick={() => { setShowConfirmModal(false); setConfirmPassword(''); }}>Cancelar</button>
+              <button
+                className="btn"
+                style={{ background: '#ff6b6b', color: '#fff', border: 'none' }}
+                disabled={!confirmPassword}
+                onClick={executeUpload}
+              >
                 Sim, restaurar
               </button>
             </div>
