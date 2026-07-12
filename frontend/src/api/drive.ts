@@ -14,6 +14,7 @@ export interface Document {
   id: number;
   title: string;
   file_url: string;
+  thumbnail_url: string | null;
   file_type: string;
   file_size: number;
   company: number | null;

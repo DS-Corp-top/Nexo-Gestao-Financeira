@@ -374,8 +374,12 @@ export default function Drive() {
           {docs.map(doc => (
             <div key={`doc-${doc.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <File size={20} color="var(--color-text-secondary)" />
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  {doc.thumbnail_url ? (
+                    <img src={doc.thumbnail_url} alt={doc.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <File size={20} color="var(--color-text-secondary)" />
+                  )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.title}>

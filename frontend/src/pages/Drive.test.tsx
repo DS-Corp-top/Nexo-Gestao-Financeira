@@ -59,6 +59,53 @@ describe('Drive Page', () => {
     expectPortaledToBody(modalRoot, container);
   });
 
+  it('shows the thumbnail image for documents that have one, and the generic file icon otherwise', async () => {
+    (driveApi.fetchDocuments as any).mockResolvedValue({
+      results: [
+        {
+          id: 1,
+          title: 'foto.png',
+          file_url: '/media/foto.png',
+          thumbnail_url: '/media/thumbnails/foto.jpg',
+          file_type: 'png',
+          file_size: 1024,
+          company: null,
+          company_name: null,
+          folder: null,
+          folder_name: null,
+          user: 1,
+          user_name: null,
+          created_at: '',
+          updated_at: '',
+        },
+        {
+          id: 2,
+          title: 'contrato.pdf',
+          file_url: '/media/contrato.pdf',
+          thumbnail_url: null,
+          file_type: 'pdf',
+          file_size: 2048,
+          company: null,
+          company_name: null,
+          folder: null,
+          folder_name: null,
+          user: 1,
+          user_name: null,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+    });
+
+    renderDrive();
+
+    const image = await screen.findByRole('img');
+    expect(image).toHaveAttribute('src', '/media/thumbnails/foto.jpg');
+
+    // Only the image-backed document renders an <img> — the PDF keeps the generic icon.
+    expect(screen.getAllByRole('img')).toHaveLength(1);
+  });
+
   it('uploads a whole folder tree: recreates real nested subfolders and uploads each file into its matching folder', async () => {
     let nextId = 100;
     (driveApi.createFolder as any).mockImplementation(async (payload: any) => ({

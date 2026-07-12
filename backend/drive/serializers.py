@@ -68,8 +68,9 @@ class DocumentSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.get_full_name', read_only=True, allow_null=True)
     folder_name = serializers.CharField(source='folder.name', read_only=True, allow_null=True)
     file_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
     file = serializers.FileField(validators=[validate_document_file])
-    
+
     class Meta:
         model = Document
         fields = (
@@ -77,6 +78,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "title",
             "file",
             "file_url",
+            "thumbnail_url",
             "file_type",
             "file_size",
             "company",
@@ -88,7 +90,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("user", "file_type", "file_size")
+        read_only_fields = ("user", "file_type", "file_size", "thumbnail_url")
 
     def validate_company(self, value):
         tenant = self.context.get("tenant")
@@ -109,6 +111,14 @@ class DocumentSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.file.url)
         return obj.file.url
+
+    def get_thumbnail_url(self, obj):
+        if not obj.thumbnail:
+            return None
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.thumbnail.url)
+        return obj.thumbnail.url
 
     def create(self, validated_data):
         request = self.context.get("request")
