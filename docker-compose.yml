@@ -1,7 +1,12 @@
 services:
+  # db/redis sao add-ons gerenciados na Heroku (heroku-postgresql:essential-0
+  # e bucketeer/Redis), nao dynos — os limites aqui sao so pra nao deixar
+  # esses containers consumirem recursos ilimitados na maquina local.
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-nexo}
       POSTGRES_USER: ${POSTGRES_USER:-nexo}
@@ -17,6 +22,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
     volumes:
       - redis_data:/data
     healthcheck:
@@ -25,6 +32,10 @@ services:
       timeout: 5s
       retries: 10
 
+  # backend/worker/beat rodam a mesma imagem que vai pro dyno "web" da Heroku
+  # (plano Eco: 512 MB RAM, 1 vCPU compartilhada) — os limites abaixo
+  # espelham isso, pra bug de estouro de memoria aparecer localmente antes
+  # de acontecer em producao, em vez de so a maquina local absorver.
   backend:
     build:
       context: .
@@ -33,6 +44,8 @@ services:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
     image: nexo-gestao-financeira:latest
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1
     env_file:
       - .env
     environment:
@@ -57,6 +70,8 @@ services:
     # "docker compose build worker" sozinho nao faz nada; use "docker compose up --build".
     image: nexo-gestao-financeira:latest
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1
     env_file:
       - .env
     environment:
@@ -79,6 +94,8 @@ services:
     # ideia do worker: reaproveita a imagem buildada pelo backend.
     image: nexo-gestao-financeira:latest
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1
     env_file:
       - .env
     environment:

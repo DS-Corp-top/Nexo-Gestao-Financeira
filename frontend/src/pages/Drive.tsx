@@ -1,18 +1,34 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchDocuments, uploadDocument, deleteDocument, fetchFolders, createFolder, deleteFolder, type Document, type Folder } from '../api/drive';
+import {
+  fetchDocuments, uploadDocument, deleteDocument, fetchFolders, createFolder, deleteFolder,
+  fetchTrashDocuments, fetchTrashFolders, restoreDocument, restoreFolder, purgeDocument, purgeFolder,
+  type Document, type Folder,
+} from '../api/drive';
 import { fetchTenantCompanies } from '../api/tenant';
-import { CloudUpload, File, Trash2, Download, Search, Filter, Folder as FolderIcon, FolderUp, Plus, ChevronRight } from 'lucide-react';
+import { CloudUpload, File, Trash2, Download, Search, Filter, Folder as FolderIcon, FolderUp, Plus, ChevronRight, RotateCcw, X as XIcon } from 'lucide-react';
+
+const PREVIEWABLE_IMAGE_TYPES = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']);
 
 export default function Drive() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [folderUploadProgress, setFolderUploadProgress] = useState<{ done: number; total: number; currentName: string } | null>(null);
+  const cancelFolderUploadRef = useRef(false);
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [uploadSummary, setUploadSummary] = useState<{
+    cancelled: boolean;
+    uploaded: number;
+    total: number;
+    duplicates: number;
+    failed: { name: string; reason: string }[];
+  } | null>(null);
 
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [showTrash, setShowTrash] = useState(false);
 
   // Ancestors from root to the folder currently open, e.g. [] at root,
   // [A] inside A, [A, B] inside A/B. The last entry is the active folder.
@@ -30,24 +46,73 @@ export default function Drive() {
   const { data: foldersData, isLoading: loadingFolders } = useQuery({
     queryKey: ['drive-folders', selectedCompany, currentFolder?.id],
     queryFn: () => fetchFolders({ company: selectedCompany || undefined, parent: currentFolder ? currentFolder.id.toString() : undefined }),
-    enabled: !search // Folders show at any level, just not while searching
+    enabled: !search && !showTrash // Folders show at any level, just not while searching or viewing the trash
   });
 
   const { data: documentsData, isLoading: loadingDocs } = useQuery({
     queryKey: ['drive-documents', selectedCompany, search, currentFolder?.id],
-    queryFn: () => fetchDocuments({ 
-      company: selectedCompany || undefined, 
+    queryFn: () => fetchDocuments({
+      company: selectedCompany || undefined,
       search,
       folder: currentFolder ? currentFolder.id.toString() : undefined
     }),
+    enabled: !showTrash,
   });
 
+  const { data: trashFoldersData, isLoading: loadingTrashFolders } = useQuery({
+    queryKey: ['drive-trash-folders'],
+    queryFn: fetchTrashFolders,
+    enabled: showTrash,
+  });
+
+  const { data: trashDocumentsData, isLoading: loadingTrashDocuments } = useQuery({
+    queryKey: ['drive-trash-documents'],
+    queryFn: fetchTrashDocuments,
+    enabled: showTrash,
+  });
+
+  const invalidateDrive = () => {
+    queryClient.invalidateQueries({ queryKey: ['drive-documents'] });
+    queryClient.invalidateQueries({ queryKey: ['drive-folders'] });
+    queryClient.invalidateQueries({ queryKey: ['drive-trash-documents'] });
+    queryClient.invalidateQueries({ queryKey: ['drive-trash-folders'] });
+  };
+
+  const restoreDocMutation = useMutation({ mutationFn: restoreDocument, onSuccess: invalidateDrive });
+  const restoreFolderMutation = useMutation({ mutationFn: restoreFolder, onSuccess: invalidateDrive });
+  const purgeDocMutation = useMutation({ mutationFn: purgeDocument, onSuccess: invalidateDrive });
+  const purgeFolderMutation = useMutation({ mutationFn: purgeFolder, onSuccess: invalidateDrive });
+
+  const handleRestoreDoc = async (doc: Document) => {
+    await restoreDocMutation.mutateAsync(doc.id);
+  };
+
+  const handleRestoreFolder = async (folder: Folder) => {
+    await restoreFolderMutation.mutateAsync(folder.id);
+  };
+
+  const handlePurgeDoc = async (doc: Document) => {
+    if (confirm(`Excluir definitivamente "${doc.title}"? Essa ação não pode ser desfeita.`)) {
+      await purgeDocMutation.mutateAsync(doc.id);
+    }
+  };
+
+  const handlePurgeFolder = async (folder: Folder) => {
+    if (confirm(`Excluir definitivamente a pasta "${folder.name}" e tudo dentro dela? Essa ação não pode ser desfeita.`)) {
+      await purgeFolderMutation.mutateAsync(folder.id);
+    }
+  };
+
   const uploadMutation = useMutation({
-    mutationFn: ({ file, companyId, folderId }: { file: File, companyId?: string, folderId?: string }) => uploadDocument(file, companyId, folderId),
+    mutationFn: ({ file, companyId, folderId, allowDuplicate }: { file: File, companyId?: string, folderId?: string, allowDuplicate?: boolean }) =>
+      uploadDocument(file, companyId, folderId, allowDuplicate),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drive-documents'] });
     },
     onError: (err: any) => {
+      // 409 (duplicate) is handled by the caller, which prompts the user
+      // instead of just showing an error.
+      if (err.response?.status === 409) return;
       alert('Erro ao fazer upload: ' + (err.response?.data?.detail || err.message));
     }
   });
@@ -79,16 +144,34 @@ export default function Drive() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      
+
       // If we are inside a folder, inherit its company. Otherwise, use the selected filter.
       const companyId = currentFolder ? (currentFolder.company?.toString() || '') : selectedCompany;
       const folderId = currentFolder ? currentFolder.id.toString() : undefined;
-      
-      await uploadMutation.mutateAsync({ file, companyId, folderId });
+
+      try {
+        await uploadMutation.mutateAsync({ file, companyId, folderId });
+      } catch (err: any) {
+        if (err.response?.status === 409) {
+          const existingTitle = err.response.data?.existing_document?.title;
+          const shouldUploadAnyway = confirm(
+            `Já existe um arquivo idêntico${existingTitle ? ` ("${existingTitle}")` : ''} no Drive. Enviar mesmo assim?`
+          );
+          if (shouldUploadAnyway) {
+            await uploadMutation.mutateAsync({ file, companyId, folderId, allowDuplicate: true });
+          }
+        }
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const describeUploadError = (err: any): string => {
+    const fileErrors = err.response?.data?.file;
+    if (Array.isArray(fileErrors) && fileErrors.length > 0) return fileErrors[0];
+    return err.response?.data?.detail || 'Erro desconhecido.';
   };
 
   const handleFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +181,7 @@ export default function Drive() {
     const companyId = currentFolder ? (currentFolder.company?.toString() || '') : selectedCompany;
     const relativePathOf = (file: File) => (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
 
+    cancelFolderUploadRef.current = false;
     setFolderUploadProgress({ done: 0, total: fileList.length, currentName: 'Preparando pastas...' });
     try {
       // Collect every distinct directory path (e.g. a file at "Top/Sub/x.txt"
@@ -118,6 +202,7 @@ export default function Drive() {
       const sortedDirs = Array.from(dirPaths).sort((a, b) => a.split('/').length - b.split('/').length);
       const folderIdByPath = new Map<string, number>();
       for (const dirPath of sortedDirs) {
+        if (cancelFolderUploadRef.current) break;
         const segments = dirPath.split('/');
         const name = segments[segments.length - 1];
         const parentPath = segments.slice(0, -1).join('/');
@@ -130,8 +215,15 @@ export default function Drive() {
         folderIdByPath.set(dirPath, created.id);
       }
 
-      let failed = 0;
+      const failedItems: { name: string; reason: string }[] = [];
+      let duplicates = 0;
+      let cancelled = false;
+      let uploaded = 0;
       for (let i = 0; i < fileList.length; i++) {
+        if (cancelFolderUploadRef.current) {
+          cancelled = true;
+          break;
+        }
         const file = fileList[i];
         setFolderUploadProgress({ done: i, total: fileList.length, currentName: relativePathOf(file) });
         const segments = relativePathOf(file).split('/');
@@ -139,15 +231,22 @@ export default function Drive() {
         const targetFolderId = dirPath ? folderIdByPath.get(dirPath) : currentFolder?.id;
         try {
           await uploadDocument(file, companyId, targetFolderId ? targetFolderId.toString() : undefined);
-        } catch {
-          failed += 1;
+          uploaded += 1;
+        } catch (err: any) {
+          // Bulk folder uploads skip duplicates silently instead of asking
+          // for confirmation on every one of potentially hundreds of files.
+          if (err.response?.status === 409) {
+            duplicates += 1;
+          } else {
+            failedItems.push({ name: relativePathOf(file), reason: describeUploadError(err) });
+          }
         }
         setFolderUploadProgress({ done: i + 1, total: fileList.length, currentName: relativePathOf(file) });
       }
       queryClient.invalidateQueries({ queryKey: ['drive-documents'] });
       queryClient.invalidateQueries({ queryKey: ['drive-folders'] });
-      if (failed > 0) {
-        alert(`${failed} de ${fileList.length} arquivo(s) não puderam ser enviados.`);
+      if (cancelled || duplicates > 0 || failedItems.length > 0) {
+        setUploadSummary({ cancelled, uploaded, total: fileList.length, duplicates, failed: failedItems });
       }
     } catch (err: any) {
       alert('Erro ao enviar pasta: ' + (err.response?.data?.detail || err.message));
@@ -157,6 +256,10 @@ export default function Drive() {
         folderInputRef.current.value = '';
       }
     }
+  };
+
+  const handleCancelFolderUpload = () => {
+    cancelFolderUploadRef.current = true;
   };
 
   const handleCreateFolder = async (e: React.FormEvent) => {
@@ -192,18 +295,22 @@ export default function Drive() {
 
   const docs = documentsData?.results || [];
   const folders = foldersData?.results || [];
-  
-  const isLoading = loadingDocs || (loadingFolders && !search);
+  const trashDocs = trashDocumentsData?.results || [];
+  const trashFolders = trashFoldersData?.results || [];
+
+  const isLoading = showTrash
+    ? (loadingTrashDocuments || loadingTrashFolders)
+    : (loadingDocs || (loadingFolders && !search));
 
   return (
     <div className="animate-fade-in">
       <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CloudUpload size={24} />
-            Drive
+            {showTrash ? <Trash2 size={24} /> : <CloudUpload size={24} />}
+            {showTrash ? 'Lixeira' : 'Drive'}
           </h2>
-          {folderPath.length > 0 && (
+          {!showTrash && folderPath.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: '0.85rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
               <button
                 className="btn-ghost"
@@ -235,12 +342,12 @@ export default function Drive() {
         </div>
         
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-start' }}>
-          {!currentFolder && (
+          {!showTrash && !currentFolder && (
             <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 140 }}>
               <Filter size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-              <select 
-                className="input" 
-                value={selectedCompany} 
+              <select
+                className="input"
+                value={selectedCompany}
                 onChange={(e) => setSelectedCompany(e.target.value)}
                 style={{ width: '100%', appearance: 'none', paddingLeft: 32, height: 40 }}
               >
@@ -252,70 +359,160 @@ export default function Drive() {
             </div>
           )}
 
-          <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 140 }}>
-            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
-            <input 
-              type="text" 
-              className="input" 
-              placeholder="Buscar arquivo..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: '100%', paddingLeft: 32, height: 40 }}
-            />
-          </div>
-          
-          <button
-            className="btn btn-ghost btn-icon drive-folder-trigger"
-            onClick={() => setIsFolderModalOpen(true)}
-            aria-label="Nova pasta"
-            title="Nova pasta"
-          >
-            <Plus size={20} />
-          </button>
-          
-          <button
-            className="btn btn-primary btn-icon drive-upload-trigger"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadMutation.isPending || !!folderUploadProgress}
-            aria-label="Novo arquivo"
-            title="Novo arquivo"
-          >
-            <CloudUpload size={20} style={{ opacity: uploadMutation.isPending ? 0.55 : 1 }} />
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
+          {!showTrash && (
+            <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 140 }}>
+              <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                className="input"
+                placeholder="Buscar arquivo..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: '100%', paddingLeft: 32, height: 40 }}
+              />
+            </div>
+          )}
+
+          {!showTrash && (
+            <button
+              className="btn btn-primary btn-icon drive-folder-trigger"
+              onClick={() => setIsFolderModalOpen(true)}
+              aria-label="Nova pasta"
+              title="Nova pasta"
+            >
+              <Plus size={20} />
+            </button>
+          )}
+
+          {!showTrash && (
+            <>
+              <button
+                className="btn btn-primary btn-icon drive-upload-trigger"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadMutation.isPending || !!folderUploadProgress}
+                aria-label="Novo arquivo"
+                title="Novo arquivo"
+              >
+                <CloudUpload size={20} style={{ opacity: uploadMutation.isPending ? 0.55 : 1 }} />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </>
+          )}
+
+          {!showTrash && (
+            <>
+              <button
+                className="btn btn-primary btn-icon drive-upload-folder-trigger"
+                onClick={() => folderInputRef.current?.click()}
+                disabled={uploadMutation.isPending || !!folderUploadProgress}
+                aria-label="Upload de pasta"
+                title="Upload de pasta completa"
+              >
+                <FolderUp size={20} style={{ opacity: folderUploadProgress ? 0.55 : 1 }} />
+              </button>
+              <input
+                type="file"
+                ref={(el) => {
+                  folderInputRef.current = el;
+                  if (el) {
+                    el.setAttribute('webkitdirectory', '');
+                    el.setAttribute('directory', '');
+                  }
+                }}
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleFolderChange}
+              />
+            </>
+          )}
 
           <button
-            className="btn btn-primary btn-icon drive-upload-folder-trigger"
-            onClick={() => folderInputRef.current?.click()}
-            disabled={uploadMutation.isPending || !!folderUploadProgress}
-            aria-label="Upload de pasta"
-            title="Upload de pasta completa"
+            className="btn btn-primary btn-icon"
+            onClick={() => setShowTrash((prev) => !prev)}
+            aria-label="Lixeira"
+            title={showTrash ? 'Voltar' : 'Lixeira'}
           >
-            <FolderUp size={20} style={{ opacity: folderUploadProgress ? 0.55 : 1 }} />
+            {showTrash ? <XIcon size={20} /> : <Trash2 size={20} />}
           </button>
-          <input
-            type="file"
-            ref={(el) => {
-              folderInputRef.current = el;
-              if (el) {
-                el.setAttribute('webkitdirectory', '');
-                el.setAttribute('directory', '');
-              }
-            }}
-            multiple
-            style={{ display: 'none' }}
-            onChange={handleFolderChange}
-          />
-
         </div>
       </div>
 
-      {isLoading ? (
+      {showTrash ? (
+        isLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 'var(--space-md)' }}>
+            {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 120 }} />)}
+          </div>
+        ) : (trashFolders.length === 0 && trashDocs.length === 0) ? (
+          <div className="empty-state">
+            <Trash2 className="empty-state-icon" />
+            <h3 className="empty-state-title">Lixeira vazia</h3>
+            <p className="empty-state-text">Itens excluídos ficam aqui por 30 dias antes de serem apagados definitivamente.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
+            {trashFolders.map(folder => (
+              <div key={`trash-folder-${folder.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(52, 211, 153, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FolderIcon size={20} color="var(--color-accent)" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={folder.name}>
+                      {folder.name}
+                    </h4>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      Pasta • expira em {folder.days_until_purge} dia(s)
+                    </p>
+                  </div>
+                </div>
+                <div style={{ marginTop: 'auto', paddingTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                  <button className="btn-ghost btn-icon" onClick={() => handleRestoreFolder(folder)} title="Restaurar">
+                    <RotateCcw size={16} />
+                  </button>
+                  <button className="btn-ghost btn-icon" onClick={() => handlePurgeFolder(folder)} title="Excluir definitivamente" style={{ color: 'var(--color-danger)' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {trashDocs.map(doc => (
+              <div key={`trash-doc-${doc.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                    {doc.thumbnail_url ? (
+                      <img src={doc.thumbnail_url} alt={doc.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <File size={20} color="var(--color-text-secondary)" />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={doc.title}>
+                      {doc.title}
+                    </h4>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {formatSize(doc.file_size)} • expira em {doc.days_until_purge} dia(s)
+                    </p>
+                  </div>
+                </div>
+                <div style={{ marginTop: 'auto', paddingTop: 'var(--space-sm)', display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                  <button className="btn-ghost btn-icon" onClick={() => handleRestoreDoc(doc)} title="Restaurar">
+                    <RotateCcw size={16} />
+                  </button>
+                  <button className="btn-ghost btn-icon" onClick={() => handlePurgeDoc(doc)} title="Excluir definitivamente" style={{ color: 'var(--color-danger)' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : isLoading ? (
          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 'var(--space-md)' }}>
            {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 120 }} />)}
          </div>
@@ -372,7 +569,14 @@ export default function Drive() {
 
           {/* Documents */}
           {docs.map(doc => (
-            <div key={`doc-${doc.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)' }}>
+            <div
+              key={`doc-${doc.id}`}
+              className="card"
+              style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)', cursor: 'pointer', border: '1px solid var(--color-border)', transition: 'border-color 0.2s' }}
+              onClick={() => setPreviewDoc(doc)}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-accent)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+            >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                   {doc.thumbnail_url ? (
@@ -390,25 +594,25 @@ export default function Drive() {
                   </p>
                 </div>
               </div>
-              
+
               <div style={{ marginTop: 'auto', paddingTop: 'var(--space-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
                   {doc.company_name || 'Geral'}
                 </span>
-                
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <a 
-                    href={doc.file_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="btn-ghost btn-icon" 
+
+                <div style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                  <a
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-ghost btn-icon"
                     title="Baixar/Visualizar"
                   >
                     <Download size={16} />
                   </a>
-                  <button 
-                    className="btn-ghost btn-icon" 
-                    onClick={() => handleDeleteDoc(doc)} 
+                  <button
+                    className="btn-ghost btn-icon"
+                    onClick={() => handleDeleteDoc(doc)}
                     title="Excluir"
                     style={{ color: 'var(--color-danger)' }}
                   >
@@ -505,6 +709,122 @@ export default function Drive() {
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 10, textAlign: 'right' }}>
                 {folderUploadProgress.done}/{folderUploadProgress.total} arquivo(s)
               </p>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={handleCancelFolderUpload}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de resumo do upload de pasta (duplicados pulados / falhas) */}
+      {uploadSummary && createPortal(
+        <div className="modal-overlay" onClick={() => setUploadSummary(null)}>
+          <div
+            className="modal-content animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 520, maxHeight: '80vh', overflowY: 'auto' }}
+          >
+            <div className="modal-header">
+              <h3>{uploadSummary.cancelled ? 'Envio cancelado' : 'Envio concluído'}</h3>
+              <button className="btn-ghost btn-icon" onClick={() => setUploadSummary(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+                {uploadSummary.uploaded} de {uploadSummary.total} arquivo(s) enviados
+                {uploadSummary.cancelled ? ' antes do cancelamento' : ''}.
+              </p>
+
+              {uploadSummary.duplicates > 0 && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+                  {uploadSummary.duplicates} arquivo(s) já existiam no Drive e foram pulados automaticamente.
+                </p>
+              )}
+
+              {uploadSummary.failed.length > 0 && (
+                <>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>
+                    {uploadSummary.failed.length} arquivo(s) não puderam ser enviados:
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {uploadSummary.failed.map((item, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontSize: '0.8rem',
+                          background: 'var(--color-bg-elevated)',
+                          borderRadius: 'var(--radius-md)',
+                          padding: '0.5rem 0.75rem',
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, wordBreak: 'break-all' }}>{item.name}</div>
+                        <div style={{ color: 'var(--color-text-muted)', marginTop: 2 }}>{item.reason}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={() => setUploadSummary(null)}>
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de preview do arquivo */}
+      {previewDoc && createPortal(
+        <div className="modal-overlay" onClick={() => setPreviewDoc(null)}>
+          <div
+            className="modal-content animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 800, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+          >
+            <div className="modal-header">
+              <h3 style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{previewDoc.title}</h3>
+              <button className="btn-ghost btn-icon" onClick={() => setPreviewDoc(null)}>×</button>
+            </div>
+            <div className="modal-body" style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto' }}>
+              {PREVIEWABLE_IMAGE_TYPES.has(previewDoc.file_type.toLowerCase()) ? (
+                <img
+                  src={previewDoc.file_url}
+                  alt={previewDoc.title}
+                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: 'var(--radius-md)' }}
+                />
+              ) : previewDoc.file_type.toLowerCase() === 'pdf' ? (
+                <iframe
+                  src={previewDoc.file_url}
+                  title={previewDoc.title}
+                  style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 'var(--radius-md)' }}
+                />
+              ) : (
+                <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
+                  <File size={48} color="var(--color-text-muted)" style={{ marginBottom: 12 }} />
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+                    Não há preview disponível para arquivos .{previewDoc.file_type}.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <span style={{ flex: 1, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                {formatSize(previewDoc.file_size)} • {previewDoc.file_type.toUpperCase()}
+              </span>
+              <a
+                href={previewDoc.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Download size={16} /> Baixar
+              </a>
             </div>
           </div>
         </div>,

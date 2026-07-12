@@ -469,6 +469,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notifications.tasks.send_due_expense_reminders",
         "schedule": crontab(hour=8, minute=0),
     },
+    "purge-expired-drive-trash": {
+        "task": "drive.tasks.purge_expired_trash",
+        "schedule": crontab(hour=3, minute=0),
+    },
 }
 
 # Web Push (VAPID) — chaves geradas com `python -m py_vapid --gen`, ou

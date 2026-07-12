@@ -62,16 +62,16 @@ export default function BottomNav() {
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 14l4-5 4 3 4-6"/></svg></span>
               Investimentos
             </Link>
-            <Link to="/reports" className={`txn-more-link ${location.pathname.startsWith('/reports') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
-              <span className="txn-more-icon"><FileBarChart size={20} /></span>
-              Relatórios
-            </Link>
             {canManageSystem && isPJTenant && (
               <Link to="/invoices" className={`txn-more-link ${location.pathname.startsWith('/invoices') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
                 <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg></span>
                 Fatura de Serviços
               </Link>
             )}
+            <Link to="/reports" className={`txn-more-link ${location.pathname.startsWith('/reports') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
+              <span className="txn-more-icon"><FileBarChart size={20} /></span>
+              Relatórios
+            </Link>
             <Link to="/shopping" className={`txn-more-link ${location.pathname.startsWith('/shopping') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h2l2.2 10h10.8l2-7H8.2"/><circle cx="10" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg></span>
               Lista de Compras

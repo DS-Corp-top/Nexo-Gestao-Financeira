@@ -110,6 +110,38 @@ describe('usePushNotifications', () => {
     expect(notificationsApiMock.fetchVapidPublicKey).not.toHaveBeenCalled();
     expect(result.current.subscribed).toBe(false);
     expect(result.current.permission).toBe('denied');
+    expect(result.current.error).toContain('bloqueadas');
+  });
+
+  it('does not request permission when notifications are already blocked for the site', async () => {
+    installBrowserSupport();
+    (globalThis as any).Notification.permission = 'denied';
+    const { result } = renderHook(() => usePushNotifications());
+
+    await act(async () => {
+      await result.current.subscribe();
+    });
+
+    expect((globalThis as any).Notification.requestPermission).not.toHaveBeenCalled();
+    expect(notificationsApiMock.fetchVapidPublicKey).not.toHaveBeenCalled();
+    expect(result.current.subscribed).toBe(false);
+    expect(result.current.permission).toBe('denied');
+    expect(result.current.error).toContain('bloqueadas');
+  });
+
+  it('reports a server configuration error when the VAPID public key is missing', async () => {
+    notificationsApiMock.fetchVapidPublicKey.mockResolvedValue('');
+    const { pushManager } = installBrowserSupport();
+    const { result } = renderHook(() => usePushNotifications());
+
+    await act(async () => {
+      await result.current.subscribe();
+    });
+
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
+    expect(notificationsApiMock.subscribePush).not.toHaveBeenCalled();
+    expect(result.current.subscribed).toBe(false);
+    expect(result.current.error).toContain('servidor');
   });
 
   it('unsubscribes: removes the backend registration and cancels the browser subscription', async () => {

@@ -12,7 +12,9 @@ function urlBase64ToUint8Array(base64String: string): BufferSource {
   return bytes;
 }
 
-const isSupported = () => 'serviceWorker' in navigator && 'PushManager' in window;
+const isSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const BLOCKED_PERMISSION_MESSAGE =
+  'Notificacoes bloqueadas nas configuracoes deste site. Altere a permissao no navegador e tente novamente.';
 
 export function usePushNotifications() {
   const [permission, setPermission] = useState<PushPermissionState>(() =>
@@ -38,13 +40,27 @@ export function usePushNotifications() {
     setLoading(true);
     setError(null);
     try {
+      if (Notification.permission === 'denied') {
+        setPermission('denied');
+        setError(BLOCKED_PERMISSION_MESSAGE);
+        return;
+      }
+
       const result = await Notification.requestPermission();
       setPermission(result as PushPermissionState);
       if (result !== 'granted') {
+        if (result === 'denied') {
+          setError(BLOCKED_PERMISSION_MESSAGE);
+        }
         return;
       }
 
       const publicKey = await fetchVapidPublicKey();
+      if (!publicKey) {
+        setError('Notificacoes push nao estao configuradas no servidor.');
+        return;
+      }
+
       const registration = await navigator.serviceWorker.ready;
       const subscription =
         (await registration.pushManager.getSubscription()) ||

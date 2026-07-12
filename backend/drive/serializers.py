@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import Document, Folder
+from .models import Document, Folder, TRASH_RETENTION_DAYS
+
+
+def _days_until_purge(obj):
+    if not obj.deleted_at:
+        return None
+    from django.utils import timezone
+
+    elapsed = timezone.now() - obj.deleted_at
+    remaining = TRASH_RETENTION_DAYS - elapsed.days
+    return max(remaining, 0)
 
 _DOCUMENT_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
 # Denylist (not allowlist) — Drive stores arbitrary business documents (PDFs,
@@ -27,6 +37,7 @@ def validate_document_file(file):
 
 class FolderSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True, allow_null=True)
+    days_until_purge = serializers.SerializerMethodField()
 
     class Meta:
         model = Folder
@@ -36,9 +47,15 @@ class FolderSerializer(serializers.ModelSerializer):
             "company",
             "company_name",
             "parent",
+            "deleted_at",
+            "days_until_purge",
             "created_at",
             "updated_at",
         )
+        read_only_fields = ("deleted_at", "days_until_purge")
+
+    def get_days_until_purge(self, obj):
+        return _days_until_purge(obj)
 
     def validate_company(self, value):
         tenant = self.context.get("tenant")
@@ -69,6 +86,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     folder_name = serializers.CharField(source='folder.name', read_only=True, allow_null=True)
     file_url = serializers.SerializerMethodField()
     thumbnail_url = serializers.SerializerMethodField()
+    days_until_purge = serializers.SerializerMethodField()
     file = serializers.FileField(validators=[validate_document_file])
 
     class Meta:
@@ -87,10 +105,15 @@ class DocumentSerializer(serializers.ModelSerializer):
             "folder_name",
             "user",
             "user_name",
+            "deleted_at",
+            "days_until_purge",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("user", "file_type", "file_size", "thumbnail_url")
+        read_only_fields = ("user", "file_type", "file_size", "thumbnail_url", "deleted_at", "days_until_purge")
+
+    def get_days_until_purge(self, obj):
+        return _days_until_purge(obj)
 
     def validate_company(self, value):
         tenant = self.context.get("tenant")

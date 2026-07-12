@@ -128,6 +128,7 @@ class ContentSecurityPolicyMiddleware:
             "script-src": "'self'",
             "style-src": "'self' 'unsafe-inline'",
             "img-src": "'self' data: blob: https://*.amazonaws.com",
+            "frame-src": "'self' https://*.amazonaws.com",
             "connect-src": "'self'",
             "font-src": "'self'",
             "media-src": "'self'",

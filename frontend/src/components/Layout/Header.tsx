@@ -471,9 +471,10 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
               </div>
 
               {push.permission !== 'unsupported' && (
+                <>
                 <button
                   onClick={() => { push.subscribed ? push.unsubscribe() : push.subscribe(); }}
-                  disabled={push.loading || push.permission === 'denied'}
+                  disabled={push.loading}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -486,13 +487,13 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                     background: 'none',
                     border: 'none',
                     borderBottom: '1px solid var(--color-border)',
-                    cursor: push.permission === 'denied' ? 'default' : 'pointer',
+                    cursor: push.loading ? 'default' : 'pointer',
                     textAlign: 'left',
                     transition: 'background 0.15s',
                   }}
-                  onMouseEnter={(e) => { if (push.permission !== 'denied') e.currentTarget.style.background = 'var(--color-surface-hover, rgba(255,255,255,0.05))'; }}
+                  onMouseEnter={(e) => { if (!push.loading) e.currentTarget.style.background = 'var(--color-surface-hover, rgba(255,255,255,0.05))'; }}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-                  title={push.permission === 'denied' ? 'Bloqueado nas configurações do navegador' : undefined}
+                  title={push.permission === 'denied' ? 'Permissao bloqueada nas configuracoes do navegador' : undefined}
                 >
                   {push.subscribed ? <Bell size={15} /> : <BellOff size={15} />}
                   <span>
@@ -503,6 +504,18 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                         : 'Ativar notificações'}
                   </span>
                 </button>
+                {push.error && (
+                  <div style={{
+                    padding: '0.55rem 0.72rem',
+                    borderBottom: '1px solid var(--color-border)',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.74rem',
+                    lineHeight: 1.35,
+                  }}>
+                    {push.error}
+                  </div>
+                )}
+                </>
               )}
 
               <button

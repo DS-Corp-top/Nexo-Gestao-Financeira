@@ -6,6 +6,8 @@ export interface Folder {
   company: number | null;
   company_name: string | null;
   parent: number | null;
+  deleted_at: string | null;
+  days_until_purge: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +25,8 @@ export interface Document {
   folder_name: string | null;
   user: number;
   user_name: string | null;
+  deleted_at: string | null;
+  days_until_purge: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,7 +50,7 @@ export async function fetchDocuments(params?: { company?: string, search?: strin
   return data;
 }
 
-export async function uploadDocument(file: File, companyId?: string, folderId?: string) {
+export async function uploadDocument(file: File, companyId?: string, folderId?: string, allowDuplicate?: boolean) {
   const formData = new FormData();
   formData.append('file', file);
   if (companyId) {
@@ -54,6 +58,9 @@ export async function uploadDocument(file: File, companyId?: string, folderId?: 
   }
   if (folderId) {
     formData.append('folder', folderId.toString());
+  }
+  if (allowDuplicate) {
+    formData.append('allow_duplicate', 'true');
   }
 
   const { data } = await api.post<Document>('/drive/documents/', formData, {
@@ -66,4 +73,34 @@ export async function uploadDocument(file: File, companyId?: string, folderId?: 
 
 export async function deleteDocument(id: number) {
   await api.delete(`/drive/documents/${id}/`);
+}
+
+// Lixeira — itens excluídos ficam disponíveis por 30 dias antes de serem
+// apagados definitivamente (ver drive.tasks.purge_expired_trash no backend).
+export async function fetchTrashDocuments() {
+  const { data } = await api.get<{ results: Document[]; count: number }>('/drive/documents/trash/');
+  return data;
+}
+
+export async function fetchTrashFolders() {
+  const { data } = await api.get<{ results: Folder[]; count: number }>('/drive/folders/trash/');
+  return data;
+}
+
+export async function restoreDocument(id: number) {
+  const { data } = await api.post<Document>(`/drive/documents/${id}/restore/`);
+  return data;
+}
+
+export async function restoreFolder(id: number) {
+  const { data } = await api.post<Folder>(`/drive/folders/${id}/restore/`);
+  return data;
+}
+
+export async function purgeDocument(id: number) {
+  await api.delete(`/drive/documents/${id}/purge/`);
+}
+
+export async function purgeFolder(id: number) {
+  await api.delete(`/drive/folders/${id}/purge/`);
 }

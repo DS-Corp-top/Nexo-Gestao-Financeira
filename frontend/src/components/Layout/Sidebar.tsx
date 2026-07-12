@@ -17,10 +17,13 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import BrandLogo from '../BrandLogo';
 
-const navItems = [
+const navItemsBeforeInvoices = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
+];
+
+const navItemsAfterInvoices = [
   { to: '/reports', icon: FileBarChart, label: 'Relatórios' },
   { to: '/shopping', icon: ShoppingCart, label: 'Lista de Compras' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
@@ -41,9 +44,10 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
   const canManageSystem = Boolean(user?.is_superuser);
   const isPJTenant = tenant?.person_type === 'pj';
   const items = [
-    ...navItems,
-    ...(canManageTenantSettings ? [{ to: '/settings/company', icon: Settings, label: 'Configurações' }] : []),
+    ...navItemsBeforeInvoices,
     ...(canManageSystem && isPJTenant ? [{ to: '/invoices', icon: FileText, label: 'Fatura de Serviços' }] : []),
+    ...navItemsAfterInvoices,
+    ...(canManageTenantSettings ? [{ to: '/settings/company', icon: Settings, label: 'Configurações' }] : []),
     ...(canManageSystem ? [{ to: '/admin', icon: ShieldCheck, label: 'Administração' }] : []),
   ];
 

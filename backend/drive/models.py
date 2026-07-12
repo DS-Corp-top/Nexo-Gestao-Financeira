@@ -1,3 +1,4 @@
+import hashlib
 import os
 from io import BytesIO
 
@@ -9,6 +10,18 @@ from common.tenancy import assign_tenant
 
 _THUMBNAIL_SIZE = (300, 300)
 _THUMBNAIL_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "bmp"}
+
+TRASH_RETENTION_DAYS = 30
+
+
+def compute_file_hash(file_field) -> str:
+    """SHA-256 of the file's bytes, used to detect duplicate uploads."""
+    file_field.seek(0)
+    hasher = hashlib.sha256()
+    for chunk in file_field.chunks():
+        hasher.update(chunk)
+    file_field.seek(0)
+    return hasher.hexdigest()
 
 
 def _generate_thumbnail(file_field):
@@ -61,6 +74,7 @@ class Folder(models.Model):
         null=True,
         blank=True,
     )
+    deleted_at = models.DateTimeField("Excluído em", null=True, blank=True, db_index=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
@@ -71,6 +85,7 @@ class Folder(models.Model):
         indexes = [
             models.Index(fields=("tenant", "company", "name")),
             models.Index(fields=("tenant", "parent")),
+            models.Index(fields=("tenant", "deleted_at")),
         ]
 
     def __str__(self):
@@ -79,6 +94,28 @@ class Folder(models.Model):
     def save(self, *args, **kwargs):
         assign_tenant(self)
         super().save(*args, **kwargs)
+
+    def soft_delete(self):
+        """Moves this folder and everything under it (subfolders and
+        documents, recursively) to the trash together, sharing the same
+        timestamp so they expire from the trash at the same time."""
+        from django.utils import timezone
+
+        now = timezone.now()
+        self.deleted_at = now
+        self.save(update_fields=["deleted_at"])
+        self.documents.filter(deleted_at__isnull=True).update(deleted_at=now)
+        for child in self.subfolders.filter(deleted_at__isnull=True):
+            child.soft_delete()
+
+    def restore(self):
+        """Restores this folder and everything under it that was trashed
+        alongside it."""
+        self.deleted_at = None
+        self.save(update_fields=["deleted_at"])
+        self.documents.filter(deleted_at__isnull=False).update(deleted_at=None)
+        for child in self.subfolders.filter(deleted_at__isnull=False):
+            child.restore()
 
 
 def document_upload_path(instance, filename):
@@ -134,6 +171,8 @@ class Document(models.Model):
     thumbnail = models.ImageField("Miniatura", upload_to=document_thumbnail_path, null=True, blank=True)
     file_type = models.CharField("Tipo", max_length=50, blank=True)
     file_size = models.PositiveIntegerField("Tamanho (bytes)", default=0)
+    content_hash = models.CharField("Hash do conteúdo", max_length=64, blank=True, db_index=True)
+    deleted_at = models.DateTimeField("Excluído em", null=True, blank=True, db_index=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
@@ -143,6 +182,8 @@ class Document(models.Model):
         verbose_name_plural = "Documentos"
         indexes = [
             models.Index(fields=("tenant", "company", "folder", "-created_at")),
+            models.Index(fields=("tenant", "content_hash")),
+            models.Index(fields=("tenant", "deleted_at")),
         ]
 
     def __str__(self):
@@ -170,4 +211,17 @@ class Document(models.Model):
             if thumb:
                 self.thumbnail = thumb
 
+        if self.file and not self.content_hash:
+            self.content_hash = compute_file_hash(self.file)
+
         super().save(*args, **kwargs)
+
+    def soft_delete(self):
+        from django.utils import timezone
+
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at"])
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=["deleted_at"])
