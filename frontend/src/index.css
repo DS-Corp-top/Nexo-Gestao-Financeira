@@ -2567,6 +2567,11 @@ input[type="radio"] {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
 }
 
+input[type="date"].clear-modal-date {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .clear-modal-submit {
   min-height: 2.85rem;
   border: none;
