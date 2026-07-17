@@ -766,7 +766,7 @@ export default function CompanySettings() {
                 Telegram vinculado — conta padrão: <strong>{telegramLink.account_name || 'removida'}</strong>.
               </div>
               <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                Envie mensagens pro bot no formato "Categoria valor" (ex: "Mercado 89,90") pra lançar despesas na conta padrão. Use uma palavra como "recebi" pra lançar receitas. Se você tiver mais de uma conta, cite o nome dela na mensagem (ex: "Mercado 89,90 Nubank") pra lançar em outra conta que não seja a padrão.
+                Envie mensagens pro bot no formato "Categoria valor" (ex: "Mercado 89,90") pra lançar despesas na conta padrão, na data de hoje. Use uma palavra como "recebi" pra lançar receitas. Se você tiver mais de uma conta, cite o nome dela na mensagem (ex: "Mercado 89,90 Nubank") pra lançar em outra conta que não seja a padrão. Pra lançar em outra data, adicione "ontem", "anteontem", "amanhã" ou uma data tipo "15/07" na mensagem.
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button

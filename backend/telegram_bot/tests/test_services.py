@@ -1,6 +1,8 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 
 from telegram_bot.services import parse_transaction_message
 
@@ -98,3 +100,72 @@ def test_parse_prefers_longer_account_name_match(baker):
     parsed = parse_transaction_message("Mercado 89,90 Nubank Cartão", tenant=tenant)
 
     assert parsed["account"] == card
+
+
+def test_parse_defaults_date_to_today(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000010")
+
+    parsed = parse_transaction_message("Mercado 89,90", tenant=tenant)
+
+    assert parsed["date"] == timezone.localdate()
+
+
+def test_parse_recognizes_ontem(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000011")
+
+    parsed = parse_transaction_message("Mercado 89,90 ontem", tenant=tenant)
+
+    assert parsed["date"] == timezone.localdate() - timedelta(days=1)
+
+
+def test_parse_recognizes_anteontem_and_not_just_ontem(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000012")
+
+    parsed = parse_transaction_message("Mercado 89,90 anteontem", tenant=tenant)
+
+    assert parsed["date"] == timezone.localdate() - timedelta(days=2)
+
+
+def test_parse_recognizes_amanha_with_accent(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000013")
+
+    parsed = parse_transaction_message("Mercado 89,90 amanhã", tenant=tenant)
+
+    assert parsed["date"] == timezone.localdate() + timedelta(days=1)
+
+
+def test_parse_recognizes_explicit_date_without_year(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000014")
+    today = timezone.localdate()
+
+    parsed = parse_transaction_message("Mercado 89,90 15/07", tenant=tenant)
+
+    assert parsed["date"].day == 15
+    assert parsed["date"].month == 7
+    assert parsed["date"].year == today.year
+
+
+def test_parse_recognizes_explicit_date_with_year(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000015")
+
+    parsed = parse_transaction_message("Mercado 89,90 15/07/2025", tenant=tenant)
+
+    assert parsed["date"].isoformat() == "2025-07-15"
+
+
+def test_parse_explicit_date_does_not_get_read_as_amount(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000016")
+
+    parsed = parse_transaction_message("Mercado 15/07 89,90", tenant=tenant)
+
+    assert parsed["amount"] == Decimal("89.90")
+    assert parsed["date"].day == 15
+    assert parsed["date"].month == 7
+
+
+def test_parse_ignores_invalid_explicit_date(baker):
+    tenant = baker.make("tenants.Tenant", is_active=True, document="00000000017")
+
+    parsed = parse_transaction_message("Mercado 89,90 45/13", tenant=tenant)
+
+    assert parsed["date"] == timezone.localdate()

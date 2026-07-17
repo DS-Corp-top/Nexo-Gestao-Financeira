@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -184,6 +185,7 @@ class TelegramWebhookView(APIView):
             tenant=link.tenant,
             transaction_type=parsed["transaction_type"],
             amount=parsed["amount"],
+            date=parsed["date"],
             account=account,
             category=parsed["category"],
             description=text[:255],
@@ -194,7 +196,11 @@ class TelegramWebhookView(APIView):
         kind_label = (
             "Receita" if transaction.transaction_type == Transaction.TransactionType.INCOME else "Despesa"
         )
+        date_label = (
+            "" if transaction.date == timezone.localdate()
+            else f" em {transaction.date.strftime('%d/%m/%Y')}"
+        )
         send_telegram_message(
             chat_id,
-            f"✅ {kind_label} de R$ {transaction.amount:.2f} ({category_label}) lançada em {account.name}.",
+            f"✅ {kind_label} de R$ {transaction.amount:.2f} ({category_label}) lançada em {account.name}{date_label}.",
         )
