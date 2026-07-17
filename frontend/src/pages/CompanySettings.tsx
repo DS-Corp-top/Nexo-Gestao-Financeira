@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, ChevronRight, MapPin, Pencil, Plus, Save, Users, X, AlertTriangle, Trash2 } from 'lucide-react';
+import { Building2, ChevronRight, MapPin, MessageCircle, Pencil, Plus, Save, Users, X, AlertTriangle, Trash2 } from 'lucide-react';
 import {
   createTenantCompany,
   fetchTenantCompanies,
@@ -15,6 +15,8 @@ import {
   type TenantCompany,
 } from '../api/tenant';
 import { fetchTenantMembers, type TenantMember, updateTenantMember } from '../api/users';
+import { fetchAccounts } from '../api/accounts';
+import { fetchTelegramLinkStatus, createTelegramLinkCode, unlinkTelegram } from '../api/telegram';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewMode } from '../contexts/ViewModeContext';
 import { useIsAdmin } from '../hooks/useIsAdmin';
@@ -73,7 +75,7 @@ export default function CompanySettings() {
   const queryClient = useQueryClient();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'users' | 'userInvite' | 'resetAccount' | null>(() => {
+  const [modal, setModal] = useState<'profile' | 'companies' | 'companyCreate' | 'companyEdit' | 'users' | 'userInvite' | 'resetAccount' | 'telegram' | null>(() => {
     const m = searchParams.get('modal');
     if (m === 'profile' || m === 'companies' || m === 'users') return m;
     return null;
@@ -107,10 +109,24 @@ export default function CompanySettings() {
   const { data: profile, isLoading } = useQuery({ queryKey: ['tenantProfile'], queryFn: fetchTenantProfile });
   const { data: tenantMembers = [] } = useQuery<TenantMember[]>({ queryKey: ['tenant-members'], queryFn: fetchTenantMembers });
   const { data: tenantCompanies = [] } = useQuery({ queryKey: ['tenantCompanies'], queryFn: fetchTenantCompanies });
+  const { data: telegramLink, isLoading: telegramLinkLoading } = useQuery({
+    queryKey: ['telegramLink'],
+    queryFn: fetchTelegramLinkStatus,
+    enabled: modal === 'telegram',
+  });
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+    enabled: modal === 'telegram',
+  });
+  const [telegramAccountId, setTelegramAccountId] = useState<number | ''>('');
   const companyLimit = 2;
   const companyLimitReached = tenantCompanies.length >= companyLimit;
 
-  const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); setEditingMember(null); setEditingCompany(null); };
+  const closeModal = () => {
+    setModal(null); setSuccessMsg(''); setErrorMsg(''); setEditingMember(null); setEditingCompany(null);
+    telegramCodeMutation.reset(); setTelegramAccountId('');
+  };
   const closeProfileModal = () => { closeModal(); navigate('/dashboard'); };
 
   const updateMutation = useMutation({
@@ -195,6 +211,23 @@ export default function CompanySettings() {
       const data = error?.response?.data || {};
       setErrorMsg(data.detail || 'Erro ao redefinir a conta.');
     }
+  });
+
+  const telegramCodeMutation = useMutation({
+    mutationFn: createTelegramLinkCode,
+    onError: (error: any) => {
+      setErrorMsg(error?.response?.data?.detail || 'Erro ao gerar código de vínculo.');
+    },
+  });
+
+  const telegramUnlinkMutation = useMutation({
+    mutationFn: unlinkTelegram,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['telegramLink'] });
+      telegramCodeMutation.reset();
+      setTelegramAccountId('');
+    },
+    onError: () => setErrorMsg('Erro ao desvincular o Telegram.'),
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -300,6 +333,13 @@ export default function CompanySettings() {
       title: 'Usuarios',
       description: `${tenantMembers.length} membro${tenantMembers.length !== 1 ? 's' : ''}`,
       adminOnly: true,
+    },
+    {
+      key: 'telegram' as const,
+      icon: MessageCircle,
+      title: 'Lançar por Telegram',
+      description: 'Registre transações enviando mensagem pro bot',
+      adminOnly: false,
     },
     {
       key: 'resetAccount' as const,
@@ -710,6 +750,86 @@ export default function CompanySettings() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Modal: Lançar por Telegram */}
+      {modal === 'telegram' && (
+        <Modal title="Lançar por Telegram" onClose={closeModal}>
+          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
+
+          {telegramLinkLoading ? (
+            <div className="skeleton" style={{ height: 80 }} />
+          ) : telegramLink?.linked ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '1rem', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
+                Telegram vinculado — lançamentos vão pra conta <strong>{telegramLink.account_name || 'removida'}</strong>.
+              </div>
+              <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                Envie mensagens pro bot no formato "Categoria valor" (ex: "Mercado 89,90") pra lançar despesas automaticamente. Use uma palavra como "recebi" pra lançar receitas.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ color: 'var(--color-danger)' }}
+                  disabled={telegramUnlinkMutation.isPending}
+                  onClick={() => telegramUnlinkMutation.mutate()}
+                >
+                  {telegramUnlinkMutation.isPending ? 'Desvinculando...' : 'Desvincular'}
+                </button>
+              </div>
+            </div>
+          ) : telegramCodeMutation.data ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                Abra o link abaixo no seu Telegram e envie a mensagem que aparecer pra concluir o vínculo (expira em 10 minutos).
+              </p>
+              {telegramCodeMutation.data.deep_link && (
+                <a
+                  href={telegramCodeMutation.data.deep_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-primary"
+                  style={{ textAlign: 'center', justifyContent: 'center' }}
+                >
+                  Abrir no Telegram
+                </a>
+              )}
+              <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                Ou envie manualmente: <code>/start {telegramCodeMutation.data.code}</code>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                Escolha a conta onde os lançamentos feitos pelo Telegram devem entrar.
+              </p>
+              <div>
+                <label className="label">Conta padrão</label>
+                <select
+                  className="select"
+                  value={telegramAccountId}
+                  onChange={(e) => setTelegramAccountId(e.target.value ? Number(e.target.value) : '')}
+                >
+                  <option value="">Selecione uma conta</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>{account.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={!telegramAccountId || telegramCodeMutation.isPending}
+                  onClick={() => telegramAccountId && telegramCodeMutation.mutate(telegramAccountId)}
+                >
+                  {telegramCodeMutation.isPending ? 'Gerando...' : 'Gerar vínculo'}
+                </button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
 

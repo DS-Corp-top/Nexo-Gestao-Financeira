@@ -69,16 +69,23 @@ class ApiOriginMiddleware:
     - Requisições com Origin diferente do host atual são bloqueadas (CORS já
       cobre browsers, mas este middleware atua como segunda camada).
     - Requisições internas (mesmo origin) precisam do header X-Requested-With.
+    - Exceção: endpoints em EXEMPT_PATHS recebem chamadas legítimas de
+      servidor-a-servidor de terceiros (ex: webhook do Telegram) que nunca
+      vão mandar X-Requested-With — esses endpoints se autenticam por conta
+      própria (token secreto na própria view).
     """
 
     API_PREFIX = "/api/v1/"
     SAFE_METHODS = frozenset(["GET", "HEAD", "OPTIONS"])
+    EXEMPT_PATHS = frozenset({
+        "/api/v1/telegram/webhook/",
+    })
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith(self.API_PREFIX):
+        if request.path.startswith(self.API_PREFIX) and request.path not in self.EXEMPT_PATHS:
             error = self._check(request)
             if error:
                 return JsonResponse({"detail": error}, status=403)

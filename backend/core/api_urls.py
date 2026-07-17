@@ -23,6 +23,7 @@ from tenants.api_views import (
 )
 from notes.api_views import NoteListViewSet, NoteSubtaskViewSet, NoteViewSet
 from notifications.api_views import PushSubscribeView, PushUnsubscribeView, VapidPublicKeyView
+from telegram_bot.api_views import TelegramLinkCodeView, TelegramLinkStatusView, TelegramWebhookView
 from drive.api_views import DocumentViewSet, FolderViewSet
 from reports.api_views import DREReportView, InvestmentsReportView, SummaryReportView, TransactionsReportView
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoItemViewSet
@@ -108,6 +109,11 @@ urlpatterns = [
     path("push/vapid-public-key/", VapidPublicKeyView.as_view(), name="push_vapid_public_key"),
     path("push/subscribe/", PushSubscribeView.as_view(), name="push_subscribe"),
     path("push/unsubscribe/", PushUnsubscribeView.as_view(), name="push_unsubscribe"),
+
+    # Telegram (lançamento de transações por mensagem)
+    path("telegram/link/", TelegramLinkStatusView.as_view(), name="telegram_link_status"),
+    path("telegram/link/code/", TelegramLinkCodeView.as_view(), name="telegram_link_code"),
+    path("telegram/webhook/", TelegramWebhookView.as_view(), name="telegram_webhook"),
 
     # Reports
     path("reports/transactions/", TransactionsReportView.as_view(), name="report_transactions"),

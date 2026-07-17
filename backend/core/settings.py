@@ -111,6 +111,7 @@ INSTALLED_APPS = [
     "drive.apps.DriveConfig",
     "notifications.apps.NotificationsConfig",
     "reports.apps.ReportsConfig",
+    "telegram_bot.apps.TelegramBotConfig",
 ] + (["django_browser_reload"] if RUNSERVER else [])
 
 MIDDLEWARE = [
@@ -481,6 +482,13 @@ CELERY_BEAT_SCHEDULE = {
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:contato@dscorp.top")
+
+# Bot do Telegram para lançamento de transações por mensagem — token obtido
+# via @BotFather; TELEGRAM_WEBHOOK_SECRET é o mesmo valor passado como
+# secret_token no comando set_telegram_webhook (ver telegram_bot/management).
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
 # Cache — usa Redis se disponível e acessível (necessário para rate limiting em
 # múltiplos dynos). Caso contrário, cai para memória local (single-process).
