@@ -7,6 +7,7 @@ from typing import Optional
 import requests
 from django.conf import settings
 
+from accounts.models import Account
 from categories.models import Category
 from transactions.models import Transaction
 
@@ -70,11 +71,25 @@ def _match_category(text: str, tenant, transaction_type: str):
     return None
 
 
+def _match_account(text: str, tenant):
+    normalized_text = _normalize(text)
+    accounts = Account.objects.filter(tenant=tenant, is_active=True)
+    # Nomes mais longos primeiro — evita que "Nu" case antes de "Nubank Cartão"
+    # quando o usuário tem duas contas com nomes parecidos.
+    for account in sorted(accounts, key=lambda a: len(a.name), reverse=True):
+        if _normalize(account.name) in normalized_text:
+            return account
+    return None
+
+
 def parse_transaction_message(text: str, tenant) -> Optional[dict]:
-    """Extrai valor, tipo e categoria de uma mensagem livre tipo "Mercado 89,90".
+    """Extrai valor, tipo, categoria e conta de uma mensagem livre tipo
+    "Mercado 89,90 Nubank".
 
     Retorna None quando não encontra nenhum valor monetário na mensagem —
-    nesse caso o chamador deve responder pedindo pra reformular.
+    nesse caso o chamador deve responder pedindo pra reformular. A conta é
+    None quando nenhum nome de conta aparece na mensagem — nesse caso o
+    chamador deve usar a conta padrão configurada no vínculo.
     """
     amount = _extract_amount(text)
     if amount is None:
@@ -88,9 +103,11 @@ def parse_transaction_message(text: str, tenant) -> Optional[dict]:
     )
 
     category = _match_category(text, tenant, transaction_type)
+    account = _match_account(text, tenant)
 
     return {
         "amount": amount,
         "transaction_type": transaction_type,
         "category": category,
+        "account": account,
     }

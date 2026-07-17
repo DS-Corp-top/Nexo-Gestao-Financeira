@@ -142,7 +142,11 @@ class TelegramWebhookView(APIView):
         cache.delete(cache_key)
         send_telegram_message(
             chat_id,
-            f'✅ Conta vinculada! Envie mensagens como "Mercado 89,90" pra lançar despesas em {account.name}.',
+            (
+                f'✅ Conta vinculada! Envie mensagens como "Mercado 89,90" pra lançar despesas em '
+                f'{account.name} (conta padrão). Pra usar outra conta, cite o nome dela na mensagem, '
+                f'ex: "Mercado 89,90 {account.name}".'
+            ),
         )
 
     def _handle_transaction(self, chat_id, text):
@@ -173,12 +177,14 @@ class TelegramWebhookView(APIView):
             )
             return
 
+        account = parsed["account"] or link.default_account
+
         transaction = Transaction.objects.create(
             user=link.user,
             tenant=link.tenant,
             transaction_type=parsed["transaction_type"],
             amount=parsed["amount"],
-            account=link.default_account,
+            account=account,
             category=parsed["category"],
             description=text[:255],
             is_cleared=True,
@@ -190,5 +196,5 @@ class TelegramWebhookView(APIView):
         )
         send_telegram_message(
             chat_id,
-            f"✅ {kind_label} de R$ {transaction.amount:.2f} ({category_label}) lançada em {link.default_account.name}.",
+            f"✅ {kind_label} de R$ {transaction.amount:.2f} ({category_label}) lançada em {account.name}.",
         )

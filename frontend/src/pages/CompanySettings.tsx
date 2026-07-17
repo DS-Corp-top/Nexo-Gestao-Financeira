@@ -763,10 +763,10 @@ export default function CompanySettings() {
           ) : telegramLink?.linked ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
               <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '1rem', borderRadius: 'var(--radius-md)', fontSize: '0.85rem' }}>
-                Telegram vinculado — lançamentos vão pra conta <strong>{telegramLink.account_name || 'removida'}</strong>.
+                Telegram vinculado — conta padrão: <strong>{telegramLink.account_name || 'removida'}</strong>.
               </div>
               <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                Envie mensagens pro bot no formato "Categoria valor" (ex: "Mercado 89,90") pra lançar despesas automaticamente. Use uma palavra como "recebi" pra lançar receitas.
+                Envie mensagens pro bot no formato "Categoria valor" (ex: "Mercado 89,90") pra lançar despesas na conta padrão. Use uma palavra como "recebi" pra lançar receitas. Se você tiver mais de uma conta, cite o nome dela na mensagem (ex: "Mercado 89,90 Nubank") pra lançar em outra conta que não seja a padrão.
               </p>
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button

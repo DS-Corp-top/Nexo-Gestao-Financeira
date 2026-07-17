@@ -24,6 +24,15 @@ def _no_real_telegram_calls():
         yield mocked
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_webhook_secret(settings):
+    # backend/.env pode ter um TELEGRAM_WEBHOOK_SECRET real (carregado
+    # automaticamente via core/celery.py em qualquer processo Django, testes
+    # inclusive) — isola os testes desse valor do ambiente do desenvolvedor.
+    # Testes que precisam de um segredo específico o definem por conta própria.
+    settings.TELEGRAM_WEBHOOK_SECRET = ""
+
+
 def test_link_status_when_not_linked(baker):
     user, _ = setup_tenant(baker)
     client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
@@ -131,6 +140,30 @@ def test_webhook_message_creates_transaction_for_linked_chat(baker):
     assert transaction.transaction_type == "expense"
     assert transaction.account_id == account.id
     assert transaction.user_id == user.id
+
+
+def test_webhook_message_uses_account_named_in_text_over_default(baker):
+    user, tenant = setup_tenant(baker)
+    default_account = baker.make("accounts.Account", tenant=tenant, account_type="bank", name="Carteira")
+    other_account = baker.make("accounts.Account", tenant=tenant, account_type="bank", name="Nubank")
+    baker.make(
+        "telegram_bot.TelegramLink",
+        user=user,
+        tenant=tenant,
+        chat_id=888,
+        default_account=default_account,
+    )
+
+    client = APIClient()
+    response = client.post(
+        reverse("api:telegram_webhook"),
+        {"message": {"chat": {"id": 888}, "text": "Mercado 89,90 Nubank"}},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    transaction = Transaction.objects.get(tenant=tenant)
+    assert transaction.account_id == other_account.id
 
 
 def test_webhook_message_from_unlinked_chat_does_not_create_transaction():
