@@ -75,11 +75,12 @@ function renderTransactions() {
 describe('Transactions Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     (transactionsApi.fetchTransactions as any).mockResolvedValue([makeTransaction()]);
     (transactionsApi.fetchStatementSummary as any).mockResolvedValue({
       current_balance: '0', monthly_balance: '0', credit_card_open_total: '0',
       credit_card_month_total: '0', credit_card_limit: '0', consolidated_balance: '0',
-      pending_bank_total: '0', monthly_income_total: '0', monthly_expense_total: '0',
+      pending_bank_total: '0', pending_income_total: '0', monthly_income_total: '0', monthly_expense_total: '0',
     });
     (transactionsApi.fetchClosedMonths as any).mockResolvedValue([]);
     (accountsApi.fetchAccounts as any).mockResolvedValue([]);
@@ -160,5 +161,58 @@ describe('Transactions Page', () => {
 
     await screen.findByText('Transferencia teste', { selector: 'h3' });
     expect(screen.queryByLabelText('Categoria')).not.toBeInTheDocument();
+  });
+
+  it('hides a summary tile after unchecking it in Configurar and persists the choice', async () => {
+    const { container } = renderTransactions();
+    const balanceCard = () => container.querySelector('#statement-balance') as HTMLElement;
+
+    await screen.findByText('Compra teste');
+    expect(balanceCard()).toHaveTextContent('Cartão em aberto');
+
+    fireEvent.click(await screen.findByLabelText('Abrir mais ações'));
+    fireEvent.click(await screen.findByText('Configurar'));
+
+    fireEvent.click(screen.getByLabelText('Cartão em aberto'));
+    fireEvent.click(screen.getByRole('button', { name: '×' }));
+
+    expect(balanceCard()).not.toHaveTextContent('Cartão em aberto');
+
+    const stored = JSON.parse(localStorage.getItem('nexo:transactions-tile-visibility') || '{}');
+    expect(stored.credit_card_open_total).toBe(false);
+  });
+
+  it('re-checking a hidden tile in Configurar brings it back', async () => {
+    localStorage.setItem(
+      'nexo:transactions-tile-visibility',
+      JSON.stringify({ credit_card_open_total: false })
+    );
+    const { container } = renderTransactions();
+    const balanceCard = () => container.querySelector('#statement-balance') as HTMLElement;
+
+    await screen.findByText('Compra teste');
+    expect(balanceCard()).not.toHaveTextContent('Cartão em aberto');
+
+    fireEvent.click(await screen.findByLabelText('Abrir mais ações'));
+    fireEvent.click(await screen.findByText('Configurar'));
+    fireEvent.click(screen.getByLabelText('Cartão em aberto'));
+    fireEvent.click(screen.getByRole('button', { name: '×' }));
+
+    expect(balanceCard()).toHaveTextContent('Cartão em aberto');
+  });
+
+  it('uses 2 columns for the summary grid on narrow viewports and 3 on wide ones', async () => {
+    window.innerWidth = 400;
+
+    const { container } = renderTransactions();
+    await screen.findByText('Compra teste');
+
+    const grid = container.querySelector('.txn-balance-grid') as HTMLElement;
+    expect(grid.style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))');
+
+    window.innerWidth = 1024;
+    fireEvent(window, new Event('resize'));
+
+    expect(grid.style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))');
   });
 });

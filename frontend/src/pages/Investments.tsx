@@ -25,6 +25,7 @@ import {
   createInvestmentEntry, deleteInvestmentEntry, type Currency, type Investment
 } from '../api/investments';
 import InvestmentModal from '../components/Investments/InvestmentModal';
+import CurrencyInput from '../components/CurrencyInput';
 
 function getMonthParam(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -106,6 +107,7 @@ export default function Investments() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [entryFormOpen, setEntryFormOpen] = useState(false);
+  const [entryAmount, setEntryAmount] = useState('');
   const [entryHistoryOpen, setEntryHistoryOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<Investment['investment_type'] | ''>('');
@@ -194,7 +196,7 @@ export default function Investments() {
     const formData = new FormData(e.currentTarget);
     const entry_type = formData.get('entry_type') as string;
     const date = formData.get('date') as string;
-    const amount = Number(formData.get('amount'));
+    const amount = Number(entryAmount);
     const description = formData.get('description') as string;
 
     if (amount > 0) {
@@ -206,6 +208,7 @@ export default function Investments() {
         description,
       });
       e.currentTarget.reset();
+      setEntryAmount('');
       // default date back to today
       const dateInput = e.currentTarget.elements.namedItem('date') as HTMLInputElement;
       if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -505,7 +508,7 @@ export default function Investments() {
               <option value="yield">Rendimento</option>
             </select>
             <input type="date" name="date" className="input" defaultValue={new Date().toISOString().split('T')[0]} style={{ width: 140 }} required />
-            <input type="number" step="0.01" min="0.01" name="amount" className="input" placeholder={`Valor (${currentCurrency})`} style={{ width: 140 }} required />
+            <CurrencyInput value={entryAmount} onChange={setEntryAmount} className="input" placeholder={`Valor (${currentCurrency})`} style={{ width: 140 }} required />
             <input type="text" name="description" className="input" placeholder="Descrição (opcional)" style={{ flex: 1, minWidth: 200 }} />
             <button type="submit" className="btn btn-primary" disabled={createEntryMutation.isPending}>
               Adicionar

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -19,7 +19,30 @@ import ClearTransactionModal from '../components/Transactions/ClearTransactionMo
 import Accounts from './Accounts';
 import Categories from './Categories';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Tags, EllipsisVertical, Plus } from 'lucide-react';
+import { Wallet, Tags, EllipsisVertical, Plus, Settings } from 'lucide-react';
+
+const DASHBOARD_TILES = [
+  { id: 'current_balance', label: 'Saldo atual' },
+  { id: 'pending_income_total', label: 'Receitas em aberto' },
+  { id: 'pending_bank_total', label: 'Despesas em aberto' },
+  { id: 'credit_card_open_total', label: 'Cartão em aberto' },
+  { id: 'credit_card_limit', label: 'Limite do cartão' },
+  { id: 'credit_card_month_total', label: 'Total cartão' },
+  { id: 'monthly_income_total', label: 'Receitas' },
+  { id: 'monthly_expense_total', label: 'Despesas' },
+  { id: 'month_result', label: 'Resultado' },
+] as const;
+
+const TILE_VISIBILITY_STORAGE_KEY = 'nexo:transactions-tile-visibility';
+
+function loadTileVisibility(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(TILE_VISIBILITY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
 
 function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
@@ -29,6 +52,49 @@ function formatCurrency(value: string | number | null): string {
 
 function getMonthParam(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+const BALANCE_GRID_NARROW_BREAKPOINT = 640;
+
+function getBalanceGridColumns(): number {
+  if (typeof window === 'undefined') return 3;
+  return window.innerWidth < BALANCE_GRID_NARROW_BREAKPOINT ? 2 : 3;
+}
+
+function useBalanceGridColumns(): number {
+  const [columns, setColumns] = useState(getBalanceGridColumns);
+  useEffect(() => {
+    const handleResize = () => setColumns(getBalanceGridColumns());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return columns;
+}
+
+function getBalanceItemLayout(index: number, total: number, columns: number): { className: string; style?: React.CSSProperties } {
+  const classes = ['txn-balance-item'];
+  const remainder = total % columns;
+  const lastRowStart = remainder === 0 ? total - columns : total - remainder;
+  const isLastRow = index >= lastRowStart;
+  const itemsInLastRow = total - lastRowStart;
+  const isPartialLastRow = isLastRow && itemsInLastRow < columns;
+  const columnPosition = index - lastRowStart;
+
+  if (!isLastRow) classes.push('txn-balance-item-border-bottom');
+
+  if (isPartialLastRow) {
+    // Distribui as colunas restantes entre os itens que sobraram na última linha.
+    const spanBase = Math.floor(columns / itemsInLastRow);
+    const extra = columns % itemsInLastRow;
+    const span = spanBase + (columnPosition < extra ? 1 : 0);
+    if (columnPosition < itemsInLastRow - 1) classes.push('txn-balance-item-border-right');
+    return { className: classes.join(' '), style: { gridColumn: `span ${span}` } };
+  }
+
+  if (index % columns !== columns - 1) {
+    classes.push('txn-balance-item-border-right');
+  }
+  return { className: classes.join(' ') };
 }
 
 function shiftMonth(current: string, delta: number): string {
@@ -51,6 +117,7 @@ export default function Transactions() {
 
   const [accountFilter, setAccountFilter] = useState('');
   const [orderBy, setOrderBy] = useState('-date');
+  const balanceGridColumns = useBalanceGridColumns();
   const navigate = useNavigate();
   const [clearingTx, setClearingTx] = useState<Transaction | null>(null);
   const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
@@ -59,6 +126,18 @@ export default function Transactions() {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [quickView, setQuickView] = useState<'accounts' | 'categories' | null>(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [tileVisibility, setTileVisibility] = useState<Record<string, boolean>>(() => loadTileVisibility());
+
+  const isTileVisible = (id: string) => tileVisibility[id] !== false;
+
+  const toggleTileVisibility = (id: string) => {
+    setTileVisibility(prev => {
+      const next = { ...prev, [id]: prev[id] === false };
+      localStorage.setItem(TILE_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -233,62 +312,87 @@ export default function Transactions() {
               <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setQuickView('categories'); setShowMenu(false); }}>
                 <Tags size={16} /> Categorias
               </button>
+              <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setShowConfigModal(true); setShowMenu(false); }}>
+                <Settings size={16} /> Configurar
+              </button>
             </div>
           )}
         </div>
         {/* Balance */}
         <div id="statement-balance">
           <article className="txn-balance-card">
-            <div className="txn-balance-grid">
-              <div className="txn-balance-item">
-                <span className="txn-balance-label">Saldo atual</span>
-                <strong className={`txn-balance-value ${parseFloat(summary?.current_balance || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.current_balance || '0')}</strong>
-              </div>
-              <div className="txn-balance-item">
-                <span className="txn-balance-label">Balanço mensal</span>
-                <strong className={`txn-balance-value txn-balance-value-month ${parseFloat(summary?.monthly_balance || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.monthly_balance || '0')}</strong>
-              </div>
-              <div className="txn-balance-item">
-                <span className="txn-balance-label">Despesas em aberto</span>
-                <strong className="txn-balance-value txn-balance-value-negative">{formatCurrency(summary?.pending_bank_total || '0')}</strong>
-              </div>
-              <div className="txn-balance-item">
-                <span className="txn-balance-label">Cartão em aberto</span>
-                <strong className="txn-balance-value txn-balance-value-negative">{formatCurrency(summary?.credit_card_open_total || '0')}</strong>
-              </div>
-              <div className="txn-balance-item">
-                <span className="txn-balance-label">Limite do cartão</span>
-                <strong className={`txn-balance-value txn-balance-value-card-limit ${parseFloat(summary?.credit_card_limit || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.credit_card_limit || '0')}</strong>
-              </div>
-              <div className="txn-balance-item">
-                <span className="txn-balance-label">Total cartão</span>
-                <strong className="txn-balance-value txn-balance-value-card-total">{formatCurrency(summary?.credit_card_month_total || '0')}</strong>
-              </div>
-              <div className="txn-balance-item" style={{ gridColumn: 'span 2' }}>
-                <span className="txn-balance-label">Balanço consolidado</span>
-                <strong className={`txn-balance-value txn-balance-value-consolidated ${parseFloat(summary?.consolidated_balance || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.consolidated_balance || '0')}</strong>
-              </div>
+            <div className="txn-balance-grid" style={{ gridTemplateColumns: `repeat(${balanceGridColumns}, minmax(0, 1fr))` }}>
+              {[
+                isTileVisible('current_balance') && {
+                  id: 'current_balance',
+                  label: 'Saldo atual',
+                  node: <strong className={`txn-balance-value ${parseFloat(summary?.current_balance || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.current_balance || '0')}</strong>,
+                },
+                isTileVisible('credit_card_limit') && {
+                  id: 'credit_card_limit',
+                  label: 'Limite do cartão',
+                  node: <strong className={`txn-balance-value txn-balance-value-card-limit ${parseFloat(summary?.credit_card_limit || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.credit_card_limit || '0')}</strong>,
+                },
+                isTileVisible('pending_income_total') && {
+                  id: 'pending_income_total',
+                  label: 'Receitas em aberto',
+                  node: <strong className="txn-balance-value txn-balance-value-month">{formatCurrency(summary?.pending_income_total || '0')}</strong>,
+                },
+                isTileVisible('pending_bank_total') && {
+                  id: 'pending_bank_total',
+                  label: 'Despesas em aberto',
+                  node: <strong className="txn-balance-value txn-balance-value-negative">{formatCurrency(summary?.pending_bank_total || '0')}</strong>,
+                },
+                isTileVisible('credit_card_open_total') && {
+                  id: 'credit_card_open_total',
+                  label: 'Cartão em aberto',
+                  node: <strong className="txn-balance-value txn-balance-value-negative">{formatCurrency(summary?.credit_card_open_total || '0')}</strong>,
+                },
+                isTileVisible('credit_card_month_total') && {
+                  id: 'credit_card_month_total',
+                  label: 'Total cartão',
+                  node: <strong className="txn-balance-value txn-balance-value-card-total">{formatCurrency(summary?.credit_card_month_total || '0')}</strong>,
+                },
+              ]
+                .filter((tile): tile is { id: string; label: string; node: ReactElement } => Boolean(tile))
+                .map((tile, index, arr) => {
+                  const layout = getBalanceItemLayout(index, arr.length, balanceGridColumns);
+                  return (
+                    <div key={tile.id} className={layout.className} style={layout.style}>
+                      <span className="txn-balance-label">{tile.label}</span>
+                      {tile.node}
+                    </div>
+                  );
+                })}
             </div>
 
-            <div className="txn-month-totals" aria-label="Totais do mês">
-              <p className="txn-month-totals-title">Totais do mês</p>
-              <div className="txn-month-totals-grid">
-                <div className="txn-month-total-item">
-                  <span className="txn-balance-label">Receitas</span>
-                  <strong className="txn-month-total-value txn-month-total-income">{formatCurrency(summary?.monthly_income_total || '0')}</strong>
-                </div>
-                <div className="txn-month-total-item">
-                  <span className="txn-balance-label">Despesas</span>
-                  <strong className="txn-month-total-value txn-month-total-expense">{formatCurrency(summary?.monthly_expense_total || '0')}</strong>
-                </div>
-                <div className="txn-month-total-item">
-                  <span className="txn-balance-label">Resultado</span>
-                  <strong className={`txn-month-total-value ${monthResult < 0 ? 'txn-month-total-expense' : 'txn-month-total-income'}`}>
-                    {formatCurrency(monthResult)}
-                  </strong>
+            {(isTileVisible('monthly_income_total') || isTileVisible('monthly_expense_total') || isTileVisible('month_result')) && (
+              <div className="txn-month-totals" aria-label="Totais do mês">
+                <p className="txn-month-totals-title">Totais do mês</p>
+                <div className="txn-month-totals-grid">
+                  {isTileVisible('monthly_income_total') && (
+                    <div className="txn-month-total-item">
+                      <span className="txn-balance-label">Receitas</span>
+                      <strong className="txn-month-total-value txn-month-total-income">{formatCurrency(summary?.monthly_income_total || '0')}</strong>
+                    </div>
+                  )}
+                  {isTileVisible('monthly_expense_total') && (
+                    <div className="txn-month-total-item">
+                      <span className="txn-balance-label">Despesas</span>
+                      <strong className="txn-month-total-value txn-month-total-expense">{formatCurrency(summary?.monthly_expense_total || '0')}</strong>
+                    </div>
+                  )}
+                  {isTileVisible('month_result') && (
+                    <div className="txn-month-total-item">
+                      <span className="txn-balance-label">Resultado</span>
+                      <strong className={`txn-month-total-value ${monthResult < 0 ? 'txn-month-total-expense' : 'txn-month-total-income'}`}>
+                        {formatCurrency(monthResult)}
+                      </strong>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
           </article>
         </div>
 
@@ -372,7 +476,16 @@ export default function Transactions() {
                           } ${tx.is_cleared ? 'txn-amount-cleared' : ''} ${tx.is_ignored ? 'txn-amount-ignored' : ''}`}>
                             {formatCurrency(tx.amount)}
                           </p>
-                          <details className="txn-actions-dropdown">
+                          <details
+                            className="txn-actions-dropdown"
+                            onToggle={(e) => {
+                              const el = e.currentTarget;
+                              if (!el.open) return;
+                              const spaceBelow = window.innerHeight - el.getBoundingClientRect().bottom;
+                              const estimatedMenuHeight = 210;
+                              el.classList.toggle('txn-actions-dropdown-up', spaceBelow < estimatedMenuHeight);
+                            }}
+                          >
                             <summary className="txn-actions-trigger" aria-label="Ações da transação" title="Ações">
                               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                 <circle cx="12" cy="5" r="1.8"></circle>
@@ -569,6 +682,38 @@ export default function Transactions() {
               >
                 OK
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showConfigModal && createPortal(
+        <div className="modal-overlay" onClick={() => setShowConfigModal(false)}>
+          <div
+            className="modal-content animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 420, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title">Configurar exibição</h2>
+              <button className="btn-ghost btn-icon" onClick={() => setShowConfigModal(false)}>×</button>
+            </div>
+            <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+                Escolha quais informações aparecem no resumo do mês.
+              </p>
+              {DASHBOARD_TILES.map(tile => (
+                <label key={tile.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={isTileVisible(tile.id)}
+                    onChange={() => toggleTileVisibility(tile.id)}
+                    style={{ accentColor: 'var(--color-accent)' }}
+                  />
+                  {tile.label}
+                </label>
+              ))}
             </div>
           </div>
         </div>,

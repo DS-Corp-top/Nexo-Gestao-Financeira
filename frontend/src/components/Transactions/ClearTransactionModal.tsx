@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { type Transaction } from '../../api/transactions';
 import { type Category } from '../../api/categories';
+import CurrencyInput from '../CurrencyInput';
 
 interface ClearTransactionModalProps {
   transaction: Transaction | null;
@@ -130,15 +131,12 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
           )}
 
           <label className="clear-modal-label" htmlFor={`modal-amount-${transaction.id}`}>Valor</label>
-          <input
+          <CurrencyInput
             id={`modal-amount-${transaction.id}`}
             className="clear-modal-date"
-            type="number"
-            step="0.01"
-            min="0.01"
             required
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={setAmount}
           />
 
           <label className="clear-modal-label" htmlFor={`modal-cleared-date-${transaction.id}`}>Data da baixa</label>

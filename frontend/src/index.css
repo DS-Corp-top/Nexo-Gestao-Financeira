@@ -1221,7 +1221,7 @@ select.clear-modal-date option:checked {
 
 .txn-balance-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   gap: 0;
 }
@@ -1232,11 +1232,11 @@ select.clear-modal-date option:checked {
   padding: 0.35rem 0.65rem;
 }
 
-.txn-balance-item:nth-child(odd):not(:last-child) {
+.txn-balance-item-border-right {
   border-right: 1px solid rgba(148, 163, 184, 0.28);
 }
 
-.txn-balance-item:not(:last-child) {
+.txn-balance-item-border-bottom {
   border-bottom: 1px solid rgba(148, 163, 184, 0.28);
 }
 

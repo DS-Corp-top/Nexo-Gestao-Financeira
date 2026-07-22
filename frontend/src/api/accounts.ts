@@ -29,3 +29,7 @@ export async function updateAccount(id: number, payload: Partial<CreateAccountPa
   const { data } = await api.patch<Account>(`/accounts/${id}/`, payload);
   return data;
 }
+
+export async function deleteAccount(id: number): Promise<void> {
+  await api.delete(`/accounts/${id}/`);
+}

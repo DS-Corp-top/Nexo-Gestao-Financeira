@@ -5,6 +5,7 @@ import { Calendar } from 'lucide-react';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
 import { fetchAccounts, type Account } from '../api/accounts';
 import { fetchCategories, type Category } from '../api/categories';
+import CurrencyInput from '../components/CurrencyInput';
 
 const GAP = { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' };
 type RecurrenceType = CreateTransactionPayload['recurrence_type'];
@@ -173,13 +174,10 @@ export default function TransactionForm() {
         <div className="form-amount-date-grid" style={{ gap: '0.75rem' }}>
           <div>
             <label className="label">Valor (R$)</label>
-            <input
+            <CurrencyInput
               className="input"
-              type="number"
-              step="0.01"
-              min="0.01"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
               required
               style={{ color: typeColor, fontWeight: 600 }}
             />

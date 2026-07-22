@@ -73,7 +73,10 @@ def calculate_credit_card_available_limit(tenant, selected_month):
     account_model = apps.get_model("accounts", "Account")
     monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
     transaction_model = apps.get_model("transactions", "Transaction")
-    is_current_month = True
+    today = timezone.localdate()
+    is_current_month = (
+        selected_month.year == today.year and selected_month.month == today.month
+    )
 
     active_cards = account_model.objects.filter(
         tenant=tenant,
@@ -90,6 +93,16 @@ def calculate_credit_card_available_limit(tenant, selected_month):
             year=selected_month.year,
             month=selected_month.month,
         ).values_list("amount", flat=True).first()
+
+        monthly_incoming_transfers = transaction_model.objects.filter(
+            tenant=tenant,
+            destination_account=card,
+            is_cleared=True,
+            is_ignored=False,
+            date__year=selected_month.year,
+            date__month=selected_month.month,
+            transaction_type=Transaction.TransactionType.TRANSFER,
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
         if monthly_limit is not None and monthly_limit > 0:
             card_limit = monthly_limit
@@ -109,7 +122,7 @@ def calculate_credit_card_available_limit(tenant, selected_month):
                 transaction_type=Transaction.TransactionType.INCOME,
             ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
             card_limit = card.initial_balance + monthly_income
-            if card_limit <= 0:
+            if card_limit + monthly_incoming_transfers <= 0:
                 continue
 
         monthly_expenses = transaction_model.objects.filter(
@@ -122,7 +135,7 @@ def calculate_credit_card_available_limit(tenant, selected_month):
             transaction_type=Transaction.TransactionType.EXPENSE,
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-        available = card_limit - monthly_expenses
+        available = card_limit - monthly_expenses + monthly_incoming_transfers
         if available > 0:
             total_available += available
 

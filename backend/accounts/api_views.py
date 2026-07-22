@@ -1,6 +1,8 @@
 from decimal import Decimal, InvalidOperation
 
+from django.db.models import Q
 from rest_framework import status, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from accounts.models import Account, CardMonthlyLimit
@@ -18,6 +20,22 @@ class AccountViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, tenant=self.get_tenant())
+
+    def perform_destroy(self, instance):
+        from transactions.models import Transaction
+
+        has_transactions = Transaction.objects.filter(
+            Q(account=instance) | Q(destination_account=instance)
+        ).exists()
+        if has_transactions:
+            raise ValidationError({
+                "detail": (
+                    "Esta conta tem transações lançadas e por isso não pode ser excluída. "
+                    "Desative-a (edite a conta e desmarque \"Conta ativa\") para removê-la "
+                    "das telas sem perder o histórico."
+                )
+            })
+        instance.delete()
 
 
 class CardMonthlyLimitViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):

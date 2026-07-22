@@ -3,12 +3,14 @@ import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { type Account, type CreateAccountPayload } from '../../api/accounts';
 import { fetchBacenBanks } from '../../api/investments';
+import CurrencyInput from '../CurrencyInput';
 
 interface AccountModalProps {
   account: Account | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (payload: CreateAccountPayload) => Promise<void>;
+  onDelete?: () => Promise<void>;
 }
 
 function normalizeSearch(value: string): string {
@@ -18,10 +20,12 @@ function normalizeSearch(value: string): string {
     .toLowerCase();
 }
 
-export default function AccountModal({ account, isOpen, onClose, onSave }: AccountModalProps) {
+export default function AccountModal({ account, isOpen, onClose, onSave, onDelete }: AccountModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bankFocused, setBankFocused] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [name, setName] = useState(account?.name || '');
@@ -32,9 +36,11 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
     account?.currency || 'BRL'
   );
   const [initialBalance, setInitialBalance] = useState(account?.initial_balance || '0.00');
+  const [creditLimit, setCreditLimit] = useState(account?.credit_limit || '');
   const [includeInBalance, setIncludeInBalance] = useState(
     account?.include_in_balance ?? true
   );
+  const [isActive, setIsActive] = useState(account?.is_active ?? true);
 
   const { data: bacenBanks = [], isLoading: bacenBanksLoading, isError: bacenBanksError } = useQuery({
     queryKey: ['bacen-banks'],
@@ -69,15 +75,30 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
         account_type: accountType,
         currency,
         initial_balance: initialBalance,
-        credit_limit: null,
+        credit_limit: accountType === 'card' && creditLimit ? creditLimit : null,
         include_in_balance: includeInBalance,
-        is_active: account?.is_active ?? true,
+        is_active: isActive,
       });
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Erro ao salvar conta.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setError('');
+    setDeleting(true);
+    try {
+      await onDelete();
+      onClose();
+    } catch (err: any) {
+      setConfirmingDelete(false);
+      setError(err.response?.data?.detail || 'Erro ao excluir conta.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -211,20 +232,34 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
 
           <div style={{ marginBottom: 'var(--space-md)', width: '100%' }}>
             <div>
-              <label className="label">Saldo Inicial</label>
-              <input
-                type="number"
-                step="0.01"
+              <label className="label" htmlFor="account-initial-balance">Saldo Inicial</label>
+              <CurrencyInput
+                id="account-initial-balance"
                 className="input"
                 value={initialBalance}
-                onChange={(e) => setInitialBalance(e.target.value)}
+                onChange={setInitialBalance}
                 required
                 disabled={!!account} // Não permite alterar após criação
               />
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-lg)' }}>
+          {accountType === 'card' && (
+            <div style={{ marginBottom: 'var(--space-md)', width: '100%' }}>
+              <div>
+                <label className="label" htmlFor="account-credit-limit">Limite do Cartão</label>
+                <CurrencyInput
+                  id="account-credit-limit"
+                  className="input"
+                  placeholder="0,00"
+                  value={creditLimit}
+                  onChange={setCreditLimit}
+                />
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-sm)' }}>
             <input
               type="checkbox"
               id="includeInBalance"
@@ -236,13 +271,60 @@ export default function AccountModal({ account, isOpen, onClose, onSave }: Accou
             </label>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
-              Cancelar
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Salvando...' : 'Salvar'}
-            </button>
+          {account && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-lg)' }}>
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+              />
+              <label htmlFor="isActive" style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                Conta ativa (desmarque para arquivar sem perder o histórico)
+              </label>
+            </div>
+          )}
+
+          {onDelete && confirmingDelete && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                padding: '10px 14px',
+                marginBottom: 'var(--space-md)',
+                background: 'var(--color-danger-muted)',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', color: 'var(--color-danger)' }}>
+                Tem certeza que deseja excluir esta conta? Isso não pode ser desfeito.
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setConfirmingDelete(false)} disabled={deleting}>
+                  Cancelar
+                </button>
+                <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? 'Excluindo...' : 'Sim, excluir'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-sm)' }}>
+            {onDelete && !confirmingDelete ? (
+              <button type="button" className="btn btn-danger" onClick={() => setConfirmingDelete(true)} disabled={loading}>
+                Excluir Conta
+              </button>
+            ) : <span />}
+            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -54,6 +54,43 @@ class TransactionApiViewSetTest(TestCase):
             category_type=Category.CategoryType.EXPENSE,
         )
 
+    def test_delete_cleared_transaction_is_blocked(self):
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="150.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Academia",
+            is_cleared=True,
+        )
+
+        response = self.client.delete(f"/api/v1/transactions/{transaction.pk}/")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("já foi baixada", response.data["detail"])
+        self.assertTrue(Transaction.objects.filter(pk=transaction.pk).exists())
+
+    def test_delete_pending_transaction_succeeds(self):
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="150.00",
+            date=date(2026, 7, 10),
+            account=self.account,
+            category=self.category,
+            description="Academia",
+            is_cleared=False,
+        )
+
+        response = self.client.delete(f"/api/v1/transactions/{transaction.pk}/")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
+
     def test_update_scope_all_updates_future_pending_occurrences(self):
         transaction = Transaction.objects.create(
             user=self.user,
@@ -269,3 +306,74 @@ class TransactionApiViewSetTest(TestCase):
         self.assertEqual(response.status_code, 400)
         transfer.refresh_from_db()
         self.assertIsNone(transfer.category_id)
+
+
+class StatementSummaryTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="summaryuser", password="123")
+        self.tenant = Tenant.objects.create(
+            name="Tenant Resumo",
+            slug="tenant-resumo",
+            owner=self.user,
+            document="12345678901",
+        )
+        TenantMembership.objects.create(
+            tenant=self.tenant,
+            user=self.user,
+            role=TenantMembership.Role.OWNER,
+            is_default=True,
+        )
+        self.client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.client.force_authenticate(self.user)
+        self.bank_account = Account.objects.create(
+            user=self.user, tenant=self.tenant, name="Conta Corrente",
+            account_type=Account.AccountType.BANK,
+        )
+        self.card_account = Account.objects.create(
+            user=self.user, tenant=self.tenant, name="Cartao",
+            account_type=Account.AccountType.CARD, include_in_balance=False,
+        )
+
+    def test_statement_summary_pending_income_excludes_card_but_totals_include_it(self):
+        Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.bank_account,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount="2000.00", date=date(2026, 7, 5), is_cleared=True,
+        )
+        Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.bank_account,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount="500.00", date=date(2026, 7, 6), is_cleared=False,
+        )
+        Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.card_account,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount="80.00", date=date(2026, 7, 7), is_cleared=False,
+        )
+        Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.bank_account,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="300.00", date=date(2026, 7, 8), is_cleared=True,
+        )
+        Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.bank_account,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="100.00", date=date(2026, 7, 9), is_cleared=False,
+        )
+        Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.card_account,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="150.00", date=date(2026, 7, 10), is_cleared=False,
+        )
+
+        response = self.client.get(
+            "/api/v1/transactions/statement_summary/", data={"month": "2026-07"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.data
+        self.assertEqual(data["pending_income_total"], "500.00")
+        self.assertEqual(data["pending_bank_total"], "100.00")
+        self.assertEqual(data["credit_card_open_total"], "150.00")
+        self.assertEqual(data["monthly_income_total"], "2580.00")
+        self.assertEqual(data["monthly_expense_total"], "550.00")

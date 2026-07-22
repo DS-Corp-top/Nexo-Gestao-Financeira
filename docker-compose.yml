@@ -4,6 +4,7 @@ services:
   # esses containers consumirem recursos ilimitados na maquina local.
   db:
     image: postgres:17-alpine
+    container_name: nexo-gestao-financeira-postgres
     restart: unless-stopped
     mem_limit: 512m
     cpus: 1

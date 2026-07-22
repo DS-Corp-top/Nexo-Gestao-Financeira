@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
+from django.utils import timezone
 
 from accounts.models import Account
 from common.balance import (
@@ -205,6 +206,9 @@ class BalanceFunctionsTests(TestCase):
         self.assertEqual(consolidated_total, Decimal("200.00"))
 
     def test_credit_card_available_limit_uses_month_and_cleared_expenses(self):
+        """Sem limite fixo, o mes atual usa saldo inicial + receitas baixadas menos despesas baixadas."""
+        this_month = timezone.localdate().replace(day=1)
+        previous_month_last_day = this_month - timedelta(days=1)
         card = Account.objects.create(
             user=self.user,
             tenant=self.tenant,
@@ -213,39 +217,43 @@ class BalanceFunctionsTests(TestCase):
             initial_balance=Decimal("0.00"),
             include_in_balance=False,
         )
-        self.create_transaction(account=card, amount=Decimal("1000.00"))
+        self.create_transaction(account=card, amount=Decimal("1000.00"), date=this_month)
         self.create_transaction(
             account=card,
             transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("250.00"),
+            date=this_month,
         )
         self.create_transaction(
             account=card,
             transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("100.00"),
             is_cleared=False,
+            date=this_month,
         )
         self.create_transaction(
             account=card,
             transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("50.00"),
             is_ignored=True,
+            date=this_month,
         )
         self.create_transaction(
             account=card,
             transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("300.00"),
-            date=date(2026, 5, 31),
+            date=previous_month_last_day,
         )
 
         available = calculate_credit_card_available_limit(
             self.tenant,
-            date(2026, 6, 1),
+            this_month,
         )
 
         self.assertEqual(available, Decimal("750.00"))
 
     def test_credit_card_available_limit_uses_card_credit_limit_when_present(self):
+        this_month = timezone.localdate().replace(day=1)
         card = Account.objects.create(
             user=self.user,
             tenant=self.tenant,
@@ -259,17 +267,19 @@ class BalanceFunctionsTests(TestCase):
             account=card,
             transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("125.00"),
+            date=this_month,
         )
         self.create_transaction(
             account=card,
             transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("50.00"),
             is_cleared=False,
+            date=this_month,
         )
 
         available = calculate_credit_card_available_limit(
             self.tenant,
-            date(2026, 6, 1),
+            this_month,
         )
 
         self.assertEqual(available, Decimal("375.00"))

@@ -7,6 +7,7 @@ import {
   updateShoppingList, createShoppingItem, updateShoppingItem, deleteShoppingItem, toggleShoppingItem,
   type ShoppingItem
 } from '../api/shopping';
+import CurrencyInput from '../components/CurrencyInput';
 
 function formatCurrency(value: string | number): string {
   if (value == null) return '';
@@ -47,6 +48,7 @@ export default function Shopping() {
   // Modal state
   const [listModal, setListModal] = useState<{ mode: 'create' | 'edit'; name: string; date: string } | null>(null);
   const [itemModal, setItemModal] = useState<{ item: ShoppingItem; title: string; quantity: string; unitPrice: string } | null>(null);
+  const [newUnitPrice, setNewUnitPrice] = useState('');
   const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const { data: lists, isLoading: listsLoading } = useQuery({
@@ -160,10 +162,10 @@ export default function Shopping() {
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
     const quantity = Number(formData.get('quantity') || 1);
-    const unitPriceRaw = formData.get('unit_price') as string;
     if (title) {
-      createItemMutation.mutate({ shopping_list: selectedListId, title, quantity, unit_price: unitPriceRaw || null, notes: '' });
+      createItemMutation.mutate({ shopping_list: selectedListId, title, quantity, unit_price: newUnitPrice || null, notes: '' });
       e.currentTarget.reset();
+      setNewUnitPrice('');
     }
   };
 
@@ -213,7 +215,7 @@ export default function Shopping() {
           <form onSubmit={handleCreateItem} style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
             <input type="text" name="title" className="input" placeholder="Novo item..." style={{ flex: 2 }} required />
             <input type="number" name="quantity" className="input" placeholder="Qtd" defaultValue="1" min="1" style={{ width: 80 }} />
-            <input type="number" step="0.01" name="unit_price" className="input" placeholder="Preço Un. (opcional)" style={{ width: 140 }} />
+            <CurrencyInput value={newUnitPrice} onChange={setNewUnitPrice} className="input" placeholder="Preço Un. (opcional)" style={{ width: 140 }} />
             <button type="submit" className="btn btn-primary" disabled={createItemMutation.isPending}>
               Adicionar
             </button>
@@ -302,7 +304,7 @@ export default function Shopping() {
               </div>
               <div>
                 <label className="label">Preço unitário</label>
-                <input className="input" type="number" step="0.01" placeholder="Opcional" value={itemModal.unitPrice} onChange={e => setItemModal(m => m && ({ ...m, unitPrice: e.target.value }))} />
+                <CurrencyInput className="input" placeholder="Opcional" value={itemModal.unitPrice} onChange={val => setItemModal(m => m && ({ ...m, unitPrice: val }))} />
               </div>
             </div>
           </Modal>

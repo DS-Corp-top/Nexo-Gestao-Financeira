@@ -41,6 +41,7 @@ export interface StatementSummary {
   credit_card_limit: string;
   consolidated_balance: string;
   pending_bank_total: string;
+  pending_income_total: string;
   monthly_income_total: string;
   monthly_expense_total: string;
 }

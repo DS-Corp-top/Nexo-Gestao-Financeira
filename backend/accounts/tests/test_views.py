@@ -1,6 +1,11 @@
+from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
+
+from accounts.models import Account
+from transactions.models import Transaction
 
 pytestmark = pytest.mark.django_db
 
@@ -151,3 +156,58 @@ def test_create_card_monthly_limit_is_upsert(baker):
 
     from accounts.models import CardMonthlyLimit
     assert CardMonthlyLimit.objects.filter(account=account, year=2026, month=6).count() == 1
+
+
+def test_delete_account_with_transactions_is_blocked(baker):
+    user, tenant = setup_tenant(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.BANK)
+    Transaction.objects.create(
+        tenant=tenant, user=user, account=account,
+        transaction_type=Transaction.TransactionType.EXPENSE,
+        amount=Decimal("100.00"), date="2026-07-10", is_cleared=False,
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:account-detail", args=[account.id])
+    response = client.delete(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+    assert "detail" in response.data
+    assert Account.objects.filter(pk=account.pk).exists()
+
+
+def test_delete_account_as_transfer_destination_is_blocked(baker):
+    """Uma conta que só aparece como destino de transferência também não pode ser excluída."""
+    user, tenant = setup_tenant(baker)
+    source = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.BANK)
+    card = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.CARD)
+    Transaction.objects.create(
+        tenant=tenant, user=user, account=source, destination_account=card,
+        transaction_type=Transaction.TransactionType.TRANSFER,
+        amount=Decimal("100.00"), date="2026-07-10", is_cleared=True,
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:account-detail", args=[card.id])
+    response = client.delete(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+    assert Account.objects.filter(pk=card.pk).exists()
+
+
+def test_delete_account_without_transactions_succeeds(baker):
+    user, tenant = setup_tenant(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.BANK)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:account-detail", args=[account.id])
+    response = client.delete(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 204
+    assert not Account.objects.filter(pk=account.pk).exists()

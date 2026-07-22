@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Wallet } from 'lucide-react';
-import { fetchAccounts, createAccount, updateAccount, type Account } from '../api/accounts';
+import { fetchAccounts, createAccount, updateAccount, deleteAccount, type Account } from '../api/accounts';
 import AccountModal from '../components/Accounts/AccountModal';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 
@@ -33,6 +33,11 @@ export default function Accounts() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounts'] }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+  });
+
   const handleOpenNew = () => {
     setEditingAccount(null);
     setModalOpen(true);
@@ -49,6 +54,11 @@ export default function Accounts() {
     } else {
       await createMutation.mutateAsync(payload);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!editingAccount) return;
+    await deleteMutation.mutateAsync(editingAccount.id);
   };
 
 
@@ -129,6 +139,7 @@ export default function Accounts() {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
+          onDelete={editingAccount ? handleDelete : undefined}
         />
       )}
     </div>

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -5,6 +7,11 @@ from rest_framework.response import Response
 from common.api_mixins import TenantQuerySetMixin
 from transactions.models import ClosedMonth, Transaction
 from transactions.serializers import ClosedMonthSerializer, TransactionSerializer
+
+
+def _money_str(value):
+    """Formata um Decimal com 2 casas fixas — SQLite pode devolver Sum() sem elas."""
+    return str(Decimal(value).quantize(Decimal("0.01")))
 
 
 class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
@@ -190,7 +197,12 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         if instance.is_cleared:
             from rest_framework.exceptions import ValidationError
-            raise ValidationError({"detail": "Lançamentos baixados não podem ser excluídos."})
+            raise ValidationError({
+                "detail": (
+                    "Esta transação já foi baixada e por isso não pode ser excluída. "
+                    "Marque-a como pendente (clique em \"Baixada\" na lista) e tente excluir novamente."
+                )
+            })
 
         if scope == "all":
             self._get_related_occurrences_queryset(instance).delete()
@@ -368,6 +380,17 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
+        pending_income_total = Transaction.objects.filter(
+            tenant=tenant,
+            transaction_type=Transaction.TransactionType.INCOME,
+            is_cleared=False,
+            is_ignored=False,
+            date__year=selected_month.year,
+            date__month=selected_month.month,
+        ).exclude(
+            account__account_type=Account.AccountType.CARD
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+
         monthly_transactions = Transaction.objects.filter(
             tenant=tenant,
             is_ignored=False,
@@ -382,15 +405,16 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
         return Response({
-            "current_balance": str(current_balance),
-            "monthly_balance": str(monthly_balance),
-            "credit_card_open_total": str(credit_card_open_total),
-            "credit_card_month_total": str(credit_card_month_total),
-            "credit_card_limit": str(safe_credit_limit),
-            "consolidated_balance": str(consolidated_balance),
-            "pending_bank_total": str(pending_bank_total),
-            "monthly_income_total": str(monthly_income_total),
-            "monthly_expense_total": str(monthly_expense_total),
+            "current_balance": _money_str(current_balance),
+            "monthly_balance": _money_str(monthly_balance),
+            "credit_card_open_total": _money_str(credit_card_open_total),
+            "credit_card_month_total": _money_str(credit_card_month_total),
+            "credit_card_limit": _money_str(safe_credit_limit),
+            "consolidated_balance": _money_str(consolidated_balance),
+            "pending_bank_total": _money_str(pending_bank_total),
+            "pending_income_total": _money_str(pending_income_total),
+            "monthly_income_total": _money_str(monthly_income_total),
+            "monthly_expense_total": _money_str(monthly_expense_total),
         })
 
 class ClosedMonthViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
