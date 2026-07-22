@@ -90,6 +90,28 @@ def test_account_balance_is_zero_when_excluded_and_not_card(baker):
 
 
 @pytest.mark.django_db
+def test_deleting_backing_investment_clears_it_from_card_without_deleting_card(baker):
+    """on_delete=SET_NULL: apagar o investimento nao deve apagar o cartao vinculado."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    investment = baker.make("investments.Investment", tenant=tenant, user=user)
+    card = baker.make(
+        "accounts.Account",
+        user=user,
+        tenant=tenant,
+        account_type=Account.AccountType.CARD,
+        backing_investment=investment,
+    )
+
+    investment.delete()
+    card.refresh_from_db()
+
+    assert Account.objects.filter(pk=card.pk).exists()
+    assert card.backing_investment_id is None
+
+
+@pytest.mark.django_db
 def test_card_monthly_limit_unique_per_account_month_year(baker):
     """Limite mensal do cartao deve ser unico por conta/mes/ano."""
     user = baker.make("auth.User")

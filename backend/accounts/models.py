@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -56,6 +57,19 @@ class Account(models.Model):
         null=True,
         blank=True,
         help_text="Informe o limite de crédito (apenas para contas do tipo Cartão).",
+    )
+    backing_investment = models.ForeignKey(
+        "investments.Investment",
+        verbose_name="Investimento de garantia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="backed_accounts",
+        help_text=(
+            "Quando definido (apenas para contas do tipo Cartão), o limite "
+            "disponível passa a ser o valor líquido aplicado nesse "
+            "investimento, no lugar do Limite do Cartão fixo."
+        ),
     )
     include_in_balance = models.BooleanField(
         "Considerar no saldo",

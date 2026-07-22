@@ -7,6 +7,7 @@ export interface Account {
   currency: 'BRL' | 'USD' | 'EUR';
   initial_balance: string;
   credit_limit: string | null;
+  backing_investment: number | null;
   include_in_balance: boolean;
   is_active: boolean;
   balance: string;

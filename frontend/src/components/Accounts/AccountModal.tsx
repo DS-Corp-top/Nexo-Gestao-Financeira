@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { type Account, type CreateAccountPayload } from '../../api/accounts';
-import { fetchBacenBanks } from '../../api/investments';
+import { fetchBacenBanks, fetchInvestments } from '../../api/investments';
 import CurrencyInput from '../CurrencyInput';
 
 interface AccountModalProps {
@@ -37,6 +37,9 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
   );
   const [initialBalance, setInitialBalance] = useState(account?.initial_balance || '0.00');
   const [creditLimit, setCreditLimit] = useState(account?.credit_limit || '');
+  const [backingInvestmentId, setBackingInvestmentId] = useState(
+    account?.backing_investment != null ? String(account.backing_investment) : ''
+  );
   const [includeInBalance, setIncludeInBalance] = useState(
     account?.include_in_balance ?? true
   );
@@ -47,6 +50,12 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
     queryFn: fetchBacenBanks,
     enabled: isOpen,
     staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  const { data: investments = [] } = useQuery({
+    queryKey: ['investments'],
+    queryFn: fetchInvestments,
+    enabled: isOpen && accountType === 'card',
   });
 
   const bankSuggestions = useMemo(() => {
@@ -76,6 +85,7 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
         currency,
         initial_balance: initialBalance,
         credit_limit: accountType === 'card' && creditLimit ? creditLimit : null,
+        backing_investment: accountType === 'card' && backingInvestmentId ? Number(backingInvestmentId) : null,
         include_in_balance: includeInBalance,
         is_active: isActive,
       });
@@ -245,6 +255,29 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
           </div>
 
           {accountType === 'card' && (
+            <div style={{ marginBottom: 'var(--space-md)', width: '100%' }}>
+              <label className="label" htmlFor="account-backing-investment">Limite garantido por investimento (opcional)</label>
+              <select
+                id="account-backing-investment"
+                className="select"
+                value={backingInvestmentId}
+                onChange={(e) => setBackingInvestmentId(e.target.value)}
+              >
+                <option value="">Nenhum — usar limite fixo</option>
+                {investments.map((inv) => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.name} (R$ {Number(inv.net_invested).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} aplicados)
+                  </option>
+                ))}
+              </select>
+              <div style={{ marginTop: 6, fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                Quando escolhido, o limite disponível vira o valor líquido aplicado nesse investimento
+                (aportes − resgates), no lugar do limite fixo abaixo.
+              </div>
+            </div>
+          )}
+
+          {accountType === 'card' && !backingInvestmentId && (
             <div style={{ marginBottom: 'var(--space-md)', width: '100%' }}>
               <div>
                 <label className="label" htmlFor="account-credit-limit">Limite do Cartão</label>

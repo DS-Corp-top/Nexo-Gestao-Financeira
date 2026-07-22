@@ -11,6 +11,7 @@ vi.mock('../../api/investments', async () => {
   return {
     ...actual,
     fetchBacenBanks: vi.fn(),
+    fetchInvestments: vi.fn(),
   };
 });
 
@@ -21,6 +22,7 @@ const existingAccount: Account = {
   currency: 'BRL',
   initial_balance: '1000.00',
   credit_limit: null,
+  backing_investment: null,
   include_in_balance: true,
   is_active: true,
   balance: '1000.00',
@@ -49,6 +51,9 @@ describe('AccountModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (investmentsApi.fetchBacenBanks as any).mockResolvedValue([]);
+    (investmentsApi.fetchInvestments as any).mockResolvedValue([
+      { id: 5, name: 'CDB Garantia', investment_type: 'fixed_income', net_invested: '1000.00' },
+    ]);
   });
 
   it('does not show a delete button when creating a new account', () => {
@@ -109,5 +114,55 @@ describe('AccountModal', () => {
       expect(screen.getByText(/Esta conta tem transações lançadas/)).toBeInTheDocument()
     );
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('offers linking a card to an investment and hides the fixed limit once one is chosen', async () => {
+    renderModal({ account: { ...existingAccount, account_type: 'card' } });
+
+    const select = await screen.findByLabelText(/Limite garantido por investimento/);
+    await screen.findByText(/CDB Garantia/);
+    expect(screen.getByLabelText('Limite do Cartão')).toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: '5' } });
+
+    expect(screen.queryByLabelText('Limite do Cartão')).not.toBeInTheDocument();
+  });
+
+  it('pre-selects the already-linked investment when editing a card account', async () => {
+    renderModal({ account: { ...existingAccount, account_type: 'card', backing_investment: 5 } });
+
+    const select = (await screen.findByLabelText(/Limite garantido por investimento/)) as HTMLSelectElement;
+    await screen.findByText(/CDB Garantia/);
+
+    expect(select.value).toBe('5');
+  });
+
+  it('saves the selected investment id as backing_investment', async () => {
+    const { onSave } = renderModal({ account: { ...existingAccount, account_type: 'card' } });
+
+    const select = await screen.findByLabelText(/Limite garantido por investimento/);
+    await screen.findByText(/CDB Garantia/);
+    fireEvent.change(select, { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].backing_investment).toBe(5);
+  });
+
+  it('unlinking back to "Nenhum" sends backing_investment as null and shows the fixed limit again', async () => {
+    const { onSave } = renderModal({
+      account: { ...existingAccount, account_type: 'card', backing_investment: 5 },
+    });
+
+    const select = await screen.findByLabelText(/Limite garantido por investimento/);
+    expect(screen.queryByLabelText('Limite do Cartão')).not.toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: '' } });
+    expect(screen.getByLabelText('Limite do Cartão')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].backing_investment).toBeNull();
   });
 });

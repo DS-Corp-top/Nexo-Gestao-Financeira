@@ -82,7 +82,7 @@ def calculate_credit_card_available_limit(tenant, selected_month):
         tenant=tenant,
         account_type="card",
         is_active=True,
-    )
+    ).select_related("backing_investment")
 
     total_available = ZERO
 
@@ -109,6 +109,10 @@ def calculate_credit_card_available_limit(tenant, selected_month):
         elif not is_current_month:
             # Meses que não são o atual sem limite explícito são ignorados — cada mês é isolado.
             continue
+        elif card.backing_investment_id:
+            # Limite garantido por um investimento (ex.: CDB) substitui o limite fixo —
+            # resgates reduzem o limite disponível na hora, nunca abaixo de zero.
+            card_limit = max(ZERO, card.backing_investment.net_invested)
         elif card.credit_limit is not None and card.credit_limit > 0:
             card_limit = card.credit_limit
         else:

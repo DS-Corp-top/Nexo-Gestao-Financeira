@@ -211,3 +211,50 @@ def test_delete_account_without_transactions_succeeds(baker):
 
     assert response.status_code == 204
     assert not Account.objects.filter(pk=account.pk).exists()
+
+
+def test_link_backing_investment_to_card_succeeds(baker):
+    user, tenant = setup_tenant(baker)
+    investment = baker.make("investments.Investment", tenant=tenant, user=user)
+    card = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.CARD)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:account-detail", args=[card.id])
+    response = client.patch(url, {"backing_investment": investment.id}, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    card.refresh_from_db()
+    assert card.backing_investment_id == investment.id
+
+
+def test_link_backing_investment_to_non_card_is_rejected(baker):
+    user, tenant = setup_tenant(baker)
+    investment = baker.make("investments.Investment", tenant=tenant, user=user)
+    bank_account = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.BANK)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:account-detail", args=[bank_account.id])
+    response = client.patch(url, {"backing_investment": investment.id}, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+    assert "backing_investment" in response.data
+
+
+def test_link_backing_investment_from_another_tenant_is_rejected(baker):
+    user, tenant = setup_tenant(baker)
+    _, other_tenant = setup_tenant(baker)
+    other_investment = baker.make("investments.Investment", tenant=other_tenant)
+    card = baker.make("accounts.Account", tenant=tenant, user=user, account_type=Account.AccountType.CARD)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:account-detail", args=[card.id])
+    response = client.patch(url, {"backing_investment": other_investment.id}, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+    assert "backing_investment" in response.data

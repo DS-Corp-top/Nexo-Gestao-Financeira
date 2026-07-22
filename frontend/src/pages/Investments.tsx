@@ -109,6 +109,7 @@ export default function Investments() {
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [entryAmount, setEntryAmount] = useState('');
   const [entryHistoryOpen, setEntryHistoryOpen] = useState(false);
+  const [deletingEntryId, setDeletingEntryId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<Investment['investment_type'] | ''>('');
   const [filterCurrency, setFilterCurrency] = useState('');
@@ -167,6 +168,7 @@ export default function Investments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investment', selectedInvId] });
       queryClient.invalidateQueries({ queryKey: ['investments'] });
+      setDeletingEntryId(null);
     },
   });
 
@@ -572,9 +574,10 @@ export default function Investments() {
                         {entry.entry_type === 'withdrawal' ? '-' : '+'}{formatCurrency(entry.amount, currentCurrency)}
                       </td>
                       <td>
-                        <button 
-                          className="btn-ghost btn-icon" 
-                          onClick={() => { if(window.confirm('Excluir lançamento?')) deleteEntryMutation.mutate(entry.id); }}
+                        <button
+                          className="btn-ghost btn-icon"
+                          aria-label="Excluir lançamento"
+                          onClick={() => setDeletingEntryId(entry.id)}
                         >
                           <Trash2 size={16} style={{ color: 'var(--color-danger)' }} />
                         </button>
@@ -597,6 +600,43 @@ export default function Investments() {
             onSave={handleSave}
             onDelete={(id) => deleteMutation.mutateAsync(id)}
           />
+        )}
+
+        {deletingEntryId !== null && createPortal(
+          <div
+            onClick={() => setDeletingEntryId(null)}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999, padding: '1rem',
+            }}
+          >
+            <div
+              className="card"
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 380, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+            >
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Excluir lançamento</h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+                Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button type="button" className="btn" onClick={() => setDeletingEntryId(null)}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={deleteEntryMutation.isPending}
+                  onClick={() => deleteEntryMutation.mutate(deletingEntryId)}
+                >
+                  {deleteEntryMutation.isPending ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     );
