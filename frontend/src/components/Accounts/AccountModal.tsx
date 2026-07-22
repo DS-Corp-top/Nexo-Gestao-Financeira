@@ -266,7 +266,7 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
                 <option value="">Nenhum — usar limite fixo</option>
                 {investments.map((inv) => (
                   <option key={inv.id} value={inv.id}>
-                    {inv.name} (R$ {Number(inv.net_invested).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} aplicados)
+                    {inv.name} (R$ {Number(inv.total_balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de saldo líquido)
                   </option>
                 ))}
               </select>

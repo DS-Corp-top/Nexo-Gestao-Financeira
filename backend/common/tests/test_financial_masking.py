@@ -118,6 +118,75 @@ def test_dashboard_masked_flag_and_amounts_for_foreign_tenant(baker):
     assert body["expense_by_category"] == []
 
 
+def test_statement_summary_masks_pending_income_and_other_amounts_for_foreign_tenant(baker):
+    user, tenant = setup_tenant(baker)
+    superuser = baker.make("auth.User", is_superuser=True, is_active=True)
+    bank = baker.make(
+        "accounts.Account",
+        tenant=tenant,
+        user=user,
+        account_type="bank",
+        include_in_balance=True,
+        initial_balance="100.00",
+    )
+    card = baker.make(
+        "accounts.Account",
+        tenant=tenant,
+        user=user,
+        account_type="card",
+        include_in_balance=False,
+    )
+    baker.make(
+        "transactions.Transaction",
+        tenant=tenant,
+        user=user,
+        account=bank,
+        transaction_type="income",
+        amount="500.00",
+        date="2026-07-05",
+        is_cleared=False,
+    )
+    baker.make(
+        "transactions.Transaction",
+        tenant=tenant,
+        user=user,
+        account=bank,
+        transaction_type="expense",
+        amount="100.00",
+        date="2026-07-06",
+        is_cleared=True,
+    )
+    baker.make(
+        "transactions.Transaction",
+        tenant=tenant,
+        user=user,
+        account=card,
+        transaction_type="expense",
+        amount="50.00",
+        date="2026-07-07",
+        is_cleared=False,
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=superuser)
+    response = client.get(
+        "/api/v1/transactions/statement_summary/",
+        {"month": "2026-07"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    body = body_of(response)
+    assert body["current_balance"] is None
+    assert body["monthly_balance"] is None
+    assert body["credit_card_limit"] is None
+    assert body["consolidated_balance"] is None
+    assert body["pending_bank_total"] is None
+    assert body["pending_income_total"] is None
+    assert body["monthly_income_total"] is None
+    assert body["monthly_expense_total"] is None
+
+
 def test_superuser_browsing_foreign_tenant_cannot_see_project_content(baker):
     """Reproduces the reported leak: project name/description showing up
     in the Todos page while impersonating a foreign tenant."""

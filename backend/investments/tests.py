@@ -87,6 +87,37 @@ class InvestmentApiTests(TestCase):
         ids = {item["id"] for item in response.data["results"]}
         self.assertEqual(ids, {self.investment.pk})
 
+    def test_investment_api_exposes_total_balance_on_list_and_detail(self):
+        InvestmentEntry.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            investment=self.investment,
+            entry_type=InvestmentEntry.EntryType.DEPOSIT,
+            amount=Decimal("1000.00"),
+            date="2026-07-01",
+        )
+        InvestmentEntry.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            investment=self.investment,
+            entry_type=InvestmentEntry.EntryType.YIELD,
+            amount=Decimal("14.53"),
+            date="2026-07-02",
+        )
+
+        list_response = self.client.get("/api/v1/investments/")
+        detail_response = self.client.get(f"/api/v1/investments/{self.investment.pk}/")
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(
+            list_response.data["results"][0]["total_balance"],
+            "1014.53",
+        )
+        self.assertEqual(detail_response.data["total_balance"], "1014.53")
+        self.assertEqual(detail_response.data["net_invested"], "1000.00")
+        self.assertEqual(detail_response.data["total_earnings"], "14.53")
+
     def test_investment_add_entry_api_creates_tenant_scoped_entry(self):
         response = self.client.post(
             f"/api/v1/investments/{self.investment.pk}/add_entry/",

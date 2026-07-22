@@ -88,6 +88,16 @@ class Investment(models.Model):
     def net_invested(self) -> Decimal:
         return self.total_invested - self.total_withdrawn
 
+    @property
+    def total_balance(self) -> Decimal:
+        """Saldo líquido total: aportes - resgates + rendimentos/dividendos.
+
+        Diferente de net_invested (que é só custo, sem rendimento) — este é o
+        valor que de fato está aplicado hoje, usado por exemplo como base do
+        limite de cartão garantido por um investimento (Account.backing_investment).
+        """
+        return self.net_invested + self.total_earnings
+
     def save(self, *args, **kwargs):
         assign_tenant(self)
         return super().save(*args, **kwargs)

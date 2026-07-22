@@ -52,7 +52,7 @@ describe('AccountModal', () => {
     vi.clearAllMocks();
     (investmentsApi.fetchBacenBanks as any).mockResolvedValue([]);
     (investmentsApi.fetchInvestments as any).mockResolvedValue([
-      { id: 5, name: 'CDB Garantia', investment_type: 'fixed_income', net_invested: '1000.00' },
+      { id: 5, name: 'CDB Garantia', investment_type: 'fixed_income', net_invested: '1000.00', total_balance: '1000.00' },
     ]);
   });
 

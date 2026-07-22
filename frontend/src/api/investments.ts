@@ -36,6 +36,7 @@ export interface Investment {
   total_withdrawn: string;
   total_earnings: string;
   net_invested: string;
+  total_balance: string;
   entries?: InvestmentEntry[];
 }
 

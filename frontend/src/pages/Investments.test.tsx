@@ -59,7 +59,7 @@ describe('Investments Page', () => {
     const investment = {
       id: 1, name: 'CDB Garantia', investment_type: 'fixed_income', currency: 'BRL',
       broker: '', is_active: true, total_invested: '1000.00', total_withdrawn: '0.00',
-      total_earnings: '0.00', net_invested: '1000.00',
+      total_earnings: '0.00', net_invested: '1000.00', total_balance: '1000.00',
       entries: [
         { id: 10, investment: 1, entry_type: 'deposit', amount: '1000.00', date: '2026-07-01', description: '', created_at: '' },
       ],
@@ -90,7 +90,7 @@ describe('Investments Page', () => {
     const investment = {
       id: 1, name: 'CDB Garantia', investment_type: 'fixed_income', currency: 'BRL',
       broker: '', is_active: true, total_invested: '1000.00', total_withdrawn: '0.00',
-      total_earnings: '0.00', net_invested: '1000.00',
+      total_earnings: '0.00', net_invested: '1000.00', total_balance: '1000.00',
       entries: [
         { id: 10, investment: 1, entry_type: 'deposit', amount: '1000.00', date: '2026-07-01', description: '', created_at: '' },
       ],

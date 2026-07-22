@@ -31,6 +31,9 @@ class InvestmentSerializer(serializers.ModelSerializer):
     net_invested = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    total_balance = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
     entries = InvestmentEntrySerializer(many=True, read_only=True)
 
     class Meta:
@@ -46,6 +49,7 @@ class InvestmentSerializer(serializers.ModelSerializer):
             "total_withdrawn",
             "total_earnings",
             "net_invested",
+            "total_balance",
             "entries",
             "created_at",
             "updated_at",
@@ -56,6 +60,7 @@ class InvestmentSerializer(serializers.ModelSerializer):
             "total_withdrawn",
             "total_earnings",
             "net_invested",
+            "total_balance",
             "created_at",
             "updated_at",
         )
@@ -75,6 +80,9 @@ class InvestmentSummarySerializer(serializers.ModelSerializer):
     net_invested = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    total_balance = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = Investment
@@ -89,6 +97,7 @@ class InvestmentSummarySerializer(serializers.ModelSerializer):
             "total_withdrawn",
             "total_earnings",
             "net_invested",
+            "total_balance",
             "created_at",
             "updated_at",
         )

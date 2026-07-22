@@ -359,3 +359,37 @@ def test_backing_investment_ignored_for_past_month_without_override(baker):
     available = calculate_credit_card_available_limit(tenant, past_month)
 
     assert available == Decimal("0.00")
+
+
+def test_backing_investment_earnings_count_toward_the_limit(baker):
+    """Rendimentos/dividendos do CDB entram no limite, nao so o principal aportado."""
+    from investments.models import Investment, InvestmentEntry
+
+    user, tenant = setup_tenant(baker)
+    cdb = Investment.objects.create(
+        tenant=tenant, user=user, name="CDB Garantia",
+        investment_type=Investment.InvestmentType.FIXED_INCOME,
+    )
+    InvestmentEntry.objects.create(
+        tenant=tenant, user=user, investment=cdb,
+        entry_type=InvestmentEntry.EntryType.DEPOSIT,
+        amount=Decimal("1000.00"), date=this_month_date(1),
+    )
+    InvestmentEntry.objects.create(
+        tenant=tenant, user=user, investment=cdb,
+        entry_type=InvestmentEntry.EntryType.YIELD,
+        amount=Decimal("14.53"), date=this_month_date(2),
+    )
+    baker.make(
+        "accounts.Account",
+        tenant=tenant,
+        user=user,
+        account_type=Account.AccountType.CARD,
+        backing_investment=cdb,
+    )
+
+    available = calculate_credit_card_available_limit(tenant, this_month_start())
+
+    assert available == Decimal("1014.53")
+    assert cdb.total_balance == Decimal("1014.53")
+    assert cdb.net_invested == Decimal("1000.00")
