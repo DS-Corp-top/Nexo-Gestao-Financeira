@@ -16,7 +16,7 @@ class FinancialMaskingMiddleware:
         "gross_value", "deductions", "calculation_base",
         "iss_value", "pis_value", "cofins_value", "csll_value", "ir_value", "inss_value",
         "total_withheld", "net_value",
-        "total_invested", "total_withdrawn", "total_earnings", "net_invested", "total_balance",
+        "total_invested", "total_withdrawn", "total_earnings", "total_taxes", "net_invested", "total_balance",
         "user_balance", "monthly_income", "monthly_expense", "monthly_balance",
         "credit_available", "investments_total", "investments_earnings",
         "investments_month_deposited", "investments_month_withdrawn", "investments_month_earnings",

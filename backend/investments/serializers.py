@@ -28,6 +28,9 @@ class InvestmentSerializer(serializers.ModelSerializer):
     total_earnings = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    total_taxes = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
     net_invested = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
@@ -48,6 +51,7 @@ class InvestmentSerializer(serializers.ModelSerializer):
             "total_invested",
             "total_withdrawn",
             "total_earnings",
+            "total_taxes",
             "net_invested",
             "total_balance",
             "entries",
@@ -59,6 +63,7 @@ class InvestmentSerializer(serializers.ModelSerializer):
             "total_invested",
             "total_withdrawn",
             "total_earnings",
+            "total_taxes",
             "net_invested",
             "total_balance",
             "created_at",
@@ -75,6 +80,9 @@ class InvestmentSummarySerializer(serializers.ModelSerializer):
         max_digits=12, decimal_places=2, read_only=True
     )
     total_earnings = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
+    total_taxes = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
     net_invested = serializers.DecimalField(
@@ -96,6 +104,7 @@ class InvestmentSummarySerializer(serializers.ModelSerializer):
             "total_invested",
             "total_withdrawn",
             "total_earnings",
+            "total_taxes",
             "net_invested",
             "total_balance",
             "created_at",

@@ -111,4 +111,28 @@ describe('Investments Page', () => {
     expect(screen.queryByText('Excluir lançamento', { selector: 'h3' })).not.toBeInTheDocument();
     expect(investmentsApi.deleteInvestmentEntry).not.toHaveBeenCalled();
   });
+
+  it('shows the tax entry type and renders tax launches as negative amounts', async () => {
+    const investment = {
+      id: 1, name: 'CDB Garantia', investment_type: 'fixed_income', currency: 'BRL',
+      broker: '', is_active: true, total_invested: '1000.00', total_withdrawn: '0.00',
+      total_earnings: '14.53', total_taxes: '2.53', net_invested: '1000.00', total_balance: '1012.00',
+      entries: [
+        { id: 10, investment: 1, entry_type: 'tax', amount: '2.53', date: '2026-07-03', description: 'IR semestral', created_at: '' },
+      ],
+    };
+    (investmentsApi.fetchInvestments as any).mockResolvedValue([investment]);
+    (investmentsApi.fetchInvestment as any).mockResolvedValue(investment);
+
+    renderInvestments();
+
+    fireEvent.click(await screen.findByText('CDB Garantia'));
+    fireEvent.click(await screen.findByRole('button', { name: /Novo lançamento/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Histórico de lançamentos/i }));
+
+    expect(await screen.findByRole('option', { name: 'Imposto / IR/IOF' })).toBeInTheDocument();
+    expect(await screen.findByText('IR semestral')).toBeInTheDocument();
+    expect(screen.getAllByText('Imposto / IR/IOF').length).toBeGreaterThan(0);
+    expect(screen.getByText((_, element) => element?.textContent?.replace(/\s/g, '') === '-R$2,53')).toBeInTheDocument();
+  });
 });

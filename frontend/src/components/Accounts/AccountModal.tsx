@@ -266,13 +266,13 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
                 <option value="">Nenhum — usar limite fixo</option>
                 {investments.map((inv) => (
                   <option key={inv.id} value={inv.id}>
-                    {inv.name} (R$ {Number(inv.total_balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de saldo líquido)
+                    {inv.name} (R$ {Number(inv.total_invested).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} aportados)
                   </option>
                 ))}
               </select>
               <div style={{ marginTop: 6, fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
-                Quando escolhido, o limite disponível vira o valor líquido aplicado nesse investimento
-                (aportes − resgates), no lugar do limite fixo abaixo.
+                Quando escolhido, o limite disponível vira o valor investido líquido nesse investimento
+                (aportes − resgates, sem somar rendimentos), no lugar do limite fixo abaixo.
               </div>
             </div>
           )}

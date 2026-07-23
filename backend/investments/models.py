@@ -85,6 +85,12 @@ class Investment(models.Model):
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
     @property
+    def total_taxes(self) -> Decimal:
+        return self.entries.filter(
+            entry_type=InvestmentEntry.EntryType.TAX
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+
+    @property
     def net_invested(self) -> Decimal:
         return self.total_invested - self.total_withdrawn
 
@@ -96,7 +102,7 @@ class Investment(models.Model):
         valor que de fato está aplicado hoje, usado por exemplo como base do
         limite de cartão garantido por um investimento (Account.backing_investment).
         """
-        return self.net_invested + self.total_earnings
+        return self.net_invested + self.total_earnings - self.total_taxes
 
     def save(self, *args, **kwargs):
         assign_tenant(self)
@@ -109,6 +115,7 @@ class InvestmentEntry(models.Model):
         WITHDRAWAL = "withdrawal", "Resgate"
         DIVIDEND = "dividend", "Dividendo"
         YIELD = "yield", "Rendimento"
+        TAX = "tax", "Imposto / IR/IOF"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

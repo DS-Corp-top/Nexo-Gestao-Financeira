@@ -18,7 +18,7 @@ export interface BacenBank {
 export interface InvestmentEntry {
   id: number;
   investment: number;
-  entry_type: 'deposit' | 'withdrawal' | 'dividend' | 'yield';
+  entry_type: 'deposit' | 'withdrawal' | 'dividend' | 'yield' | 'tax';
   amount: string;
   date: string;
   description: string;
@@ -35,6 +35,7 @@ export interface Investment {
   total_invested: string;
   total_withdrawn: string;
   total_earnings: string;
+  total_taxes: string;
   net_invested: string;
   total_balance: string;
   entries?: InvestmentEntry[];

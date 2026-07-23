@@ -52,7 +52,7 @@ describe('AccountModal', () => {
     vi.clearAllMocks();
     (investmentsApi.fetchBacenBanks as any).mockResolvedValue([]);
     (investmentsApi.fetchInvestments as any).mockResolvedValue([
-      { id: 5, name: 'CDB Garantia', investment_type: 'fixed_income', net_invested: '1000.00', total_balance: '1000.00' },
+      { id: 5, name: 'CDB Garantia', investment_type: 'fixed_income', total_invested: '1000.00', net_invested: '1000.00', total_balance: '1000.00' },
     ]);
   });
 
@@ -120,7 +120,7 @@ describe('AccountModal', () => {
     renderModal({ account: { ...existingAccount, account_type: 'card' } });
 
     const select = await screen.findByLabelText(/Limite garantido por investimento/);
-    await screen.findByText(/CDB Garantia/);
+    await screen.findByRole('option', { name: /CDB Garantia \(R\$ 1.000,00 aportados\)/ });
     expect(screen.getByLabelText('Limite do Cartão')).toBeInTheDocument();
 
     fireEvent.change(select, { target: { value: '5' } });

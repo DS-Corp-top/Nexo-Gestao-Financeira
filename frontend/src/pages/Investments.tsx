@@ -66,6 +66,14 @@ function parseAmount(value: string | number): number {
   return typeof value === 'string' ? parseFloat(value || '0') : value;
 }
 
+function isEarningsEntry(entryType: string): boolean {
+  return entryType === 'dividend' || entryType === 'yield';
+}
+
+function isNegativeEntry(entryType: string): boolean {
+  return entryType === 'withdrawal' || entryType === 'tax';
+}
+
 function formatCompactCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -245,11 +253,8 @@ export default function Investments() {
   const totalInvested = getCurrencyTotals(filtered, (i) => parseFloat(i.total_invested || '0'));
   const totalWithdrawn = getCurrencyTotals(filtered, (i) => parseFloat(i.total_withdrawn || '0'));
   const totalEarnings = getCurrencyTotals(filtered, (i) => parseFloat(i.total_earnings || '0'));
-  const totalNet = getCurrencyTotals(filtered, (i) => (
-    parseFloat(i.total_invested || '0') -
-    parseFloat(i.total_withdrawn || '0') +
-    parseFloat(i.total_earnings || '0')
-  ));
+  const totalTaxes = getCurrencyTotals(filtered, (i) => parseFloat(i.total_taxes || '0'));
+  const totalNet = getCurrencyTotals(filtered, (i) => parseFloat(i.total_balance || '0'));
 
   const currencyByInvestment = useMemo(
     () => new Map(filtered.map((inv) => [inv.id, getCurrency(inv.currency)])),
@@ -268,11 +273,13 @@ export default function Investments() {
   const monthlyDeposited: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
   const monthlyWithdrawn: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
   const monthlyEarnings: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
+  const monthlyTaxes: Record<Currency, number> = { BRL: 0, USD: 0, EUR: 0 };
   for (const entry of monthEntries) {
     const currency = currencyByInvestment.get(entry.investment) || 'BRL';
     if (entry.entry_type === 'deposit') monthlyDeposited[currency] += parseAmount(entry.amount);
     if (entry.entry_type === 'withdrawal') monthlyWithdrawn[currency] += parseAmount(entry.amount);
-    if (entry.entry_type === 'dividend' || entry.entry_type === 'yield') monthlyEarnings[currency] += parseAmount(entry.amount);
+    if (isEarningsEntry(entry.entry_type)) monthlyEarnings[currency] += parseAmount(entry.amount);
+    if (entry.entry_type === 'tax') monthlyTaxes[currency] += parseAmount(entry.amount);
   }
 
   const hasForeignCurrency = filtered.some((investment) => getCurrency(investment.currency) !== 'BRL');
@@ -294,9 +301,11 @@ export default function Investments() {
   }, 0);
   const consolidatedWithdrawnBrl = convertTotalsToBrl(totalWithdrawn);
   const consolidatedEarningsBrl = convertTotalsToBrl(totalEarnings);
+  const consolidatedTaxesBrl = convertTotalsToBrl(totalTaxes);
   const consolidatedNetBrl = convertTotalsToBrl(totalNet);
   const consolidatedMonthlyWithdrawnBrl = convertTotalsToBrl(monthlyWithdrawn);
   const consolidatedMonthlyEarningsBrl = convertTotalsToBrl(monthlyEarnings);
+  const consolidatedMonthlyTaxesBrl = convertTotalsToBrl(monthlyTaxes);
   const convertValueToBrl = (value: number, currency: Currency) => {
     const rate = currency === 'BRL' ? 1 : parseAmount(exchangeRates?.rates[currency] || 0);
     return value * rate;
@@ -319,15 +328,17 @@ export default function Investments() {
         const invested = convertValueToBrl(parseAmount(investment.total_invested || '0'), currency);
         const withdrawn = convertValueToBrl(parseAmount(investment.total_withdrawn || '0'), currency);
         const earnings = convertValueToBrl(parseAmount(investment.total_earnings || '0'), currency);
+        const taxes = convertValueToBrl(parseAmount(investment.total_taxes || '0'), currency);
         return {
           name: investment.name,
           invested,
           withdrawn,
           earnings,
-          net: invested - withdrawn + earnings,
+          taxes,
+          net: convertValueToBrl(parseAmount(investment.total_balance || '0'), currency),
         };
       })
-      .filter((item) => item.invested !== 0 || item.withdrawn !== 0 || item.earnings !== 0 || item.net !== 0)
+      .filter((item) => item.invested !== 0 || item.withdrawn !== 0 || item.earnings !== 0 || item.taxes !== 0 || item.net !== 0)
       .sort((a, b) => b.net - a.net)
       .slice(0, 8)
   ), [filtered, exchangeRates]);
@@ -336,12 +347,7 @@ export default function Investments() {
     const totalsByType = new Map<Investment['investment_type'], number>();
     for (const investment of filtered) {
       const currency = getCurrency(investment.currency);
-      const value = convertValueToBrl(
-        parseAmount(investment.total_invested || '0') -
-        parseAmount(investment.total_withdrawn || '0') +
-        parseAmount(investment.total_earnings || '0'),
-        currency
-      );
+      const value = convertValueToBrl(parseAmount(investment.total_balance || '0'), currency);
       if (value <= 0) continue;
       totalsByType.set(investment.investment_type, (totalsByType.get(investment.investment_type) || 0) + value);
     }
@@ -358,7 +364,7 @@ export default function Investments() {
       const date = new Date(year, month - 6 + index, 1);
       const key = getMonthParam(date);
       const { start, end } = getMonthBounds(key);
-      const totals = { invested: 0, withdrawn: 0, earnings: 0 };
+      const totals = { invested: 0, withdrawn: 0, earnings: 0, taxes: 0 };
 
       for (const entry of allEntries) {
         const investment = investmentsById.get(entry.investment);
@@ -366,7 +372,8 @@ export default function Investments() {
         const value = convertValueToBrl(parseAmount(entry.amount), getCurrency(investment.currency));
         if (entry.entry_type === 'deposit') totals.invested += value;
         if (entry.entry_type === 'withdrawal') totals.withdrawn += value;
-        if (entry.entry_type === 'dividend' || entry.entry_type === 'yield') totals.earnings += value;
+        if (isEarningsEntry(entry.entry_type)) totals.earnings += value;
+        if (entry.entry_type === 'tax') totals.taxes += value;
       }
 
       return {
@@ -374,11 +381,12 @@ export default function Investments() {
         invested: totals.invested,
         withdrawn: totals.withdrawn,
         earnings: totals.earnings,
-        net: totals.invested - totals.withdrawn + totals.earnings,
+        taxes: totals.taxes,
+        net: totals.invested - totals.withdrawn + totals.earnings - totals.taxes,
       };
     });
   }, [allEntries, filtered, exchangeRates, monthParam]);
-  const hasChartData = investmentChartData.length > 0 || typeChartData.length > 0 || trendChartData.some((item) => item.invested || item.withdrawn || item.earnings || item.net);
+  const hasChartData = investmentChartData.length > 0 || typeChartData.length > 0 || trendChartData.some((item) => item.invested || item.withdrawn || item.earnings || item.taxes || item.net);
 
   const renderCurrencyTotals = (totals: Record<Currency, number>, color: string) => {
     const visibleCurrencies = currencyOrder.filter((currency) => totals[currency] !== 0);
@@ -431,10 +439,8 @@ export default function Investments() {
     // Detail View
     if (invLoading) return <div className="page-header"><span className="spinner"/></div>;
     const currentCurrency = getCurrency(currentInv?.currency);
-    const currentTotalInvested = parseFloat(currentInv?.total_invested || '0');
-    const currentTotalWithdrawn = parseFloat(currentInv?.total_withdrawn || '0');
-    const currentTotalEarnings = parseFloat(currentInv?.total_earnings || '0');
-    const currentLiquidBalance = currentTotalInvested - currentTotalWithdrawn + currentTotalEarnings;
+    const currentTotalTaxes = parseFloat(currentInv?.total_taxes || '0');
+    const currentLiquidBalance = parseFloat(currentInv?.total_balance || '0');
     
     return (
       <div className="animate-slide-in investments-page">
@@ -474,6 +480,10 @@ export default function Investments() {
             <div className="kpi-value positive">{formatCurrency(currentInv?.total_earnings || 0, currentCurrency)}</div>
           </div>
           <div className="kpi-card">
+            <div className="kpi-label">Impostos / IR/IOF</div>
+            <div className="kpi-value negative">{formatCurrency(currentTotalTaxes, currentCurrency)}</div>
+          </div>
+          <div className="kpi-card">
             <div className="kpi-label">Saldo Líquido</div>
             <div className="kpi-value accent">{formatCurrency(currentLiquidBalance, currentCurrency)}</div>
           </div>
@@ -508,6 +518,7 @@ export default function Investments() {
               <option value="withdrawal">Resgate</option>
               <option value="dividend">Dividendo</option>
               <option value="yield">Rendimento</option>
+              <option value="tax">Imposto / IR/IOF</option>
             </select>
             <input type="date" name="date" className="input" defaultValue={new Date().toISOString().split('T')[0]} style={{ width: 140 }} required />
             <CurrencyInput value={entryAmount} onChange={setEntryAmount} className="input" placeholder={`Valor (${currentCurrency})`} style={{ width: 140 }} required />
@@ -568,10 +579,11 @@ export default function Investments() {
                         {entry.entry_type === 'withdrawal' && <span className="badge badge-danger">Resgate</span>}
                         {entry.entry_type === 'dividend' && <span className="badge badge-info">Dividendo</span>}
                         {entry.entry_type === 'yield' && <span className="badge badge-info">Rendimento</span>}
+                        {entry.entry_type === 'tax' && <span className="badge badge-danger">Imposto / IR/IOF</span>}
                       </td>
                       <td>{entry.description || '-'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600, color: entry.entry_type === 'withdrawal' ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                        {entry.entry_type === 'withdrawal' ? '-' : '+'}{formatCurrency(entry.amount, currentCurrency)}
+                      <td style={{ textAlign: 'right', fontWeight: 600, color: isNegativeEntry(entry.entry_type) ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                        {isNegativeEntry(entry.entry_type) ? '-' : '+'}{formatCurrency(entry.amount, currentCurrency)}
                       </td>
                       <td>
                         <button
@@ -686,6 +698,10 @@ export default function Investments() {
           <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos no Mês</div>
           {renderConvertedBrlTotal(consolidatedMonthlyEarningsBrl, 'var(--color-success)')}
         </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Impostos no Mês</div>
+          {renderConvertedBrlTotal(consolidatedMonthlyTaxesBrl, 'var(--color-danger)')}
+        </div>
       </div>
 
       {summaryOpen && createPortal(
@@ -723,6 +739,10 @@ export default function Investments() {
               <div className="card" style={{ padding: 'var(--space-md)' }}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos</div>
                 {renderConvertedBrlTotal(consolidatedEarningsBrl, 'var(--color-success)')}
+              </div>
+              <div className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Impostos</div>
+                {renderConvertedBrlTotal(consolidatedTaxesBrl, 'var(--color-danger)')}
               </div>
               <div className="card" style={{ padding: 'var(--space-md)' }}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Patrimônio Líquido</div>
@@ -786,6 +806,7 @@ export default function Investments() {
                         <Line type="monotone" dataKey="invested" name="Aportado" stroke="#38bdf8" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                         <Line type="monotone" dataKey="earnings" name="Rendimentos" stroke="#34d399" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                         <Line type="monotone" dataKey="withdrawn" name="Resgatado" stroke="#fb7185" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="taxes" name="Impostos" stroke="#f87171" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -889,10 +910,7 @@ export default function Investments() {
         <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
           {filtered.map((inv) => {
             const invCurrency = getCurrency(inv.currency);
-            const liquidBalance =
-              parseFloat(inv.total_invested || '0') -
-              parseFloat(inv.total_withdrawn || '0') +
-              parseFloat(inv.total_earnings || '0');
+            const liquidBalance = parseFloat(inv.total_balance || '0');
             return (
             <div 
               key={inv.id} 
@@ -927,6 +945,10 @@ export default function Investments() {
                 <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Rendimentos</span>
                   <span style={{ color: 'var(--color-success)' }}>{formatCurrency(inv.total_earnings, invCurrency)}</span>
+                </div>
+                <div className="investment-card-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Impostos</span>
+                  <span style={{ color: 'var(--color-danger)' }}>{formatCurrency(inv.total_taxes || 0, invCurrency)}</span>
                 </div>
                 <div className="investment-card-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
                   <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Líquido</span>
