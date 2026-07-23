@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,6 +10,7 @@ import { fetchTenantCompanies } from '../api/tenant';
 import { CloudUpload, File, Trash2, Download, Search, Filter, Folder as FolderIcon, FolderUp, Plus, ChevronRight, RotateCcw, X as XIcon } from 'lucide-react';
 
 const PREVIEWABLE_IMAGE_TYPES = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']);
+const PREVIEWABLE_TEXT_TYPES = new Set(['txt']);
 
 export default function Drive() {
   const queryClient = useQueryClient();
@@ -18,6 +19,9 @@ export default function Drive() {
   const [folderUploadProgress, setFolderUploadProgress] = useState<{ done: number; total: number; currentName: string } | null>(null);
   const cancelFolderUploadRef = useRef(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const [previewText, setPreviewText] = useState<string | null>(null);
+  const [previewTextLoading, setPreviewTextLoading] = useState(false);
+  const [previewTextError, setPreviewTextError] = useState<string | null>(null);
   const [uploadSummary, setUploadSummary] = useState<{
     cancelled: boolean;
     uploaded: number;
@@ -37,6 +41,36 @@ export default function Drive() {
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderCompany, setNewFolderCompany] = useState('');
+
+  useEffect(() => {
+    if (!previewDoc || !PREVIEWABLE_TEXT_TYPES.has(previewDoc.file_type.toLowerCase())) {
+      setPreviewText(null);
+      setPreviewTextLoading(false);
+      setPreviewTextError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setPreviewText(null);
+    setPreviewTextLoading(true);
+    setPreviewTextError(null);
+
+    fetch(previewDoc.file_url, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Falha ao carregar o arquivo.');
+        const text = await response.text();
+        setPreviewText(text);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        setPreviewTextError('Não foi possível carregar a prévia deste arquivo.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPreviewTextLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [previewDoc]);
 
   const { data: companies } = useQuery({
     queryKey: ['tenantCompanies'],
@@ -803,6 +837,37 @@ export default function Drive() {
                   title={previewDoc.title}
                   style={{ width: '100%', height: '65vh', border: 'none', borderRadius: 'var(--radius-md)' }}
                 />
+              ) : PREVIEWABLE_TEXT_TYPES.has(previewDoc.file_type.toLowerCase()) ? (
+                <div
+                  style={{
+                    width: '100%',
+                    maxHeight: '65vh',
+                    overflow: 'auto',
+                    background: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 'var(--space-md)',
+                  }}
+                >
+                  {previewTextLoading ? (
+                    <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Carregando prévia...</p>
+                  ) : previewTextError ? (
+                    <p style={{ color: 'var(--color-danger)', margin: 0 }}>{previewTextError}</p>
+                  ) : (
+                    <pre
+                      style={{
+                        margin: 0,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                        fontSize: '0.9rem',
+                        color: 'var(--color-text-primary)',
+                      }}
+                    >
+                      {previewText || 'Arquivo vazio.'}
+                    </pre>
+                  )}
+                </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
                   <File size={48} color="var(--color-text-muted)" style={{ marginBottom: 12 }} />

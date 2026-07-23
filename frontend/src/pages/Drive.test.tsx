@@ -49,6 +49,7 @@ function renderDrive() {
 describe('Drive Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     (tenantApi.fetchTenantCompanies as any).mockResolvedValue([]);
     (driveApi.fetchFolders as any).mockResolvedValue({ results: [] });
     (driveApi.fetchDocuments as any).mockResolvedValue({ results: [] });
@@ -153,6 +154,33 @@ describe('Drive Page', () => {
     await screen.findByText('contrato.pdf', { selector: '.modal-header h3' });
     const iframe = document.querySelector('iframe');
     expect(iframe).toHaveAttribute('src', '/media/contrato.pdf');
+  });
+
+  it('opens a preview modal with text content when clicking a TXT document', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      text: async () => 'linha 1\nlinha 2',
+    } as Response);
+
+    (driveApi.fetchDocuments as any).mockResolvedValue({
+      results: [
+        {
+          id: 3, title: 'nota.txt', file_url: '/media/nota.txt', thumbnail_url: null,
+          file_type: 'txt', file_size: 10, company: null, company_name: null, folder: null, folder_name: null,
+          user: 1, user_name: null, created_at: '', updated_at: '',
+        },
+      ],
+    });
+
+    renderDrive();
+
+    fireEvent.click(await screen.findByText('nota.txt'));
+
+    await screen.findByText('nota.txt', { selector: '.modal-header h3' });
+    const preview = document.querySelector('.modal-body pre');
+    expect(preview).not.toBeNull();
+    expect(preview?.textContent).toBe('linha 1\nlinha 2');
+    expect(globalThis.fetch).toHaveBeenCalledWith('/media/nota.txt', expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 
   it('does not open the preview when clicking Baixar or Excluir on a document card', async () => {
