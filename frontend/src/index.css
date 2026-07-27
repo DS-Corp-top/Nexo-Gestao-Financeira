@@ -88,9 +88,18 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-bg-primary);
+  color-scheme: dark;
   /* iOS reveals this element's background during the rubber-band overscroll
      bounce — without it, pulling down at the top flashes white. */
   overscroll-behavior-y: none;
+}
+
+/* Without an explicit color, <button> falls back to the UA "buttontext"
+   system color (near-black), which is invisible on this dark theme unless
+   the button already sets its own color inline. */
+button {
+  color: inherit;
+  font: inherit;
 }
 
 body {
