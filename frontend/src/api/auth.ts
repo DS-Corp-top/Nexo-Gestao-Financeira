@@ -44,6 +44,30 @@ export async function login(payload: LoginPayload): Promise<void> {
   await api.post('/auth/token/', payload);
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await api.post('/auth/password-reset/request/', { email });
+}
+
+export async function confirmPasswordResetCode(email: string, code: string): Promise<string> {
+  const { data } = await api.post<{ reset_token: string }>('/auth/password-reset/confirm/', {
+    email,
+    code,
+  });
+  return data.reset_token;
+}
+
+export async function completePasswordReset(
+  resetToken: string,
+  newPassword: string,
+  newPasswordConfirm: string
+): Promise<void> {
+  await api.post('/auth/password-reset/complete/', {
+    reset_token: resetToken,
+    new_password: newPassword,
+    new_password_confirm: newPasswordConfirm,
+  });
+}
+
 export async function register(payload: RegisterPayload): Promise<void> {
   await api.post('/auth/register/', payload);
 }

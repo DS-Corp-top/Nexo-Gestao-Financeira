@@ -33,6 +33,14 @@ describe('Login Page', () => {
     expect(screen.getByRole('button', { name: /Entrar/i })).toBeInTheDocument();
   });
 
+  it('links to the forgot password page', () => {
+    renderLogin();
+    expect(screen.getByRole('link', { name: /Esqueci minha senha/i })).toHaveAttribute(
+      'href',
+      '/forgot-password'
+    );
+  });
+
   it('displays error on failed login', async () => {
     (authApi.login as any).mockRejectedValueOnce(new Error());
     

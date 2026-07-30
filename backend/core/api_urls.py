@@ -3,9 +3,16 @@
 All endpoints are mounted under /api/v1/ by the main urls.py.
 """
 
+from django.conf import settings
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from users.api_views import CookieTokenRefreshView as TokenRefreshView
+from users.password_reset import (
+    DebugPasswordResetCodeView,
+    PasswordResetCompleteView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+)
 
 from accounts.api_views import AccountViewSet, CardMonthlyLimitViewSet
 from categories.api_views import CategoryViewSet
@@ -75,6 +82,17 @@ urlpatterns = [
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/register/", RegisterAPIView.as_view(), name="register"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
+    path("auth/password-reset/request/", PasswordResetRequestView.as_view(), name="password_reset_request"),
+    path("auth/password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+    path("auth/password-reset/complete/", PasswordResetCompleteView.as_view(), name="password_reset_complete"),
+    *(
+        [path(
+            "auth/password-reset/debug-code/",
+            DebugPasswordResetCodeView.as_view(),
+            name="password_reset_debug_code",
+        )]
+        if settings.E2E_TESTING else []
+    ),
 
     # Current user
     path("me/", MeView.as_view(), name="me"),

@@ -40,6 +40,10 @@ export default defineConfig({
         DJANGO_DEBUG: 'true',
         E2E_USER_EMAIL: process.env.E2E_USER_EMAIL || 'e2e@example.com',
         E2E_USER_PASSWORD: process.env.E2E_USER_PASSWORD || 'E2ePlaywright!123',
+        // Unlocks GET /auth/password-reset/debug-code/, which lets the
+        // forgot-password spec read the pending code without a real mailbox.
+        // Off by default (core/settings.py) — only ever set here, for E2E runs.
+        E2E_TESTING: 'true',
       },
     },
     {

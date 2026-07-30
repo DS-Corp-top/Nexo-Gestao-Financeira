@@ -171,3 +171,23 @@ class RegisterSerializer(serializers.Serializer):
         )
 
         return user
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.RegexField(r"^\d{6}$", error_messages={"invalid": "Código deve ter 6 dígitos."})
+
+
+class PasswordResetCompleteSerializer(serializers.Serializer):
+    reset_token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs.pop("new_password_confirm"):
+            raise serializers.ValidationError({"new_password_confirm": "As senhas não coincidem."})
+        return attrs

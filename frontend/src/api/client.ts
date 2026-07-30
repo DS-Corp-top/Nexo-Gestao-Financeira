@@ -15,7 +15,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const activeTenantId = localStorage.getItem('nexo.activeTenantId');
   const url = config.url || '';
-  const isAuthRequest = url.includes('/auth/token') || url.includes('/auth/register');
+  const isAuthRequest =
+    url.includes('/auth/token') || url.includes('/auth/register') || url.includes('/auth/password-reset');
   if (activeTenantId && config.headers && !isAuthRequest) {
     config.headers['X-Tenant-ID'] = activeTenantId;
   }
@@ -26,7 +27,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const PUBLIC_PATHS = ['/', '/login', '/register'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
 
 // Response interceptor: auto-refresh token on 401
 api.interceptors.response.use(

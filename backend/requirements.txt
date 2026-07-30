@@ -16,6 +16,7 @@ djangorestframework==3.16.0
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.7.0
 django-filter==25.1
+django-anymail[mailgun]==15.0
 
 pytest==9.0.3
 pytest-django==4.12.0

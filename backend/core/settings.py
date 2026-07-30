@@ -28,6 +28,13 @@ TESTING = "test" in sys.argv or "pytest" in sys.modules
 RUNSERVER = "runserver" in sys.argv
 HEROKU_DYNO = bool(os.getenv("DYNO"))
 
+# Opt-in flag (default off) that unlocks debug-only endpoints needed for the
+# Playwright E2E suite to complete flows that would otherwise require a real
+# mailbox (see users/password_reset.py). Explicitly requires the DYNO check
+# too — belt-and-suspenders so this can never come alive on a real deploy
+# even if E2E_TESTING were mistakenly set as a Heroku config var.
+E2E_TESTING = env_bool("E2E_TESTING", default=False) and not HEROKU_DYNO
+
 _debug_env = os.getenv("DJANGO_DEBUG")
 if _debug_env is None:
     DEBUG = RUNSERVER
@@ -430,6 +437,9 @@ REST_FRAMEWORK = {
         "login": "10/min",
         "cnpj_lookup": "60/hour",
         "cep_lookup": "60/hour",
+        "password_reset_request": "5/hour",
+        "password_reset_confirm": "20/hour",
+        "password_reset_complete": "10/hour",
     },
 }
 
@@ -523,4 +533,37 @@ else:
 # Rate limiting (django-ratelimit)
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_FAIL_OPEN = False  # em caso de falha do cache, bloqueia (seguro)
+
+# E-mail transacional via Mailgun (django-anymail). O addon Heroku Mailgun
+# injeta MAILGUN_API_KEY e MAILGUN_SMTP_LOGIN (mas nao MAILGUN_DOMAIN) — o
+# dominio de envio e derivado do login SMTP (formato postmaster@<dominio>)
+# quando MAILGUN_DOMAIN nao e definido explicitamente. Sem API key (ex:
+# ambiente local), cai para o console backend e os e-mails so aparecem no
+# stdout, sem tentar enviar de verdade.
+MAILGUN_API_KEY = os.getenv("MAILGUN_API_KEY", "").strip()
+MAILGUN_DOMAIN = os.getenv("MAILGUN_DOMAIN", "").strip()
+if not MAILGUN_DOMAIN:
+    _mailgun_smtp_login = os.getenv("MAILGUN_SMTP_LOGIN", "")
+    if "@" in _mailgun_smtp_login:
+        MAILGUN_DOMAIN = _mailgun_smtp_login.split("@", 1)[1].strip()
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip() or (
+    f"Nexo Financeiro <no-reply@{MAILGUN_DOMAIN}>" if MAILGUN_DOMAIN else "no-reply@appnexo.top"
+)
+SERVER_EMAIL = os.getenv("SERVER_EMAIL", "").strip() or DEFAULT_FROM_EMAIL
+
+if MAILGUN_API_KEY and MAILGUN_DOMAIN:
+    INSTALLED_APPS += ["anymail"]
+    EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+    ANYMAIL = {
+        "MAILGUN_API_KEY": MAILGUN_API_KEY,
+        "MAILGUN_SENDER_DOMAIN": MAILGUN_DOMAIN,
+        # Regiao EU usa https://api.eu.mailgun.net/v3 — so necessario se o
+        # dominio foi criado na regiao EU do Mailgun.
+        "MAILGUN_API_URL": os.getenv("MAILGUN_API_URL", "https://api.mailgun.net/v3"),
+    }
+elif TESTING:
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

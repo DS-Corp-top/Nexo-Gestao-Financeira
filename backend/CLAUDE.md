@@ -52,6 +52,22 @@ Deploy no Heroku com PostgreSQL. Stack: Django 6, Gunicorn, WhiteNoise, Tailwind
 - Suporta ~200 requisições simultâneas no dyno atual (512 MB RAM)
 - Rate limiting global compartilhado via Redis em ambiente multi-dyno
 
+### Recuperação de senha (`/forgot-password` no frontend)
+- Fluxo em 3 passos: e-mail → código de 6 dígitos (válido 15 min) → nova senha
+- Backend: `users/password_reset.py` (`auth/password-reset/request|confirm|complete/`)
+- Código armazenado no cache (Redis/LocMem), não em modelo de banco — mesmo padrão do vínculo do Telegram
+- Resposta do `request/` é sempre genérica (não revela se o e-mail existe)
+- Máximo 5 tentativas de código errado antes de invalidar (`MAX_CODE_ATTEMPTS`); throttle por IP em cada etapa
+- Ao concluir, todos os refresh tokens do usuário são revogados (logout forçado em outros dispositivos)
+- Testes: `backend/users/tests/test_password_reset.py` (18), `frontend/src/pages/ForgotPassword.test.tsx` (9), `frontend/e2e/forgot-password.spec.ts` (fluxo real no navegador)
+- E2E usa `GET auth/password-reset/debug-code/`, registrada só quando `E2E_TESTING=true` (nunca em produção — bloqueada mesmo que a env var vaze por engano, ver `HEROKU_DYNO` em `core/settings.py`)
+
+### E-mail transacional (Mailgun)
+- Envio via `django-anymail` com backend `anymail.backends.mailgun.EmailBackend` (`core/settings.py`)
+- Produção (Heroku): addon `mailgun` injeta `MAILGUN_API_KEY`/`MAILGUN_SMTP_LOGIN`; `MAILGUN_DOMAIN` é deduzido do login SMTP automaticamente
+- Local/sem `MAILGUN_API_KEY`: cai para `console` backend (e-mails só aparecem no log, nada é enviado)
+- Testes (`pytest`): usa `locmem` backend
+
 ---
 
 ## Arquitetura de Isolamento
@@ -70,6 +86,7 @@ Cada usuário pertence a um **Tenant** (empresa). Todo dado é isolado por tenan
 | `psycopg[binary]` | Driver PostgreSQL |
 | `Pillow` | Validação de imagens (logo) |
 | `requests` | Consulta BrasilAPI (CNPJ) |
+| `django-anymail[mailgun]` | E-mail transacional via Mailgun |
 
 ---
 
@@ -82,6 +99,9 @@ Cada usuário pertence a um **Tenant** (empresa). Todo dado é isolado por tenan
 | `REDIS_URL` | Cache/rate limiting multi-dyno |
 | `PUBLIC_SIGNUP_ENABLED` | Cadastro público (padrão: False em produção) |
 | `DJANGO_DEBUG` | Forçar modo debug |
+| `MAILGUN_API_KEY` | E-mail transacional (Mailgun). Injetada automaticamente pelo addon Heroku `mailgun` |
+| `MAILGUN_DOMAIN` | Domínio de envio Mailgun. Se vazio, é deduzido de `MAILGUN_SMTP_LOGIN` (também injetada pelo addon) |
+| `DEFAULT_FROM_EMAIL` | Remetente padrão dos e-mails (default: `no-reply@<MAILGUN_DOMAIN>`) |
 
 ---
 
