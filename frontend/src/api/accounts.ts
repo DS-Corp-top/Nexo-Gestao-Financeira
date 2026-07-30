@@ -11,10 +11,11 @@ export interface Account {
   include_in_balance: boolean;
   is_active: boolean;
   balance: string;
+  available_credit_limit: string | null;
   created_at: string;
 }
 
-export type CreateAccountPayload = Omit<Account, 'id' | 'balance' | 'created_at'>;
+export type CreateAccountPayload = Omit<Account, 'id' | 'balance' | 'available_credit_limit' | 'created_at'>;
 
 export async function fetchAccounts(): Promise<Account[]> {
   const { data } = await api.get<any>('/accounts/');

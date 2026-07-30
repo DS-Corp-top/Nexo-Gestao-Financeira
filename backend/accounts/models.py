@@ -102,6 +102,18 @@ class Account(models.Model):
 
         return calculate_account_balance(self, cutoff_date=timezone.localdate())
 
+    @property
+    def available_credit_limit(self) -> Decimal | None:
+        """Limite disponível pra gastar no mês atual (só faz sentido pra
+        contas do tipo Cartão) — considera limite fixo, limite mensal
+        explícito ou o valor líquido aportado no investimento de garantia,
+        conforme configurado. None se não houver limite aplicável."""
+        if self.account_type != self.AccountType.CARD:
+            return None
+        from common.balance import calculate_single_card_available_limit
+
+        return calculate_single_card_available_limit(self, timezone.localdate().replace(day=1))
+
     def save(self, *args, **kwargs):
         assign_tenant(self)
         return super().save(*args, **kwargs)

@@ -7,6 +7,9 @@ class AccountSerializer(serializers.ModelSerializer):
     balance = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
+    available_credit_limit = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Account
@@ -21,10 +24,11 @@ class AccountSerializer(serializers.ModelSerializer):
             "include_in_balance",
             "is_active",
             "balance",
+            "available_credit_limit",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "balance", "created_at", "updated_at")
+        read_only_fields = ("id", "balance", "available_credit_limit", "created_at", "updated_at")
 
     def validate_backing_investment(self, value):
         if value is None:

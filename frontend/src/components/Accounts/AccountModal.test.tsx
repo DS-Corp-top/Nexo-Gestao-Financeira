@@ -26,6 +26,7 @@ const existingAccount: Account = {
   include_in_balance: true,
   is_active: true,
   balance: '1000.00',
+  available_credit_limit: null,
   created_at: '2026-01-01T00:00:00Z',
 };
 

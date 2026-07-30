@@ -114,13 +114,22 @@ export default function Accounts() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Atual</span>
-                  <span style={{ fontWeight: 600, color: account.balance == null || parseFloat(account.balance) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                    {formatCurrency(account.balance, account.currency)}
-                  </span>
-                </div>
-                
+                {account.account_type === 'card' && account.available_credit_limit != null ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Limite Disponível</span>
+                    <span style={{ fontWeight: 600, color: parseFloat(account.available_credit_limit) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      {formatCurrency(account.available_credit_limit, account.currency)}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Saldo Atual</span>
+                    <span style={{ fontWeight: 600, color: account.balance == null || parseFloat(account.balance) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      {formatCurrency(account.balance, account.currency)}
+                    </span>
+                  </div>
+                )}
+
                 {account.account_type === 'card' && account.credit_limit && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                     <span style={{ color: 'var(--color-text-secondary)' }}>Limite Total</span>
