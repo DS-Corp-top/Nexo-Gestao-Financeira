@@ -568,7 +568,7 @@ if not MAILGUN_DOMAIN:
         MAILGUN_DOMAIN = _mailgun_smtp_login.split("@", 1)[1].strip()
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip() or (
-    f"Nexo Financeiro <no-reply@{MAILGUN_DOMAIN}>" if MAILGUN_DOMAIN else "no-reply@appnexo.top"
+    f"Nexo Gestão Financeira <no-reply@{MAILGUN_DOMAIN}>" if MAILGUN_DOMAIN else "no-reply@appnexo.top"
 )
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", "").strip() or DEFAULT_FROM_EMAIL
 

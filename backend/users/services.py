@@ -7,11 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 def send_password_reset_email(user, code: str, ttl_minutes: int) -> None:
-    subject = "Código de recuperação de senha — Nexo Financeiro"
+    subject = "Código de recuperação de senha — Nexo Gestão Financeira"
     greeting_name = user.first_name or user.username
     message = (
         f"Olá, {greeting_name}!\n\n"
-        f"Use o código abaixo para redefinir sua senha no Nexo Financeiro:\n\n"
+        f"Use o código abaixo para redefinir sua senha no Nexo Gestão Financeira:\n\n"
         f"    {code}\n\n"
         f"Esse código expira em {ttl_minutes} minutos.\n\n"
         f"Se você não solicitou a recuperação de senha, pode ignorar este e-mail com segurança."
