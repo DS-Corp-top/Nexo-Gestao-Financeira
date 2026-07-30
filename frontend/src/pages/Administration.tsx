@@ -5,6 +5,7 @@ import {
   Building2,
   CheckCircle2,
   Database,
+  ExternalLink,
   LayoutDashboard,
   Shield,
   Users,
@@ -841,8 +842,16 @@ export default function Administration() {
       <div
         style={{
           display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--space-sm)',
           borderBottom: '1px solid var(--color-border)',
           marginBottom: 'var(--space-xs)',
+        }}
+      >
+      <div
+        style={{
+          display: 'flex',
           overflowX: 'auto',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -891,6 +900,21 @@ export default function Administration() {
             )}
           </button>
         ))}
+      </div>
+
+      {isSuperuser && (
+        <a
+          href="/django-admin/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-secondary btn-sm"
+          style={{ flexShrink: 0 }}
+          title="Abre o painel administrativo do Django em uma nova aba"
+        >
+          <ExternalLink size={14} />
+          {isMobile ? 'Django' : 'Painel Django'}
+        </a>
+      )}
       </div>
 
       {/* Tab content */}

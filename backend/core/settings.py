@@ -352,9 +352,9 @@ STORAGES = {
 }
 
 
-LOGIN_URL = "/admin/login/"
-LOGIN_REDIRECT_URL = "/admin/"
-LOGOUT_REDIRECT_URL = "/admin/login/"
+LOGIN_URL = "/django-admin/login/"
+LOGIN_REDIRECT_URL = "/django-admin/"
+LOGOUT_REDIRECT_URL = "/django-admin/login/"
 AUTHENTICATION_BACKENDS = [
     "users.backends.EmailOnlyBackend",
     "django.contrib.auth.backends.ModelBackend",

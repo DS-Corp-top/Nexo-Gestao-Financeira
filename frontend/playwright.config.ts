@@ -32,7 +32,7 @@ export default defineConfig({
       cwd: '../backend',
       // Any side-effect-free, unauthenticated GET that returns 200 works here —
       // this is just a readiness probe, not part of the test flow.
-      url: `${BACKEND_URL}/admin/login/`,
+      url: `${BACKEND_URL}/django-admin/login/`,
       reuseExistingServer: !isCI,
       timeout: 120_000,
       env: {

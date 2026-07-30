@@ -47,6 +47,18 @@ export default defineConfig(({ mode }) => {
         target: proxyTarget,
         changeOrigin: true,
       },
+      // Painel administrativo do Django (link em Administração > Painel Django,
+      // rota /django-admin — não /admin, que já é usada pela página React de
+      // Administração) e seus estáticos (CSS/JS do admin), servidos pelo
+      // runserver em DEBUG.
+      '/django-admin': {
+        target: proxyTarget,
+        changeOrigin: true,
+      },
+      '/static': {
+        target: proxyTarget,
+        changeOrigin: true,
+      },
     },
   },
   resolve: {
