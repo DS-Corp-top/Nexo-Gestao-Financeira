@@ -468,6 +468,11 @@ for origin in CORS_ALLOWED_ORIGINS:
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
+if REDIS_URL.startswith("rediss://"):
+    # Mesmo motivo do CACHES acima: add-ons com rediss:// costumam usar
+    # certificado autoassinado — sem isso o worker do Celery não conecta.
+    CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": None}
+    CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": None}
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -501,8 +506,22 @@ TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
 # Cache — usa Redis se disponível e acessível (necessário para rate limiting em
-# múltiplos dynos). Caso contrário, cai para memória local (single-process).
+# múltiplos dynos, e para qualquer estado que precise ser visto por todos os
+# workers do Gunicorn — ex: códigos de recuperação de senha e de vínculo do
+# Telegram). Caso contrário, cai para memória local (single-process) — o que
+# quebra esse tipo de fluxo silenciosamente com múltiplos workers, já que
+# cada processo passa a ter sua própria memória isolada.
 _redis_url = os.getenv("REDIS_URL", "")
+
+
+def _redis_ssl_kwargs(url: str) -> dict:
+    """rediss:// (TLS) costuma vir de add-ons que servem certificado
+    autoassinado — o redis-py rejeita isso por padrão (SSLCertVerificationError),
+    o que faz _redis_is_reachable() concluir "indisponível" mesmo com o Redis
+    no ar. A conexão continua criptografada; só a verificação da cadeia de
+    certificado é pulada, que é a orientação padrão desses provedores."""
+    return {"ssl_cert_reqs": None} if url.startswith("rediss://") else {}
+
 
 def _redis_is_reachable(url: str) -> bool:
     """Tenta conectar ao Redis para verificar se está disponível."""
@@ -510,7 +529,7 @@ def _redis_is_reachable(url: str) -> bool:
         return False
     try:
         import redis as _redis
-        client = _redis.from_url(url, socket_connect_timeout=1)
+        client = _redis.from_url(url, socket_connect_timeout=1, **_redis_ssl_kwargs(url))
         client.ping()
         return True
     except Exception:
@@ -521,6 +540,7 @@ if _redis_is_reachable(_redis_url):
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": _redis_url,
+            "OPTIONS": _redis_ssl_kwargs(_redis_url),
         }
     }
 else:
