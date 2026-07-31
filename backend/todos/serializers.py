@@ -1,8 +1,9 @@
 from rest_framework import serializers
 
 from common.api_mixins import get_user_tenant
+from common.files import validate_attachment_file
 from tenants.models import TenantMembership
-from todos.models import Project, TodoItem
+from todos.models import Project, TodoAttachment, TodoItem
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -17,11 +18,44 @@ class ProjectSerializer(serializers.ModelSerializer):
         return obj.todos.filter(parent__isnull=True, status__in=["pending", "in_progress"]).count()
 
 
+class TodoAttachmentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source="user.get_full_name", read_only=True, allow_null=True)
+    file = serializers.FileField(validators=[validate_attachment_file])
+
+    class Meta:
+        model = TodoAttachment
+        fields = (
+            "id", "todo", "file", "file_url", "file_name",
+            "file_type", "file_size", "user", "user_name", "created_at",
+        )
+        read_only_fields = (
+            "id", "file_url", "file_name", "file_type", "file_size",
+            "user", "user_name", "created_at",
+        )
+
+    def get_file_url(self, obj):
+        if not obj.file:
+            return None
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url
+
+    def validate_todo(self, value):
+        tenant = self.context.get("tenant")
+        if tenant and value.tenant_id != tenant.pk:
+            raise serializers.ValidationError("Tarefa invalida para este tenant.")
+        return value
+
+
 class TodoItemSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.SerializerMethodField()
     subtasks = serializers.SerializerMethodField()
     subtask_count = serializers.SerializerMethodField()
     completed_subtask_count = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
+    attachment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = TodoItem
@@ -30,6 +64,7 @@ class TodoItemSerializer(serializers.ModelSerializer):
             "priority", "due_date", "done_at", "project", "parent",
             "assigned_to", "assigned_to_name",
             "subtasks", "subtask_count", "completed_subtask_count",
+            "attachments", "attachment_count",
             "created_at", "updated_at",
         )
         read_only_fields = (
@@ -39,6 +74,8 @@ class TodoItemSerializer(serializers.ModelSerializer):
             "subtasks",
             "subtask_count",
             "completed_subtask_count",
+            "attachments",
+            "attachment_count",
             "created_at",
             "updated_at",
         )
@@ -76,6 +113,16 @@ class TodoItemSerializer(serializers.ModelSerializer):
 
     def get_completed_subtask_count(self, obj):
         return obj.subtasks.filter(is_done=True).count()
+
+    def get_attachments(self, obj):
+        return TodoAttachmentSerializer(
+            obj.attachments.select_related("user").all(),
+            many=True,
+            context=self.context,
+        ).data
+
+    def get_attachment_count(self, obj):
+        return obj.attachments.count()
 
     def validate_parent(self, parent):
         if parent is None:

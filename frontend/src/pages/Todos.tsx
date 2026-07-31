@@ -9,6 +9,7 @@ import {
   Circle,
   Flag,
   FolderOpen,
+  Paperclip,
   Pencil,
   Plus,
   RotateCcw,
@@ -21,12 +22,14 @@ import {
   createTodo,
   deleteTodo,
   deleteProject,
+  deleteTodoAttachment,
   fetchProjects,
   fetchTenantMembers,
   fetchTodos,
   toggleTodo,
   updateProject,
   updateTodo,
+  uploadTodoAttachment,
   type Priority,
   type Project,
   type TenantMember,
@@ -90,6 +93,12 @@ function formatPriorityLabel(priority: Priority) {
 
 function formatMemberLabel(name: string, email: string) {
   return name || email;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 const DEFAULT_PROJECT_COLOR = '#ffffff';
@@ -251,9 +260,13 @@ function TodoDetailsModal({
   onCreateSubtask,
   onToggleSubtask,
   onDeleteSubtask,
+  onUploadAttachment,
+  onDeleteAttachment,
   isSaving,
   isCreatingSubtask,
   isUpdatingSubtasks,
+  isUploadingAttachment,
+  isDeletingAttachment,
 }: {
   item: TodoItem;
   projectId: number | null;
@@ -263,14 +276,20 @@ function TodoDetailsModal({
   onCreateSubtask: (title: string) => void;
   onToggleSubtask: (subtaskId: number) => void;
   onDeleteSubtask: (subtaskId: number) => void;
+  onUploadAttachment: (file: File) => void;
+  onDeleteAttachment: (attachmentId: number) => void;
   isSaving: boolean;
   isCreatingSubtask: boolean;
   isUpdatingSubtasks: boolean;
+  isUploadingAttachment: boolean;
+  isDeletingAttachment: boolean;
 }) {
   const [subtaskTitle, setSubtaskTitle] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const status = getTodoStatus(item);
   const due = formatDue(item.due_date);
   const subtasks = item.subtasks ?? [];
+  const attachments = item.attachments ?? [];
 
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
@@ -293,6 +312,11 @@ function TodoDetailsModal({
               {item.subtask_count > 0 && (
                 <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
                   {item.completed_subtask_count}/{item.subtask_count} subtarefas
+                </span>
+              )}
+              {item.attachment_count > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  <Paperclip size={12} />{item.attachment_count}
                 </span>
               )}
             </div>
@@ -414,6 +438,89 @@ function TodoDetailsModal({
           </div>
         </div>
 
+        <div style={{ marginTop: '1rem', display: 'grid', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Anexos</h4>
+              <p style={{ marginTop: 2, fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                Documentos relacionados a esta tarefa (máx. 50 MB por arquivo).
+              </p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUploadAttachment(file);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingAttachment}
+            >
+              {isUploadingAttachment ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Paperclip size={14} />}
+              Adicionar anexo
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gap: '0.5rem' }}>
+            {attachments.length === 0 ? (
+              <div style={{ border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.9rem 1rem', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                Nenhum anexo enviado ainda.
+              </div>
+            ) : attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.6rem 0.85rem',
+                }}
+              >
+                <Paperclip size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <a
+                    href={attachment.file_url ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      color: 'var(--color-text-primary)',
+                      textDecoration: 'none',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'block',
+                    }}
+                  >
+                    {attachment.file_name}
+                  </a>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                    {formatFileSize(attachment.file_size)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onDeleteAttachment(attachment.id)}
+                  disabled={isDeletingAttachment}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)', flexShrink: 0 }}
+                  aria-label="Excluir anexo"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
           <button type="button" className="btn" onClick={onClose}>Cancelar</button>
           <button type="submit" form="todo-detail-form" className="btn btn-primary" disabled={isSaving}>
@@ -470,6 +577,11 @@ function TodoRow({ item, onOpen, onToggle, onEdit, onDelete }: {
           {item.subtask_count > 0 && (
             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
               {item.completed_subtask_count}/{item.subtask_count} subtarefas
+            </span>
+          )}
+          {item.attachment_count > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+              <Paperclip size={11} />{item.attachment_count}
             </span>
           )}
         </div>
@@ -543,6 +655,11 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange, 
         {item.subtask_count > 0 && (
           <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
             {item.completed_subtask_count}/{item.subtask_count} subtarefas
+          </span>
+        )}
+        {item.attachment_count > 0 && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+            <Paperclip size={10} />{item.attachment_count}
           </span>
         )}
         {item.assigned_to_name && (
@@ -652,6 +769,11 @@ function TaskView({ projectId }: { projectId: number | null }) {
     },
   });
   const deleteSubtaskMutation = useMutation({ mutationFn: deleteTodo, onSuccess: invalidate });
+  const uploadAttachmentMutation = useMutation({
+    mutationFn: ({ todoId, file }: { todoId: number; file: File }) => uploadTodoAttachment(todoId, file),
+    onSuccess: invalidate,
+  });
+  const deleteAttachmentMutation = useMutation({ mutationFn: deleteTodoAttachment, onSuccess: invalidate });
 
   const filtered = todos.filter((item) => {
     const status = getTodoStatus(item);
@@ -864,9 +986,13 @@ function TaskView({ projectId }: { projectId: number | null }) {
           })}
           onToggleSubtask={(subtaskId) => toggleSubtaskMutation.mutate(subtaskId)}
           onDeleteSubtask={(subtaskId) => deleteSubtaskMutation.mutate(subtaskId)}
+          onUploadAttachment={(file) => uploadAttachmentMutation.mutate({ todoId: selectedItem.id, file })}
+          onDeleteAttachment={(attachmentId) => deleteAttachmentMutation.mutate(attachmentId)}
           isSaving={updateMutation.isPending}
           isCreatingSubtask={createSubtaskMutation.isPending}
           isUpdatingSubtasks={toggleSubtaskMutation.isPending || deleteSubtaskMutation.isPending}
+          isUploadingAttachment={uploadAttachmentMutation.isPending}
+          isDeletingAttachment={deleteAttachmentMutation.isPending}
         />
       )}
     </div>

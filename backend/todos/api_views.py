@@ -1,13 +1,13 @@
 from django.db.models import Prefetch
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api_mixins import TenantQuerySetMixin, get_user_tenant, is_view_only_superuser
 from tenants.models import TenantMembership
-from todos.models import Project, TodoItem
-from todos.serializers import ProjectSerializer, TodoItemSerializer
+from todos.models import Project, TodoAttachment, TodoItem
+from todos.serializers import ProjectSerializer, TodoAttachmentSerializer, TodoItemSerializer
 
 
 class TenantMembersView(APIView):
@@ -68,3 +68,20 @@ class TodoItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         item.toggle()
         item.save(update_fields=["status", "is_done", "done_at", "updated_at"])
         return Response(TodoItemSerializer(item).data, status=status.HTTP_200_OK)
+
+
+class TodoAttachmentViewSet(
+    TenantQuerySetMixin,
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Upload/list/delete de anexos de tarefa. Sem update — um anexo não é
+    editável, só substituível (excluir e reenviar)."""
+
+    queryset = TodoAttachment.objects.select_related("user", "todo")
+    serializer_class = TodoAttachmentSerializer
+    filterset_fields = ("todo",)
+    pagination_class = None

@@ -1,4 +1,3 @@
-import hashlib
 import os
 from io import BytesIO
 
@@ -6,22 +5,13 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import models
 
+from common.files import compute_file_hash
 from common.tenancy import assign_tenant
 
 _THUMBNAIL_SIZE = (300, 300)
 _THUMBNAIL_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "bmp"}
 
 TRASH_RETENTION_DAYS = 30
-
-
-def compute_file_hash(file_field) -> str:
-    """SHA-256 of the file's bytes, used to detect duplicate uploads."""
-    file_field.seek(0)
-    hasher = hashlib.sha256()
-    for chunk in file_field.chunks():
-        hasher.update(chunk)
-    file_field.seek(0)
-    return hasher.hexdigest()
 
 
 def _generate_thumbnail(file_field):

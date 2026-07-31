@@ -43,6 +43,19 @@ export interface TodoSubtask {
   updated_at: string;
 }
 
+export interface TodoAttachment {
+  id: number;
+  todo: number;
+  file: string;
+  file_url: string | null;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  user: number;
+  user_name: string | null;
+  created_at: string;
+}
+
 export interface TodoItem {
   id: number;
   title: string;
@@ -59,6 +72,8 @@ export interface TodoItem {
   subtasks: TodoSubtask[];
   subtask_count: number;
   completed_subtask_count: number;
+  attachments: TodoAttachment[];
+  attachment_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -104,4 +119,18 @@ export async function toggleTodo(id: number): Promise<TodoItem> {
 
 export async function deleteTodo(id: number): Promise<void> {
   await api.delete(`/todos/${id}/`);
+}
+
+export async function uploadTodoAttachment(todoId: number, file: File): Promise<TodoAttachment> {
+  const formData = new FormData();
+  formData.append('todo', String(todoId));
+  formData.append('file', file);
+  const { data } = await api.post<TodoAttachment>('/todo-attachments/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function deleteTodoAttachment(id: number): Promise<void> {
+  await api.delete(`/todo-attachments/${id}/`);
 }

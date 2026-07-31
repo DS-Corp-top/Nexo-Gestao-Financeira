@@ -1,7 +1,10 @@
+import os
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from common.files import compute_file_hash
 from common.tenancy import assign_tenant
 
 
@@ -140,4 +143,60 @@ class TodoItem(models.Model):
             self.done_at = timezone.now()
         if not self.is_done:
             self.done_at = None
+        super().save(*args, **kwargs)
+
+
+def todo_attachment_upload_path(instance, filename):
+    tenant_id = instance.tenant_id or "sem_tenant"
+    return f"todos/tenant_{tenant_id}/todo_{instance.todo_id}/{filename}"
+
+
+class TodoAttachment(models.Model):
+    todo = models.ForeignKey(
+        TodoItem,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        related_name="todo_attachments",
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="todo_attachments",
+    )
+    file = models.FileField("Arquivo", upload_to=todo_attachment_upload_path)
+    file_name = models.CharField("Nome do arquivo", max_length=255, blank=True)
+    file_type = models.CharField("Tipo", max_length=50, blank=True)
+    file_size = models.PositiveIntegerField("Tamanho (bytes)", default=0)
+    content_hash = models.CharField("Hash do conteudo", max_length=64, blank=True, db_index=True)
+    created_at = models.DateTimeField("Enviado em", auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Anexo de tarefa"
+        verbose_name_plural = "Anexos de tarefa"
+        indexes = [
+            models.Index(fields=("tenant", "todo"), name="todo_attach_tenant_idx"),
+        ]
+
+    def __str__(self):
+        return self.file_name or self.file.name
+
+    def save(self, *args, **kwargs):
+        assign_tenant(self)
+        if self.file and not self.file_name:
+            self.file_name = os.path.basename(self.file.name)
+        if self.file and hasattr(self.file, "size"):
+            self.file_size = self.file.size
+        if self.file and not self.file_type:
+            ext = os.path.splitext(self.file.name)[1].lower()
+            if ext:
+                self.file_type = ext.replace(".", "")
+        if self.file and not self.content_hash:
+            self.content_hash = compute_file_hash(self.file)
         super().save(*args, **kwargs)

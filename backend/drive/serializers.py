@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from common.files import validate_attachment_file as validate_document_file
 from .models import Document, Folder, TRASH_RETENTION_DAYS
 
 
@@ -10,29 +11,6 @@ def _days_until_purge(obj):
     elapsed = timezone.now() - obj.deleted_at
     remaining = TRASH_RETENTION_DAYS - elapsed.days
     return max(remaining, 0)
-
-_DOCUMENT_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
-# Denylist (not allowlist) — Drive stores arbitrary business documents (PDFs,
-# spreadsheets, images, etc.), so we only block file types that are dangerous
-# to host/serve rather than restrict to a fixed set of "safe" extensions.
-_DOCUMENT_BLOCKED_EXTENSIONS = {
-    "html", "htm", "svg", "xhtml", "shtml",
-    "js", "mjs", "php", "phtml", "asp", "aspx", "jsp",
-    "exe", "dll", "msi", "bat", "cmd", "com", "scr", "vbs", "ps1", "sh",
-}
-
-
-def validate_document_file(file):
-    if file is None:
-        return file
-    ext = (file.name.rsplit(".", 1)[-1].lower()) if "." in file.name else ""
-    if ext in _DOCUMENT_BLOCKED_EXTENSIONS:
-        raise serializers.ValidationError(
-            f"Tipo de arquivo não permitido: .{ext}."
-        )
-    if file.size > _DOCUMENT_MAX_BYTES:
-        raise serializers.ValidationError("O arquivo deve ter no máximo 50 MB.")
-    return file
 
 
 class FolderSerializer(serializers.ModelSerializer):
