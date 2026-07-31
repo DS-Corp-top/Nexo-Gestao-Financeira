@@ -13,6 +13,7 @@ export interface ProjectCharter {
   justification: string;
   objectives: string;
   scope: string;
+  technologies: string;
   deliverables: string;
   assumptions: string;
   constraints: string;
@@ -20,6 +21,7 @@ export interface ProjectCharter {
   stakeholders: string;
   sponsor_name: string;
   project_manager_name: string;
+  co_responsibles: string;
   start_date: string | null;
   end_date: string | null;
   estimated_budget: string | null;
@@ -37,6 +39,7 @@ export type ProjectCharterPayload = Partial<
     | 'justification'
     | 'objectives'
     | 'scope'
+    | 'technologies'
     | 'deliverables'
     | 'assumptions'
     | 'constraints'
@@ -44,6 +47,7 @@ export type ProjectCharterPayload = Partial<
     | 'stakeholders'
     | 'sponsor_name'
     | 'project_manager_name'
+    | 'co_responsibles'
     | 'start_date'
     | 'end_date'
     | 'estimated_budget'

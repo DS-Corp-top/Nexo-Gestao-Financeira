@@ -65,6 +65,7 @@ const charter: ProjectCharter = {
   justification: 'Reduzir retrabalho manual.',
   objectives: 'Automatizar o financeiro.',
   scope: '',
+  technologies: 'React, Django e PostgreSQL.',
   deliverables: '',
   assumptions: '',
   constraints: '',
@@ -72,6 +73,7 @@ const charter: ProjectCharter = {
   stakeholders: '',
   sponsor_name: 'Diretoria',
   project_manager_name: 'Daniel',
+  co_responsibles: 'Ana Souza\nBruno Lima',
   start_date: null,
   end_date: null,
   estimated_budget: '10000.00',
@@ -117,6 +119,8 @@ describe('Tap Page', () => {
     fireEvent.click(newButton);
     fireEvent.change(await screen.findByLabelText('Projeto *'), { target: { value: '1' } });
     fireEvent.change(screen.getByLabelText('Patrocinador'), { target: { value: 'Diretoria' } });
+    fireEvent.change(screen.getByLabelText('Co-responsáveis'), { target: { value: 'Ana Souza\nBruno Lima' } });
+    fireEvent.change(screen.getByLabelText('Tecnologias utilizadas'), { target: { value: 'React e Django' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar TAP' }));
 
     // react-query's mutate() invokes the mutationFn with a trailing context
@@ -124,7 +128,12 @@ describe('Tap Page', () => {
     // in production since createCharter(payload) ignores extra args.
     await waitFor(() => {
       expect(tapApi.createCharter).toHaveBeenCalledWith(
-        expect.objectContaining({ project: 1, sponsor_name: 'Diretoria' }),
+        expect.objectContaining({
+          project: 1,
+          sponsor_name: 'Diretoria',
+          co_responsibles: 'Ana Souza\nBruno Lima',
+          technologies: 'React e Django',
+        }),
         expect.anything()
       );
     });
@@ -139,15 +148,25 @@ describe('Tap Page', () => {
     fireEvent.click(await screen.findByTitle('Editar'));
 
     const sponsorInput = await screen.findByLabelText('Patrocinador') as HTMLInputElement;
+    const coResponsiblesInput = screen.getByLabelText('Co-responsáveis') as HTMLTextAreaElement;
+    const technologiesInput = screen.getByLabelText('Tecnologias utilizadas') as HTMLTextAreaElement;
     expect(sponsorInput.value).toBe('Diretoria');
+    expect(coResponsiblesInput.value).toBe('Ana Souza\nBruno Lima');
+    expect(technologiesInput.value).toBe('React, Django e PostgreSQL.');
 
     fireEvent.change(sponsorInput, { target: { value: 'Novo Patrocinador' } });
+    fireEvent.change(coResponsiblesInput, { target: { value: 'Carla Martins' } });
+    fireEvent.change(technologiesInput, { target: { value: 'React, Django, PostgreSQL e Redis' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar TAP' }));
 
     await waitFor(() => {
       expect(tapApi.updateCharter).toHaveBeenCalledWith(
         5,
-        expect.objectContaining({ sponsor_name: 'Novo Patrocinador' })
+        expect.objectContaining({
+          sponsor_name: 'Novo Patrocinador',
+          co_responsibles: 'Carla Martins',
+          technologies: 'React, Django, PostgreSQL e Redis',
+        })
       );
     });
   });
@@ -182,5 +201,11 @@ describe('Tap Page', () => {
     const [, html] = (printDocument.writePrintDocument as any).mock.calls[0];
     expect(html).toContain('Implantação ERP');
     expect(html).toContain('Reduzir retrabalho manual.');
+    expect(html).toContain('React, Django e PostgreSQL.');
+    expect(html).toContain('Ana Souza');
+    expect(html).toContain('Bruno Lima');
+    expect(html).toContain('Data de emissão');
+    expect(html).toContain('01/01/2026');
+    expect(html).toContain('Assinaturas');
   });
 });

@@ -42,6 +42,7 @@ class ProjectCharter(models.Model):
     justification = models.TextField("Justificativa", blank=True)
     objectives = models.TextField("Objetivos", blank=True)
     scope = models.TextField("Escopo", blank=True)
+    technologies = models.TextField("Tecnologias utilizadas", blank=True)
     deliverables = models.TextField("Principais entregas", blank=True)
     assumptions = models.TextField("Premissas", blank=True)
     constraints = models.TextField("Restrições", blank=True)
@@ -50,6 +51,7 @@ class ProjectCharter(models.Model):
 
     sponsor_name = models.CharField("Patrocinador", max_length=200, blank=True)
     project_manager_name = models.CharField("Gerente do projeto", max_length=200, blank=True)
+    co_responsibles = models.TextField("Co-responsaveis", blank=True)
 
     start_date = models.DateField("Início previsto", null=True, blank=True)
     end_date = models.DateField("Término previsto", null=True, blank=True)

@@ -47,6 +47,7 @@ const EMPTY_FORM: CharterFormValue = {
   justification: '',
   objectives: '',
   scope: '',
+  technologies: '',
   deliverables: '',
   assumptions: '',
   constraints: '',
@@ -54,6 +55,7 @@ const EMPTY_FORM: CharterFormValue = {
   stakeholders: '',
   sponsor_name: '',
   project_manager_name: '',
+  co_responsibles: '',
   start_date: null,
   end_date: null,
   estimated_budget: '0.00',
@@ -68,6 +70,7 @@ function charterToFormValue(charter: ProjectCharter): CharterFormValue {
     justification: charter.justification,
     objectives: charter.objectives,
     scope: charter.scope,
+    technologies: charter.technologies,
     deliverables: charter.deliverables,
     assumptions: charter.assumptions,
     constraints: charter.constraints,
@@ -75,6 +78,7 @@ function charterToFormValue(charter: ProjectCharter): CharterFormValue {
     stakeholders: charter.stakeholders,
     sponsor_name: charter.sponsor_name,
     project_manager_name: charter.project_manager_name,
+    co_responsibles: charter.co_responsibles,
     start_date: charter.start_date,
     end_date: charter.end_date,
     estimated_budget: charter.estimated_budget ?? '0.00',
@@ -154,6 +158,11 @@ function CharterForm({
         </div>
       </div>
 
+      <div>
+        <label className="label" htmlFor="charter-co-responsibles">Co-responsáveis</label>
+        <textarea id="charter-co-responsibles" className="input" style={textareaStyle} value={form.co_responsibles} onChange={(e) => set('co_responsibles', e.target.value)} placeholder="Nomes dos co-responsáveis, um por linha ou separados por vírgula" />
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
         <div>
           <label className="label" htmlFor="charter-start">Início previsto</label>
@@ -183,6 +192,11 @@ function CharterForm({
       <div>
         <label className="label" htmlFor="charter-scope">Escopo</label>
         <textarea id="charter-scope" className="input" style={textareaStyle} value={form.scope} onChange={(e) => set('scope', e.target.value)} placeholder="O que está incluído e o que está fora do projeto" />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="charter-technologies">Tecnologias utilizadas</label>
+        <textarea id="charter-technologies" className="input" style={textareaStyle} value={form.technologies} onChange={(e) => set('technologies', e.target.value)} placeholder="Linguagens, frameworks, bancos, integrações e serviços previstos" />
       </div>
 
       <div>
@@ -278,10 +292,36 @@ function printField(label: string, value: string) {
   </div><hr>`;
 }
 
+function buildSignatureHtml(charter: ProjectCharter) {
+  const coResponsibleSignatures = charter.co_responsibles
+    .split(/\r?\n|,/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => ['Co-responsável', name]);
+  const signatures = [
+    ['Patrocinador', charter.sponsor_name],
+    ['Gerente do projeto', charter.project_manager_name],
+    ...coResponsibleSignatures,
+    ...(charter.status === 'approved' ? [['Aprovador', charter.approved_by_name]] : []),
+  ];
+
+  return `<div style="margin-top:42px;page-break-inside:avoid">
+    <div class="section-label">Assinaturas</div>
+    <div style="display:grid;grid-template-columns:repeat(${signatures.length},1fr);gap:22px;margin-top:34px">
+      ${signatures.map(([role, name]) => `<div style="text-align:center">
+        <div style="border-top:1px solid #111;padding-top:8px;font-size:12px;font-weight:800">${escapeHtml(name || ' ')}</div>
+        <div style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;margin-top:2px">${escapeHtml(role)}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function buildCharterBodyHtml(charter: ProjectCharter): string {
   const infoRows = [
+    ['Data de emissão', formatDateHtml(charter.created_at?.slice(0, 10))],
     ['Patrocinador', charter.sponsor_name || '—'],
     ['Gerente do projeto', charter.project_manager_name || '—'],
+    ['Co-responsáveis', charter.co_responsibles || '—'],
     ['Início previsto', formatDateHtml(charter.start_date)],
     ['Término previsto', formatDateHtml(charter.end_date)],
     ['Orçamento estimado', formatCurrency(charter.estimated_budget)],
@@ -307,11 +347,13 @@ function buildCharterBodyHtml(charter: ProjectCharter): string {
 ${printField('Justificativa', charter.justification)}
 ${printField('Objetivos', charter.objectives)}
 ${printField('Escopo', charter.scope)}
+${printField('Tecnologias Utilizadas', charter.technologies)}
 ${printField('Principais Entregas', charter.deliverables)}
 ${printField('Premissas', charter.assumptions)}
 ${printField('Restrições', charter.constraints)}
 ${printField('Riscos Preliminares', charter.risks)}
 ${printField('Partes Interessadas', charter.stakeholders)}
+${printField('Co-responsáveis', charter.co_responsibles)}
 ${charter.status === 'approved' ? `<div style="margin-top:30px;display:flex;justify-content:space-between">
   <div>
     <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Aprovado por</div>
@@ -321,7 +363,8 @@ ${charter.status === 'approved' ? `<div style="margin-top:30px;display:flex;just
     <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;margin-bottom:2px">Data de aprovação</div>
     <div style="font-size:13px;font-weight:700">${formatDateHtml(charter.approved_at)}</div>
   </div>
-</div>` : ''}`;
+</div>` : ''}
+${buildSignatureHtml(charter)}`;
 }
 
 // ─── Page ───────────────────────────────────────────────────────────────────

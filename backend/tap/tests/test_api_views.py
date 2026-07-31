@@ -25,6 +25,8 @@ def test_create_charter_for_own_project(baker):
             "project": project.id,
             "justification": "Reduzir retrabalho manual.",
             "objectives": "Automatizar o financeiro.",
+            "technologies": "Python, Django, React e PostgreSQL.",
+            "co_responsibles": "Equipe de arquitetura\nEquipe de infraestrutura",
             "sponsor_name": "Diretoria",
             "project_manager_name": "Daniel",
         },
@@ -35,6 +37,8 @@ def test_create_charter_for_own_project(baker):
     assert response.data["project"] == project.id
     assert response.data["project_name"] == "Implantacao ERP"
     assert response.data["status"] == "draft"
+    assert response.data["technologies"] == "Python, Django, React e PostgreSQL."
+    assert response.data["co_responsibles"] == "Equipe de arquitetura\nEquipe de infraestrutura"
     assert response.data["number"] == 1
     assert response.data["number_display"].startswith("0001/")
 
