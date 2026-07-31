@@ -72,15 +72,17 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
 
       <aside className={`app-sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         <div className="nav-brand">
-          <BrandLogo
-            width={collapsed ? 36 : 112}
-            height={collapsed ? 36 : 36}
-            padding="0"
-            borderRadius={10}
-            invert
-            scale={1}
-            style={{ flexShrink: 0 }}
-          />
+          {!collapsed && (
+            <BrandLogo
+              width={112}
+              height={36}
+              padding="0"
+              borderRadius={10}
+              invert
+              scale={1}
+              style={{ flexShrink: 0 }}
+            />
+          )}
           <button
             className="sidebar-collapse-btn"
             onClick={onToggleCollapse}
