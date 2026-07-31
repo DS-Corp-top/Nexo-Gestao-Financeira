@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CloudUpload, FileBarChart } from 'lucide-react';
+import { CloudUpload, FileBarChart, FileSignature } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function BottomNav() {
@@ -79,6 +79,10 @@ export default function BottomNav() {
             <Link to="/todos" className={`txn-more-link ${location.pathname.startsWith('/todos') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8"/><path d="M8 14h5"/></svg></span>
               Tarefas
+            </Link>
+            <Link to="/tap" className={`txn-more-link ${location.pathname.startsWith('/tap') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
+              <span className="txn-more-icon"><FileSignature size={20} /></span>
+              TAP
             </Link>
             <Link to="/notes" className={`txn-more-link ${location.pathname.startsWith('/notes') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><polyline points="15 3 15 9 21 9"/></svg></span>

@@ -114,6 +114,7 @@ INSTALLED_APPS = [
     "investments.apps.InvestmentsConfig",
     "invoices.apps.InvoicesConfig",
     "todos.apps.TodosConfig",
+    "tap.apps.TapConfig",
     "notes.apps.NotesConfig",
     "drive.apps.DriveConfig",
     "notifications.apps.NotificationsConfig",

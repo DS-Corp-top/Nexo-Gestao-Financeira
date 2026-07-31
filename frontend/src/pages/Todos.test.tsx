@@ -110,6 +110,32 @@ describe('Todos attachments', () => {
     expect(screen.getByText('2.0 KB')).toBeInTheDocument();
   });
 
+  it('renders an inline preview for image attachments', async () => {
+    const todoWithAttachment: TodoItem = {
+      ...baseTodo,
+      attachment_count: 1,
+      attachments: [
+        {
+          id: 2,
+          todo: 10,
+          file: '/media/todos/foto.png',
+          file_url: 'http://localhost/media/todos/foto.png',
+          file_name: 'foto.png',
+          file_type: 'png',
+          file_size: 4096,
+          user: 1,
+          user_name: 'Daniel',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    await openProjectAndTodo(todoWithAttachment);
+
+    const preview = screen.getByRole('img', { name: 'foto.png' });
+    expect(preview).toHaveAttribute('src', '/media/todos/foto.png');
+  });
+
   it('uploads the selected file for the open todo', async () => {
     (todosApi.uploadTodoAttachment as any).mockResolvedValue({});
     await openProjectAndTodo(baseTodo);

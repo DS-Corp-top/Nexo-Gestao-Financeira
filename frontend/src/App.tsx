@@ -19,6 +19,7 @@ import Invoices from './pages/Invoices';
 import Reports from './pages/Reports';
 import Administration from './pages/Administration';
 import Todos from './pages/Todos';
+import Tap from './pages/Tap';
 import Notes from './pages/Notes';
 import Drive from './pages/Drive';
 
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="drive" element={<Drive />} />
               <Route path="investments" element={<Investments />} />
               <Route path="todos" element={<Todos />} />
+              <Route path="tap" element={<Tap />} />
               <Route path="notes" element={<Notes />} />
               <Route path="settings/company" element={<CompanySettings />} />
               <Route path="admin" element={<ProtectedRoute requireSuperuser><Administration /></ProtectedRoute>} />

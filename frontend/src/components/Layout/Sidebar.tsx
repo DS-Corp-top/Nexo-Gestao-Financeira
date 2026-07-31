@@ -11,6 +11,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CheckSquare,
+  FileSignature,
   StickyNote,
   CloudUpload,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ const navItemsAfterInvoices = [
   { to: '/reports', icon: FileBarChart, label: 'Relatórios' },
   { to: '/shopping', icon: ShoppingCart, label: 'Lista de Compras' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
+  { to: '/tap', icon: FileSignature, label: 'TAP' },
   { to: '/notes', icon: StickyNote, label: 'Anotações' },
   { to: '/drive', icon: CloudUpload, label: 'Drive' },
 ];

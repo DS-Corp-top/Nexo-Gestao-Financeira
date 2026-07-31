@@ -24,6 +24,7 @@ const EXPECTED_MODULE_LINKS = [
   { to: '/invoices', label: /Fatura de Serviços/ },
   { to: '/shopping', label: /Lista de Compras/ },
   { to: '/todos', label: /Tarefas/ },
+  { to: '/tap', label: /TAP/ },
   { to: '/notes', label: /Anotações/ },
   { to: '/drive', label: /Drive/ },
   { to: '/settings/company', label: /Configurações/ },

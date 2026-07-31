@@ -34,6 +34,7 @@ from telegram_bot.api_views import TelegramLinkCodeView, TelegramLinkStatusView,
 from drive.api_views import DocumentViewSet, FolderViewSet
 from reports.api_views import DREReportView, InvestmentsReportView, SummaryReportView, TransactionsReportView
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoAttachmentViewSet, TodoItemViewSet
+from tap.api_views import ProjectCharterViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
 from users.api_views import (
     ApproveUserView,
@@ -69,6 +70,7 @@ router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-compa
 router.register("todo-projects", ProjectViewSet, basename="todo-project")
 router.register("todos", TodoItemViewSet, basename="todo")
 router.register("todo-attachments", TodoAttachmentViewSet, basename="todo-attachment")
+router.register("tap", ProjectCharterViewSet, basename="tap")
 router.register("note-lists", NoteListViewSet, basename="note-list")
 router.register("notes", NoteViewSet, basename="note")
 router.register("note-subtasks", NoteSubtaskViewSet, basename="note-subtask")

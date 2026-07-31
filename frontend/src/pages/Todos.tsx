@@ -7,6 +7,13 @@ import {
   Calendar,
   CheckCircle2,
   Circle,
+  Download,
+  ExternalLink,
+  FileAudio,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
   Flag,
   FolderOpen,
   Paperclip,
@@ -33,6 +40,7 @@ import {
   type Priority,
   type Project,
   type TenantMember,
+  type TodoAttachment,
   type TodoItem,
   type TodoSubtask,
   type TodoStatus,
@@ -102,6 +110,259 @@ function formatFileSize(bytes: number) {
 }
 
 const DEFAULT_PROJECT_COLOR = '#ffffff';
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif']);
+const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'webm']);
+const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv']);
+const TEXT_EXTENSIONS = new Set(['txt', 'log', 'md']);
+const CSV_EXTENSIONS = new Set(['csv']);
+const SPREADSHEET_EXTENSIONS = new Set(['xlsx', 'xlsm']);
+const LEGACY_SPREADSHEET_EXTENSIONS = new Set(['xls', 'xlsb', 'ods']);
+const MAX_TEXT_PREVIEW_CHARS = 120000;
+const MAX_TABLE_ROWS = 18;
+const MAX_TABLE_COLUMNS = 8;
+
+type AttachmentPreviewKind = 'image' | 'audio' | 'video' | 'pdf' | 'text' | 'csv' | 'spreadsheet' | 'spreadsheet-legacy' | 'unsupported';
+type TablePreview = { headers: string[]; rows: string[][]; totalRows: number; sheetName?: string };
+
+function getAttachmentExtension(attachment: TodoAttachment) {
+  const source = attachment.file_name || attachment.file || attachment.file_url || attachment.file_type || '';
+  const clean = source.split('?')[0].split('#')[0];
+  const fromName = clean.includes('.') ? clean.split('.').pop()?.toLowerCase() : '';
+  return (fromName || attachment.file_type || '').replace(/^\./, '').toLowerCase();
+}
+
+function getAttachmentPreviewKind(attachment: TodoAttachment): AttachmentPreviewKind {
+  const ext = getAttachmentExtension(attachment);
+  if (IMAGE_EXTENSIONS.has(ext)) return 'image';
+  if (AUDIO_EXTENSIONS.has(ext)) return 'audio';
+  if (VIDEO_EXTENSIONS.has(ext)) return 'video';
+  if (ext === 'pdf') return 'pdf';
+  if (TEXT_EXTENSIONS.has(ext)) return 'text';
+  if (CSV_EXTENSIONS.has(ext)) return 'csv';
+  if (SPREADSHEET_EXTENSIONS.has(ext)) return 'spreadsheet';
+  if (LEGACY_SPREADSHEET_EXTENSIONS.has(ext)) return 'spreadsheet-legacy';
+  return 'unsupported';
+}
+
+function getAttachmentUrl(attachment: TodoAttachment) {
+  const raw = attachment.file_url || attachment.file;
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw, window.location.origin);
+    if (parsed.pathname.startsWith('/media/')) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  } catch {
+    return raw;
+  }
+  return raw;
+}
+
+function parseCsvRows(text: string) {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      cell += '"';
+      i += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      row.push(cell);
+      cell = '';
+    } else if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i += 1;
+      row.push(cell);
+      if (row.some((value) => value.trim() !== '')) rows.push(row);
+      row = [];
+      cell = '';
+      if (rows.length >= MAX_TABLE_ROWS + 1) break;
+    } else {
+      cell += char;
+    }
+  }
+
+  if (cell || row.length > 0) {
+    row.push(cell);
+    if (row.some((value) => value.trim() !== '')) rows.push(row);
+  }
+
+  return rows;
+}
+
+function rowsToTablePreview(rows: unknown[][], sheetName?: string): TablePreview {
+  const visibleRows = rows.slice(0, MAX_TABLE_ROWS + 1).map((row) =>
+    row.slice(0, MAX_TABLE_COLUMNS).map((value) => (value == null ? '' : String(value)))
+  );
+  const widest = Math.max(1, ...visibleRows.map((row) => row.length));
+  const normalized = visibleRows.map((row) => [...row, ...Array(Math.max(0, widest - row.length)).fill('')]);
+  const headers = (normalized[0] || []).map((value, index) => value || `Coluna ${index + 1}`);
+  return {
+    headers,
+    rows: normalized.slice(1),
+    totalRows: Math.max(0, rows.length - 1),
+    sheetName,
+  };
+}
+
+function AttachmentTypeIcon({ kind }: { kind: AttachmentPreviewKind }) {
+  if (kind === 'image') return <FileImage size={15} />;
+  if (kind === 'audio') return <FileAudio size={15} />;
+  if (kind === 'video') return <FileVideo size={15} />;
+  if (kind === 'spreadsheet' || kind === 'spreadsheet-legacy' || kind === 'csv') return <FileSpreadsheet size={15} />;
+  if (kind === 'pdf' || kind === 'text') return <FileText size={15} />;
+  return <Paperclip size={15} />;
+}
+
+function TablePreviewView({ preview }: { preview: TablePreview }) {
+  return (
+    <div className="todo-attachment-table-wrap">
+      {preview.sheetName && <div className="todo-attachment-sheet-name">{preview.sheetName}</div>}
+      <table className="todo-attachment-table">
+        <thead>
+          <tr>
+            {preview.headers.map((header, index) => (
+              <th key={`${header}-${index}`}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {preview.rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {preview.headers.map((_, cellIndex) => (
+                <td key={cellIndex}>{row[cellIndex] ?? ''}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {preview.totalRows > preview.rows.length && (
+        <div className="todo-attachment-preview-note">
+          Mostrando {preview.rows.length} de {preview.totalRows} linhas.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AttachmentPreview({ attachment }: { attachment: TodoAttachment }) {
+  const url = getAttachmentUrl(attachment);
+  const kind = getAttachmentPreviewKind(attachment);
+  const [textPreview, setTextPreview] = useState('');
+  const [tablePreview, setTablePreview] = useState<TablePreview | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!url || !['text', 'csv', 'spreadsheet'].includes(kind)) return;
+
+    const previewUrl = url;
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    setTextPreview('');
+    setTablePreview(null);
+
+    async function loadPreview() {
+      try {
+        const response = await fetch(previewUrl, { credentials: 'include', signal: controller.signal });
+        if (!response.ok) throw new Error('Nao foi possivel abrir o preview.');
+
+        if (kind === 'spreadsheet') {
+          const buffer = await response.arrayBuffer();
+          const { readSheet } = await import('read-excel-file/browser');
+          const rows = await readSheet(buffer);
+          setTablePreview(rowsToTablePreview(rows as unknown[][], 'Planilha'));
+          return;
+        }
+
+        const text = (await response.text()).slice(0, MAX_TEXT_PREVIEW_CHARS);
+        if (kind === 'csv') {
+          setTablePreview(rowsToTablePreview(parseCsvRows(text)));
+        } else {
+          setTextPreview(text);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : 'Nao foi possivel abrir o preview.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void loadPreview();
+    return () => controller.abort();
+  }, [kind, url]);
+
+  if (!url) {
+    return <div className="todo-attachment-preview-empty">Arquivo indisponivel.</div>;
+  }
+
+  if (kind === 'image') {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="todo-attachment-image-link">
+        <img src={url} alt={attachment.file_name} className="todo-attachment-image-preview" loading="lazy" />
+      </a>
+    );
+  }
+
+  if (kind === 'audio') {
+    return <audio className="todo-attachment-audio-preview" controls preload="metadata" src={url} />;
+  }
+
+  if (kind === 'video') {
+    return <video className="todo-attachment-video-preview" controls preload="metadata" src={url} />;
+  }
+
+  if (kind === 'pdf') {
+    return (
+      <object className="todo-attachment-pdf-preview" data={url} type="application/pdf">
+        <a href={url} target="_blank" rel="noopener noreferrer">Abrir PDF</a>
+      </object>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="todo-attachment-preview-empty">
+        <span className="spinner" style={{ width: 16, height: 16 }} />
+        Carregando preview...
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="todo-attachment-preview-empty">{error}</div>;
+  }
+
+  if (tablePreview) {
+    return <TablePreviewView preview={tablePreview} />;
+  }
+
+  if (textPreview) {
+    return <pre className="todo-attachment-text-preview">{textPreview}</pre>;
+  }
+
+  if (kind === 'spreadsheet-legacy') {
+    return (
+      <div className="todo-attachment-preview-empty">
+        Preview inline disponivel para planilhas .xlsx/.xlsm. Abra este arquivo para visualizar.
+      </div>
+    );
+  }
+
+  return (
+    <div className="todo-attachment-preview-empty">
+      Preview nao disponivel para este tipo de arquivo.
+    </div>
+  );
+}
 
 // ─── Project Form ─────────────────────────────────────────────────────────────
 
@@ -449,6 +710,7 @@ function TodoDetailsModal({
             <input
               ref={fileInputRef}
               type="file"
+              accept="image/*,audio/*,video/*,.pdf,.xls,.xlsx,.xlsm,.xlsb,.ods,.csv,.txt,text/plain,text/csv,application/pdf"
               style={{ display: 'none' }}
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -475,47 +737,75 @@ function TodoDetailsModal({
             ) : attachments.map((attachment) => (
               <div
                 key={attachment.id}
+                className="todo-attachment-card"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.65rem',
                   border: '1px solid var(--color-border)',
                   borderRadius: 'var(--radius-md)',
-                  padding: '0.6rem 0.85rem',
+                  overflow: 'hidden',
                 }}
               >
-                <Paperclip size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <a
-                    href={attachment.file_url ?? undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      color: 'var(--color-text-primary)',
-                      textDecoration: 'none',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      display: 'block',
-                    }}
-                  >
-                    {attachment.file_name}
-                  </a>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                    {formatFileSize(attachment.file_size)}
+                <AttachmentPreview attachment={attachment} />
+                <div className="todo-attachment-meta-row">
+                  <span className="todo-attachment-type-icon">
+                    <AttachmentTypeIcon kind={getAttachmentPreviewKind(attachment)} />
                   </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <a
+                      href={getAttachmentUrl(attachment) ?? undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        color: 'var(--color-text-primary)',
+                        textDecoration: 'none',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        display: 'block',
+                      }}
+                    >
+                      {attachment.file_name}
+                    </a>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                      {formatFileSize(attachment.file_size)}
+                    </span>
+                  </div>
+                  {getAttachmentUrl(attachment) && (
+                    <>
+                      <a
+                        href={getAttachmentUrl(attachment) ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-ghost btn-icon todo-attachment-action"
+                        aria-label="Abrir anexo"
+                        title="Abrir anexo"
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                      <a
+                        href={getAttachmentUrl(attachment) ?? undefined}
+                        download={attachment.file_name}
+                        className="btn btn-ghost btn-icon todo-attachment-action"
+                        aria-label="Baixar anexo"
+                        title="Baixar anexo"
+                      >
+                        <Download size={14} />
+                      </a>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onDeleteAttachment(attachment.id)}
+                    disabled={isDeletingAttachment}
+                    className="btn btn-ghost btn-icon todo-attachment-action"
+                    style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}
+                    aria-label="Excluir anexo"
+                    title="Excluir anexo"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onDeleteAttachment(attachment.id)}
-                  disabled={isDeletingAttachment}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)', flexShrink: 0 }}
-                  aria-label="Excluir anexo"
-                >
-                  <Trash2 size={14} />
-                </button>
               </div>
             ))}
           </div>
