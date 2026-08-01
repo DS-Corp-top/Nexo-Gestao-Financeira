@@ -15,6 +15,7 @@ vi.mock('../api/todos', async () => {
     fetchTenantMembers: vi.fn(),
     uploadTodoAttachment: vi.fn(),
     deleteTodoAttachment: vi.fn(),
+    reorderTodos: vi.fn(),
   };
 });
 
@@ -38,6 +39,7 @@ const baseTodo: TodoItem = {
   status: 'pending',
   priority: 'medium',
   due_date: null,
+  order: 0,
   done_at: null,
   project: 1,
   parent: null,
@@ -192,6 +194,74 @@ describe('Todos attachments', () => {
 
     await waitFor(() => {
       expect(screen.getByText('3')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('Todos kanban drag and drop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function mockRect(el: Element, top: number, height = 50) {
+    (el as HTMLElement).getBoundingClientRect = () => ({
+      top, bottom: top + height, left: 0, right: 200, width: 200, height,
+      x: 0, y: top, toJSON: () => {},
+    });
+  }
+
+  async function setupKanban(todos: TodoItem[]) {
+    (todosApi.fetchProjects as any).mockResolvedValue([project]);
+    (todosApi.fetchTenantMembers as any).mockResolvedValue([]);
+    (todosApi.fetchTodos as any).mockResolvedValue(todos);
+    (todosApi.reorderTodos as any).mockResolvedValue([]);
+
+    renderTodos();
+    fireEvent.click(await screen.findByText('Projeto Teste'));
+    await screen.findByText(todos[0].title);
+  }
+
+  function cardRoot(id: number) {
+    const wrapper = document.querySelector(`[data-kanban-item-id="${id}"]`) as HTMLElement;
+    return wrapper.querySelector('[role="button"]') as HTMLElement;
+  }
+
+  it('reorders cards within the same column when dropped above another card', async () => {
+    const t1: TodoItem = { ...baseTodo, id: 1, title: 'Tarefa 1', order: 0 };
+    const t2: TodoItem = { ...baseTodo, id: 2, title: 'Tarefa 2', order: 1 };
+    const t3: TodoItem = { ...baseTodo, id: 3, title: 'Tarefa 3', order: 2 };
+    await setupKanban([t1, t2, t3]);
+
+    const wrapper1 = document.querySelector('[data-kanban-item-id="1"]') as HTMLElement;
+    const wrapper2 = document.querySelector('[data-kanban-item-id="2"]') as HTMLElement;
+    mockRect(wrapper1, 0);
+    mockRect(wrapper2, 60);
+    const pendingColumn = document.querySelector('[data-kanban-status="pending"]') as HTMLElement;
+    document.elementFromPoint = vi.fn().mockReturnValue(pendingColumn);
+
+    fireEvent.mouseDown(cardRoot(3), { clientX: 10, clientY: 130 });
+    fireEvent.mouseMove(document, { clientX: 10, clientY: 10 });
+    fireEvent.mouseUp(document);
+
+    await waitFor(() => {
+      expect(todosApi.reorderTodos).toHaveBeenCalledWith('pending', [3, 1, 2]);
+    });
+  });
+
+  it('moves a card to another column when dropped there', async () => {
+    const t1: TodoItem = { ...baseTodo, id: 1, title: 'Tarefa 1', order: 0 };
+    const t2: TodoItem = { ...baseTodo, id: 2, title: 'Tarefa 2', order: 1 };
+    await setupKanban([t1, t2]);
+
+    const inProgressColumn = document.querySelector('[data-kanban-status="in_progress"]') as HTMLElement;
+    document.elementFromPoint = vi.fn().mockReturnValue(inProgressColumn);
+
+    fireEvent.mouseDown(cardRoot(2), { clientX: 10, clientY: 60 });
+    fireEvent.mouseMove(document, { clientX: 10, clientY: 10 });
+    fireEvent.mouseUp(document);
+
+    await waitFor(() => {
+      expect(todosApi.reorderTodos).toHaveBeenCalledWith('in_progress', [2]);
     });
   });
 });

@@ -84,6 +84,8 @@ class TodoItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             return Response({"detail": "Status invalido."}, status=status.HTTP_400_BAD_REQUEST)
         if not isinstance(ordered_ids, list) or not ordered_ids:
             return Response({"detail": "ordered_ids deve ser uma lista nao vazia."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(ordered_ids) != len(set(ordered_ids)):
+            return Response({"detail": "ordered_ids nao pode conter ids duplicados."}, status=status.HTTP_400_BAD_REQUEST)
 
         items = list(self.get_queryset().filter(id__in=ordered_ids))
         items_by_id = {item.id: item for item in items}
