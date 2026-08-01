@@ -27,6 +27,10 @@ class NoteSubtaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Anotação inválida para este cliente.")
         if tenant is not None and note.tenant_id != tenant.id:
             raise serializers.ValidationError("Anotação inválida para este cliente.")
+
+        if note.visibility == "private" and note.user_id != request.user.id:
+            raise serializers.ValidationError("Você não tem permissão para adicionar subtarefas a esta anotação privada.")
+            
         return note
 
     class Meta:
@@ -67,10 +71,12 @@ class NoteSerializer(serializers.ModelSerializer):
             "content",
             "color",
             "is_pinned",
+            "visibility",
             "subtasks",
             "subtasks_total",
             "subtasks_done",
+            "user",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = ("id", "user", "created_at", "updated_at")

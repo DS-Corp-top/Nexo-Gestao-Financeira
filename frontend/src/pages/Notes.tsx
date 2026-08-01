@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckSquare, Edit2, FolderPlus, List, MoreVertical, Pin, PinOff, Plus, Search, Square, StickyNote, Trash2, X } from 'lucide-react';
+import { CheckSquare, Edit2, FolderPlus, Globe, List, Lock, MoreVertical, Pin, PinOff, Plus, Search, Square, StickyNote, Trash2, X } from 'lucide-react';
 import {
   createNote,
   createNoteList,
@@ -41,6 +41,7 @@ function NoteForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [noteList, setNoteList] = useState(initial?.note_list ?? initialListId);
+  const [visibility, setVisibility] = useState<'public' | 'private'>(initial?.visibility ?? 'public');
 
   return (
     <form
@@ -51,6 +52,7 @@ function NoteForm({
           note_list: noteList || null,
           title: title.trim(),
           content: content.trim(),
+          visibility,
         });
       }}
       style={{
@@ -72,6 +74,15 @@ function NoteForm({
         {lists.map((list) => (
           <option key={list.id} value={list.id}>{list.name}</option>
         ))}
+      </select>
+      <select
+        className="input"
+        value={visibility}
+        onChange={(e) => setVisibility(e.target.value as 'public' | 'private')}
+        style={{ background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)' }}
+      >
+        <option value="public">🌍 Pública (Todos acessam)</option>
+        <option value="private">🔒 Privada (Somente eu)</option>
       </select>
 
       <input
@@ -269,11 +280,14 @@ function NoteCard({
         overflow: 'hidden',
       }}
     >
-      {note.is_pinned && (
-        <span style={{ position: 'absolute', top: 8, right: 8, color: 'var(--color-text-muted)' }}>
-          <Pin size={13} fill="currentColor" />
-        </span>
-      )}
+      <div style={{ display: 'flex', gap: '0.4rem', position: 'absolute', top: 8, right: 8, color: 'var(--color-text-muted)' }}>
+        {note.visibility === 'private' ? (
+          <span title="Nota Privada" style={{ display: 'flex' }}><Lock size={13} /></span>
+        ) : (
+          <span title="Nota Pública" style={{ display: 'flex' }}><Globe size={13} /></span>
+        )}
+        {note.is_pinned && <span title="Nota Fixada" style={{ display: 'flex' }}><Pin size={13} fill="currentColor" /></span>}
+      </div>
 
       {note.title && (
         <div

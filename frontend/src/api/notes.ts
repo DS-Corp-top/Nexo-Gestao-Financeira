@@ -17,9 +17,11 @@ export interface Note {
   content: string;
   color: string;
   is_pinned: boolean;
+  visibility: 'public' | 'private';
   subtasks: NoteSubtask[];
   subtasks_total: number;
   subtasks_done: number;
+  user: number;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +32,7 @@ export type NotePayload = {
   content: string;
   color?: string;
   is_pinned?: boolean;
+  visibility?: 'public' | 'private';
 };
 
 export interface NoteList {

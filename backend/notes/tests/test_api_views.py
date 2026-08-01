@@ -32,6 +32,36 @@ def test_list_notes_returns_only_tenant_notes(baker):
 
 
 @pytest.mark.django_db
+def test_list_notes_visibility(baker):
+    """Listagem de notas publicas de todos do tenant e notas privadas apenas do usuario."""
+    user1 = baker.make("auth.User")
+    user2 = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user1, tenant=tenant)
+    baker.make("tenants.TenantMembership", user=user2, tenant=tenant)
+
+    # Notas
+    baker.make("notes.Note", user=user1, tenant=tenant, title="Minha publica", visibility="public")
+    baker.make("notes.Note", user=user1, tenant=tenant, title="Minha privada", visibility="private")
+    baker.make("notes.Note", user=user2, tenant=tenant, title="Dele publica", visibility="public")
+    baker.make("notes.Note", user=user2, tenant=tenant, title="Dele privada", visibility="private")
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user1)
+
+    url = reverse("api:note-list")
+    response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    titles = [n["title"] for n in response.data]
+    assert "Minha publica" in titles
+    assert "Minha privada" in titles
+    assert "Dele publica" in titles
+    assert "Dele privada" not in titles
+
+
+
+@pytest.mark.django_db
 def test_create_note_requires_auth(baker):
     """Criacao de nota sem autenticacao deve retornar 401."""
     client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")

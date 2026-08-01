@@ -42,6 +42,11 @@ class NoteList(models.Model):
 
 
 class Note(models.Model):
+    VISIBILITY_CHOICES = (
+        ("public", "Pública"),
+        ("private", "Privada"),
+    )
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -66,6 +71,12 @@ class Note(models.Model):
     content = models.TextField("Conteúdo", blank=True, default="")
     color = models.CharField("Cor", max_length=7, default="#fef08a")
     is_pinned = models.BooleanField("Fixada", default=False)
+    visibility = models.CharField(
+        "Visibilidade",
+        max_length=10,
+        choices=VISIBILITY_CHOICES,
+        default="public",
+    )
     created_at = models.DateTimeField("Criada em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizada em", auto_now=True)
 

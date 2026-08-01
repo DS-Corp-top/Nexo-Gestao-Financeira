@@ -29,10 +29,25 @@ class NoteViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering = ("-is_pinned", "-updated_at")
     pagination_class = None
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        from django.db.models import Q
+        return qs.filter(Q(visibility="public") | Q(user=self.request.user))
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["tenant"] = self.get_tenant()
         return context
+
+    def update(self, request, *args, **kwargs):
+        if self.get_object().user != request.user:
+            return Response({"detail": "Você não tem permissão para editar esta anotação."}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if self.get_object().user != request.user:
+            return Response({"detail": "Você não tem permissão para excluir esta anotação."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
 
 class NoteSubtaskViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
@@ -43,10 +58,27 @@ class NoteSubtaskViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering = ("is_done", "created_at")
     pagination_class = None
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        from django.db.models import Q
+        return qs.filter(Q(note__visibility="public") | Q(note__user=self.request.user))
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["tenant"] = self.get_tenant()
         return context
+
+    def update(self, request, *args, **kwargs):
+        subtask = self.get_object()
+        if subtask.user != request.user and subtask.note.user != request.user:
+            return Response({"detail": "Você não tem permissão para editar esta subtarefa."}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        subtask = self.get_object()
+        if subtask.user != request.user and subtask.note.user != request.user:
+            return Response({"detail": "Você não tem permissão para excluir esta subtarefa."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
     def toggle(self, request, pk=None):
