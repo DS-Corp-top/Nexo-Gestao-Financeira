@@ -52,6 +52,7 @@ from users.api_views import (
     SystemUserDetailView,
     SystemUsersView,
 )
+from users.bucket_views import BucketDeleteView, BucketListView, BucketStatsView
 
 router = DefaultRouter()
 router.register("accounts", AccountViewSet)
@@ -111,6 +112,9 @@ urlpatterns = [
     path("system/users/<int:pk>/", SystemUserDetailView.as_view(), name="system_user_detail"),
     path("system/all-companies/", SystemAllCompaniesView.as_view(), name="system_all_companies"),
     path("system/companies/<int:pk>/", SystemCompanyDetailView.as_view(), name="system_company_detail"),
+    path("system/bucket/", BucketListView.as_view(), name="system_bucket_list"),
+    path("system/bucket/stats/", BucketStatsView.as_view(), name="system_bucket_stats"),
+    path("system/bucket/object/", BucketDeleteView.as_view(), name="system_bucket_delete"),
 
     # Dashboard
     path("dashboard/", DashboardView.as_view(), name="dashboard"),

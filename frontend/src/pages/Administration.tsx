@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Database,
   ExternalLink,
+  HardDrive,
   LayoutDashboard,
   Shield,
   Users,
@@ -27,8 +28,9 @@ import { uploadBackupFile } from '../api/system';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewMode } from '../contexts/ViewModeContext';
 import { GerenciamentoTab } from './GerenciamentoTab';
+import { BucketTab } from './BucketTab';
 
-type Tab = 'dashboard' | 'listagens' | 'cadastros' | 'backup' | 'gerenciamento';
+type Tab = 'dashboard' | 'listagens' | 'cadastros' | 'backup' | 'gerenciamento' | 'bucket';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -833,6 +835,7 @@ export default function Administration() {
     { key: 'listagens', label: 'Listagens', icon: Building2 },
     { key: 'cadastros', label: isMobile ? 'Pendentes' : 'Cadastros Pendentes', icon: Users },
     { key: 'gerenciamento', label: isMobile ? 'Gerenciar' : 'Gerenciamento', icon: Shield },
+    { key: 'bucket', label: 'Bucket', icon: HardDrive },
     { key: 'backup', label: 'Backup', icon: Database },
   ];
 
@@ -953,6 +956,9 @@ export default function Administration() {
       )}
       {tab === 'gerenciamento' && (
         <GerenciamentoTab />
+      )}
+      {tab === 'bucket' && (
+        <BucketTab />
       )}
     </div>
   );
