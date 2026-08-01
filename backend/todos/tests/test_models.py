@@ -134,3 +134,47 @@ def test_todo_item_save_is_done_true_forces_status_done(baker):
     assert item.status == TodoItem.Status.DONE
     assert item.is_done is True
     assert item.done_at is not None
+
+
+@pytest.mark.django_db
+def test_todo_item_status_only_update_reopens_a_done_item(baker):
+    """Uma atualizacao parcial que so altera status deve reabrir a tarefa,
+    mesmo que is_done ainda esteja True na linha carregada do banco (regressao:
+    antes disso, o valor antigo de is_done forcava o status de volta a DONE)."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    item = baker.make(
+        "todos.TodoItem", user=user, tenant=tenant,
+        status=TodoItem.Status.DONE, is_done=True,
+    )
+
+    loaded = TodoItem.objects.get(pk=item.pk)
+    loaded.status = TodoItem.Status.PENDING
+    loaded.save()
+
+    assert loaded.status == TodoItem.Status.PENDING
+    assert loaded.is_done is False
+    assert loaded.done_at is None
+
+
+@pytest.mark.django_db
+def test_todo_item_is_done_only_update_reopens_status(baker):
+    """Simetricamente, alterar so is_done (sem tocar status) tambem deve
+    sincronizar o status a partir do valor carregado do banco."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    item = baker.make(
+        "todos.TodoItem", user=user, tenant=tenant,
+        status=TodoItem.Status.DONE, is_done=True,
+    )
+
+    loaded = TodoItem.objects.get(pk=item.pk)
+    loaded.is_done = False
+    loaded.save()
+
+    assert loaded.status == TodoItem.Status.PENDING
+    assert loaded.done_at is None

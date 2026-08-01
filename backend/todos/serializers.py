@@ -61,7 +61,8 @@ class TodoItemSerializer(serializers.ModelSerializer):
         model = TodoItem
         fields = (
             "id", "title", "description", "is_done", "status",
-            "priority", "due_date", "order", "done_at", "project", "parent",
+            "priority", "due_date", "order", "done_at",
+            "is_archived", "archived_at", "project", "parent",
             "assigned_to", "assigned_to_name",
             "subtasks", "subtask_count", "completed_subtask_count",
             "attachments", "attachment_count",
@@ -70,6 +71,7 @@ class TodoItemSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "done_at",
+            "archived_at",
             "assigned_to_name",
             "subtasks",
             "subtask_count",
@@ -164,4 +166,10 @@ class TodoItemSerializer(serializers.ModelSerializer):
         parent = attrs.get("parent", self.instance.parent if self.instance else None)
         if parent is not None:
             attrs["project"] = parent.project
+        if attrs.get("is_archived"):
+            status_value = attrs.get("status", self.instance.status if self.instance else None)
+            if status_value != TodoItem.Status.DONE:
+                raise serializers.ValidationError({
+                    "is_archived": "Apenas tarefas concluidas podem ser arquivadas."
+                })
         return attrs

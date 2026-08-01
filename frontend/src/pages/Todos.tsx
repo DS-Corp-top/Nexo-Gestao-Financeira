@@ -826,8 +826,8 @@ function TodoDetailsModal({
 
 // ─── Todo Row ─────────────────────────────────────────────────────────────────
 
-function TodoRow({ item, onOpen, onToggle, onEdit, onDelete }: {
-  item: TodoItem; onOpen: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void;
+function TodoRow({ item, onOpen, onToggle, onEdit, onDelete, onArchive }: {
+  item: TodoItem; onOpen: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void; onArchive: () => void;
 }) {
   const due = formatDue(item.due_date);
   const status = getTodoStatus(item);
@@ -879,6 +879,9 @@ function TodoRow({ item, onOpen, onToggle, onEdit, onDelete }: {
         {item.description && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, whiteSpace: 'pre-wrap' }}>{item.description}</p>}
       </div>
       <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+        {isDone && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onArchive(); }} title="Arquivar tarefa" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Archive size={15} /></button>
+        )}
         <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Pencil size={15} /></button>
         <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text-muted)' }}><Trash2 size={15} /></button>
       </div>
@@ -909,8 +912,9 @@ function DragGhost({ item, x, y, offsetX, offsetY, width }: { item: TodoItem; x:
   );
 }
 
-function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange, onMouseDown, isDragging }: {
+function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onArchive, onStatusChange, onMouseDown, isDragging }: {
   item: TodoItem; onOpen: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void;
+  onArchive: () => void;
   onStatusChange: (s: TodoStatus) => void;
   onMouseDown: (e: React.MouseEvent) => void; isDragging: boolean;
 }) {
@@ -966,6 +970,9 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange, 
           <option value="in_progress">Em andamento</option>
           <option value="done">Finalizado</option>
         </select>
+        {isDone && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onArchive(); }} onMouseDown={(e) => e.stopPropagation()} title="Arquivar tarefa" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Archive size={13} /></button>
+        )}
         <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} onMouseDown={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Pencil size={13} /></button>
         <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} onMouseDown={(e) => e.stopPropagation()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', color: 'var(--color-text-muted)' }}><Trash2 size={13} /></button>
       </div>
@@ -979,10 +986,10 @@ function DropIndicator() {
   return <div style={{ height: 3, borderRadius: 999, background: 'var(--color-accent)' }} />;
 }
 
-function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onStatusChange, isDragOver, dragOverIndex, draggingId, onCardMouseDown }: {
+function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onArchive, onStatusChange, isDragOver, dragOverIndex, draggingId, onCardMouseDown }: {
   status: TodoStatus; items: TodoItem[];
   onOpen: (item: TodoItem) => void; onToggle: (id: number) => void; onEdit: (item: TodoItem) => void;
-  onDelete: (id: number) => void; onStatusChange: (id: number, s: TodoStatus) => void;
+  onDelete: (id: number) => void; onArchive: (id: number) => void; onStatusChange: (id: number, s: TodoStatus) => void;
   isDragOver: boolean; dragOverIndex: number | null; draggingId: number | null;
   onCardMouseDown: (item: TodoItem, e: React.MouseEvent) => void;
 }) {
@@ -1008,6 +1015,7 @@ function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onSta
                 onToggle={() => onToggle(item.id)}
                 onEdit={() => onEdit(item)}
                 onDelete={() => onDelete(item.id)}
+                onArchive={() => onArchive(item.id)}
                 onStatusChange={(s) => onStatusChange(item.id, s)}
               />
             </div>
@@ -1032,6 +1040,7 @@ function TaskView({ projectId }: { projectId: number | null }) {
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
   const [assignedFilter, setAssignedFilter] = useState<number | 'all'>('all');
+  const [showArchived, setShowArchived] = useState(false);
 
   const { data: members = [] } = useQuery({
     queryKey: ['tenant-members'],
@@ -1074,6 +1083,14 @@ function TaskView({ projectId }: { projectId: number | null }) {
     onSuccess: invalidate,
   });
   const deleteAttachmentMutation = useMutation({ mutationFn: deleteTodoAttachment, onSuccess: invalidate });
+  const archiveMutation = useMutation({
+    mutationFn: (id: number) => updateTodo(id, { is_archived: true }),
+    onSuccess: invalidate,
+  });
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => updateTodo(id, { is_archived: false }),
+    onSuccess: invalidate,
+  });
 
   const todosQueryKey = ['todos', projectId, assignedFilter];
   const reorderMutation = useMutation({
@@ -1098,7 +1115,10 @@ function TaskView({ projectId }: { projectId: number | null }) {
     onSettled: invalidate,
   });
 
-  const filtered = todos.filter((item) => {
+  const activeTodos = todos.filter((t) => !t.is_archived);
+  const archivedTodos = todos.filter((t) => t.is_archived);
+
+  const filtered = activeTodos.filter((item) => {
     const status = getTodoStatus(item);
     if (filter === 'pending' && status === 'done') return false;
     if (filter === 'done' && status !== 'done') return false;
@@ -1106,8 +1126,8 @@ function TaskView({ projectId }: { projectId: number | null }) {
     return true;
   });
 
-  const pendingCount = todos.filter((t) => getTodoStatus(t) !== 'done').length;
-  const doneCount = todos.filter((t) => getTodoStatus(t) === 'done').length;
+  const pendingCount = activeTodos.filter((t) => getTodoStatus(t) !== 'done').length;
+  const doneCount = activeTodos.filter((t) => getTodoStatus(t) === 'done').length;
   const selectedItem = selectedItemId === null ? null : todos.find((item) => item.id === selectedItemId) ?? null;
 
   const handleEdit = (item: TodoItem) => { setSelectedItemId(item.id); setShowForm(false); };
@@ -1215,7 +1235,7 @@ function TaskView({ projectId }: { projectId: number | null }) {
           {filtersOpen && (
             <div style={{ position: 'absolute', top: 'calc(100% + 0.4rem)', left: 0, zIndex: 50, background: 'var(--color-bg-card)', border: '1px solid var(--color-border-hover)', borderRadius: 'var(--radius-lg)', boxShadow: '0 12px 30px rgba(0,0,0,0.5)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 220 }}>
               <select className="input" value={filter} onChange={(e) => setFilter(e.target.value as 'all' | 'pending' | 'done')} style={{ height: 34, padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}>
-                <option value="all">Todas ({todos.length})</option>
+                <option value="all">Todas ({activeTodos.length})</option>
                 <option value="pending">Pendentes ({pendingCount})</option>
                 <option value="done">Concluidas ({doneCount})</option>
               </select>
@@ -1246,6 +1266,20 @@ function TaskView({ projectId }: { projectId: number | null }) {
         >
           <Plus size={15} /> Nova tarefa
         </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setShowArchived(true)}
+          style={{ height: 34, padding: '0 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.45rem', border: '1px solid var(--color-border)', background: 'none', flexShrink: 0 }}
+        >
+          <Archive size={14} />
+          Arquivadas
+          {archivedTodos.length > 0 && (
+            <span style={{ background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)', borderRadius: '999px', fontSize: '0.65rem', fontWeight: 800, padding: '0 4px', lineHeight: '1.3rem', minWidth: 18, textAlign: 'center' }}>
+              {archivedTodos.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* New task form */}
@@ -1267,13 +1301,13 @@ function TaskView({ projectId }: { projectId: number | null }) {
           ) : filtered.length === 0 ? (
             <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
               <CheckCircle2 className="empty-state-icon" />
-              <h3 className="empty-state-title">{todos.length === 0 ? 'Nenhuma tarefa ainda' : 'Nenhuma tarefa encontrada'}</h3>
-              {todos.length === 0 && <p className="empty-state-text">Clique em "Nova tarefa" para comecar.</p>}
+              <h3 className="empty-state-title">{activeTodos.length === 0 ? 'Nenhuma tarefa ainda' : 'Nenhuma tarefa encontrada'}</h3>
+              {activeTodos.length === 0 && <p className="empty-state-text">Clique em "Nova tarefa" para comecar.</p>}
             </div>
           ) : (
             <div>
               {filtered.map((item) => (
-                <TodoRow key={item.id} item={item} onOpen={() => handleOpen(item)} onToggle={() => toggleMutation.mutate(item.id)} onEdit={() => handleEdit(item)} onDelete={() => deleteMutation.mutate(item.id)} />
+                <TodoRow key={item.id} item={item} onOpen={() => handleOpen(item)} onToggle={() => toggleMutation.mutate(item.id)} onEdit={() => handleEdit(item)} onDelete={() => deleteMutation.mutate(item.id)} onArchive={() => archiveMutation.mutate(item.id)} />
               ))}
             </div>
           )}
@@ -1307,6 +1341,7 @@ function TaskView({ projectId }: { projectId: number | null }) {
                 onToggle={(id) => toggleMutation.mutate(id)}
                 onEdit={handleEdit}
                 onDelete={(id) => deleteMutation.mutate(id)}
+                onArchive={(id) => archiveMutation.mutate(id)}
                 onStatusChange={handleStatusChange}
               />
             ))}
@@ -1316,6 +1351,76 @@ function TaskView({ projectId }: { projectId: number | null }) {
 
       {dragPos && dragItem && createPortal(
         <DragGhost item={dragItem} x={dragPos.x} y={dragPos.y} offsetX={dragPos.offsetX} offsetY={dragPos.offsetY} width={dragPos.width} />,
+        document.body
+      )}
+
+      {/* Archived tasks modal */}
+      {showArchived && createPortal(
+        <div className="modal-overlay" onClick={() => setShowArchived(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                <Archive size={18} style={{ color: 'var(--color-text-muted)' }} />
+                <h3 className="modal-title">Tarefas arquivadas</h3>
+                <span style={{ background: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, padding: '0 0.45rem', lineHeight: '1.5rem' }}>
+                  {archivedTodos.length}
+                </span>
+              </div>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={() => setShowArchived(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.25rem' }}>
+              {archivedTodos.length === 0 ? (
+                <div className="empty-state" style={{ padding: 'var(--space-xl)' }}>
+                  <Archive className="empty-state-icon" />
+                  <h3 className="empty-state-title">Nenhuma tarefa arquivada</h3>
+                  <p className="empty-state-text">Tarefas concluidas podem ser arquivadas a partir do quadro ou da lista.</p>
+                </div>
+              ) : archivedTodos.map((item) => (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { setShowArchived(false); handleOpen(item); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowArchived(false); handleOpen(item); } }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', background: 'none', border: 'none', textAlign: 'left', width: '100%' }}
+                >
+                  <CheckCircle2 size={16} style={{ color: 'var(--color-accent)', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.75 }}>{item.title}</div>
+                    {item.archived_at && (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 1 }}>
+                        Arquivada em {new Date(item.archived_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ height: 30, padding: '0 0.65rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                      onClick={(e) => { e.stopPropagation(); restoreMutation.mutate(item.id); }}
+                      disabled={restoreMutation.isPending}
+                      title="Restaurar tarefa"
+                    >
+                      <RotateCcw size={12} /> Restaurar
+                    </button>
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem', color: 'var(--color-text-muted)' }}
+                      onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(item.id); }}
+                      title="Excluir tarefa"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
         document.body
       )}
 

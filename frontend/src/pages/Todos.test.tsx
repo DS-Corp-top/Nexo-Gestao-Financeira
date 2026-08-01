@@ -16,6 +16,8 @@ vi.mock('../api/todos', async () => {
     uploadTodoAttachment: vi.fn(),
     deleteTodoAttachment: vi.fn(),
     reorderTodos: vi.fn(),
+    updateTodo: vi.fn(),
+    deleteTodo: vi.fn(),
   };
 });
 
@@ -41,6 +43,8 @@ const baseTodo: TodoItem = {
   due_date: null,
   order: 0,
   done_at: null,
+  is_archived: false,
+  archived_at: null,
   project: 1,
   parent: null,
   assigned_to: null,

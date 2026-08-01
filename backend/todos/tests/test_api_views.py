@@ -242,3 +242,103 @@ def test_reorder_rejects_duplicate_ids(baker):
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_archive_rejects_non_done_task(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    item = baker.make("todos.TodoItem", tenant=tenant, user=user, status="pending", is_done=False)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    response = client.patch(
+        f"/api/v1/todos/{item.id}/",
+        {"is_archived": True},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 400
+    assert "is_archived" in response.data
+    item.refresh_from_db()
+    assert item.is_archived is False
+
+
+@pytest.mark.django_db
+def test_archive_done_task_sets_archived_at(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    item = baker.make("todos.TodoItem", tenant=tenant, user=user, status="done", is_done=True)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    response = client.patch(
+        f"/api/v1/todos/{item.id}/",
+        {"is_archived": True},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    item.refresh_from_db()
+    assert item.is_archived is True
+    assert item.archived_at is not None
+
+
+@pytest.mark.django_db
+def test_unarchive_clears_archived_at(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    item = baker.make(
+        "todos.TodoItem", tenant=tenant, user=user, status="done", is_done=True,
+        is_archived=True, archived_at=timezone.now(),
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    response = client.patch(
+        f"/api/v1/todos/{item.id}/",
+        {"is_archived": False},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    item.refresh_from_db()
+    assert item.is_archived is False
+    assert item.archived_at is None
+
+
+@pytest.mark.django_db
+def test_reopening_an_archived_task_auto_unarchives_it(baker):
+    """Reabrir uma tarefa concluida e arquivada nao deve deixa-la arquivada e sem status 'done'."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    item = baker.make(
+        "todos.TodoItem", tenant=tenant, user=user, status="done", is_done=True,
+        is_archived=True, archived_at=timezone.now(),
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    response = client.patch(
+        f"/api/v1/todos/{item.id}/",
+        {"status": "pending"},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    item.refresh_from_db()
+    assert item.status == "pending"
+    assert item.is_archived is False
+    assert item.archived_at is None

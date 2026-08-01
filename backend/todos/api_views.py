@@ -51,7 +51,7 @@ class TodoItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         )
     )
     serializer_class = TodoItemSerializer
-    filterset_fields = ("is_done", "priority", "status", "project", "assigned_to", "parent")
+    filterset_fields = ("is_done", "priority", "status", "project", "assigned_to", "parent", "is_archived")
     search_fields = ("title", "description")
     ordering_fields = ("created_at", "due_date", "priority", "title")
     ordering = ("is_done", "-created_at")
@@ -67,7 +67,7 @@ class TodoItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     def toggle(self, request, pk=None):
         item = self.get_object()
         item.toggle()
-        item.save(update_fields=["status", "is_done", "done_at", "updated_at"])
+        item.save(update_fields=["status", "is_done", "done_at", "is_archived", "archived_at", "updated_at"])
         return Response(TodoItemSerializer(item).data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])

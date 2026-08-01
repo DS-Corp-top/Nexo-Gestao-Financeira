@@ -115,6 +115,8 @@ class TodoItem(models.Model):
         help_text="Posicao do card dentro da coluna do quadro Kanban.",
     )
     done_at = models.DateTimeField("Concluida em", null=True, blank=True)
+    is_archived = models.BooleanField("Arquivada", default=False)
+    archived_at = models.DateTimeField("Arquivada em", null=True, blank=True)
     created_at = models.DateTimeField("Criada em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizada em", auto_now=True)
 
@@ -129,6 +131,13 @@ class TodoItem(models.Model):
     def __str__(self):
         return self.title
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._loaded_status = instance.status
+        instance._loaded_is_done = instance.is_done
+        return instance
+
     def toggle(self):
         self.status = self.Status.PENDING if self.status == self.Status.DONE else self.Status.DONE
         self.is_done = self.status == self.Status.DONE
@@ -138,16 +147,40 @@ class TodoItem(models.Model):
         assign_tenant(self)
         if self.parent_id:
             self.project = self.parent.project
-        if self.status == self.Status.DONE:
+
+        # status and is_done are kept in sync, but a partial update (eg. PATCH
+        # {"status": "pending"} on an existing DONE item) only touches one of
+        # them — the other keeps its stale, already-persisted value. Whichever
+        # field actually changed since the row was loaded wins the sync;
+        # for a brand-new instance (nothing loaded yet) is_done wins, as before.
+        loaded_status = getattr(self, "_loaded_status", None)
+        loaded_is_done = getattr(self, "_loaded_is_done", None)
+        status_changed = loaded_status is not None and self.status != loaded_status
+        is_done_changed = loaded_is_done is not None and self.is_done != loaded_is_done
+
+        if status_changed and not is_done_changed:
+            self.is_done = self.status == self.Status.DONE
+        elif is_done_changed and not status_changed:
+            if self.is_done:
+                self.status = self.Status.DONE
+            elif self.status == self.Status.DONE:
+                self.status = self.Status.PENDING
+        elif self.status == self.Status.DONE:
             self.is_done = True
         elif self.is_done:
             self.status = self.Status.DONE
         else:
             self.is_done = False
+
         if self.is_done and self.done_at is None:
             self.done_at = timezone.now()
         if not self.is_done:
             self.done_at = None
+            self.is_archived = False
+        if self.is_archived and self.archived_at is None:
+            self.archived_at = timezone.now()
+        elif not self.is_archived:
+            self.archived_at = None
         super().save(*args, **kwargs)
 
 
