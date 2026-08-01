@@ -146,6 +146,32 @@ def test_create_subtask_for_note(baker):
 
 
 @pytest.mark.django_db
+def test_create_subtask_rejects_public_note_from_other_user_in_same_tenant(baker):
+    """Nota publica pode ser lida por todos do tenant, mas subtarefa continua restrita ao dono."""
+    user = baker.make("auth.User")
+    other_user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    baker.make("tenants.TenantMembership", user=other_user, tenant=tenant)
+    other_note = baker.make(
+        "notes.Note",
+        user=other_user,
+        tenant=tenant,
+        title="Publica de outro usuario",
+        visibility="public",
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-subtask-list")
+    payload = {"note": other_note.id, "title": "Tentativa"}
+    response = client.post(url, payload, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
 def test_subtask_rejects_note_from_other_tenant(baker):
     """Subtarefa nao pode ser vinculada a uma nota de outro tenant."""
     user = baker.make("auth.User")
@@ -182,6 +208,28 @@ def test_toggle_subtask(baker):
 
     assert response.status_code == 200
     assert response.data["is_done"] is True
+
+
+@pytest.mark.django_db
+def test_toggle_subtask_rejects_public_note_from_other_user_in_same_tenant(baker):
+    """Usuario do mesmo tenant nao pode alterar subtarefa de nota publica de outro usuario."""
+    user = baker.make("auth.User")
+    other_user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    baker.make("tenants.TenantMembership", user=other_user, tenant=tenant)
+    note = baker.make("notes.Note", user=other_user, tenant=tenant, visibility="public")
+    subtask = baker.make("notes.NoteSubtask", user=other_user, tenant=tenant, note=note, is_done=False)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:note-subtask-toggle", args=[subtask.id])
+    response = client.post(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 403
+    subtask.refresh_from_db()
+    assert subtask.is_done is False
 
 
 @pytest.mark.django_db

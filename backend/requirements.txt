@@ -6,7 +6,7 @@ dj-database-url==2.3.0
 psycopg[binary]==3.3.2
 django-browser-reload==1.21.0
 django-ratelimit==4.1.0
-Pillow==12.2.0
+Pillow==12.3.0
 django-storages[s3,azure,google]==1.14.4
 boto3==1.35.36
 celery[redis]==5.4.0

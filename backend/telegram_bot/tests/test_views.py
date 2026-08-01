@@ -93,6 +93,21 @@ def test_webhook_rejects_wrong_secret(settings):
     assert response.status_code == 403
 
 
+def test_webhook_rejects_missing_secret_outside_local_or_tests(settings):
+    settings.TELEGRAM_WEBHOOK_SECRET = ""
+    settings.TESTING = False
+    settings.LOCAL_DEVELOPMENT = False
+    client = APIClient()
+
+    response = client.post(
+        reverse("api:telegram_webhook"),
+        {"message": {"chat": {"id": 1}, "text": "oi"}},
+        format="json",
+    )
+
+    assert response.status_code == 503
+
+
 def test_webhook_start_links_account_using_cached_code(baker):
     user, tenant = setup_tenant(baker)
     account = baker.make("accounts.Account", tenant=tenant, account_type="bank")

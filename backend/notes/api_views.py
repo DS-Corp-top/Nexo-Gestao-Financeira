@@ -83,6 +83,8 @@ class NoteSubtaskViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def toggle(self, request, pk=None):
         subtask = self.get_object()
+        if subtask.user != request.user and subtask.note.user != request.user:
+            return Response({"detail": "Você não tem permissão para editar esta subtarefa."}, status=status.HTTP_403_FORBIDDEN)
         subtask.is_done = not subtask.is_done
         subtask.save(update_fields=["is_done", "updated_at"])
         return Response(NoteSubtaskSerializer(subtask).data, status=status.HTTP_200_OK)

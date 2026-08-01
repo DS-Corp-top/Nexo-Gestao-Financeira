@@ -82,6 +82,9 @@ class TelegramWebhookView(APIView):
 
     def post(self, request):
         expected_secret = settings.TELEGRAM_WEBHOOK_SECRET
+        if not expected_secret and not getattr(settings, "TESTING", False) and not getattr(settings, "LOCAL_DEVELOPMENT", False):
+            logger.error("TELEGRAM_WEBHOOK_SECRET nao configurado; webhook rejeitado.")
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
         if expected_secret and request.headers.get("X-Telegram-Bot-Api-Secret-Token") != expected_secret:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
