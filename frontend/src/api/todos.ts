@@ -64,6 +64,7 @@ export interface TodoItem {
   status: TodoStatus;
   priority: Priority;
   due_date: string | null;
+  order: number;
   done_at: string | null;
   project: number | null;
   parent: number | null;
@@ -109,6 +110,11 @@ export async function createTodo(payload: { title: string; description?: string;
 
 export async function updateTodo(id: number, payload: Partial<Pick<TodoItem, 'title' | 'description' | 'priority' | 'status' | 'due_date' | 'is_done' | 'project' | 'parent' | 'assigned_to'>>): Promise<TodoItem> {
   const { data } = await api.patch<TodoItem>(`/todos/${id}/`, payload);
+  return data;
+}
+
+export async function reorderTodos(status: TodoStatus, orderedIds: number[]): Promise<TodoItem[]> {
+  const { data } = await api.post<TodoItem[]>('/todos/reorder/', { status, ordered_ids: orderedIds });
   return data;
 }
 

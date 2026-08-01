@@ -1,4 +1,5 @@
 from django.db.models import Prefetch
+from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -68,6 +69,44 @@ class TodoItemViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         item.toggle()
         item.save(update_fields=["status", "is_done", "done_at", "updated_at"])
         return Response(TodoItemSerializer(item).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"])
+    def reorder(self, request):
+        """Persist the card order (and column) for a Kanban column after a drag-and-drop.
+
+        Body: {"status": "pending", "ordered_ids": [3, 1, 2]}
+        Every id becomes part of `status`, in the given order.
+        """
+        target_status = request.data.get("status")
+        ordered_ids = request.data.get("ordered_ids")
+
+        if target_status not in TodoItem.Status.values:
+            return Response({"detail": "Status invalido."}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(ordered_ids, list) or not ordered_ids:
+            return Response({"detail": "ordered_ids deve ser uma lista nao vazia."}, status=status.HTTP_400_BAD_REQUEST)
+
+        items = list(self.get_queryset().filter(id__in=ordered_ids))
+        items_by_id = {item.id: item for item in items}
+        if len(items_by_id) != len(set(ordered_ids)):
+            return Response({"detail": "Alguma tarefa nao foi encontrada."}, status=status.HTTP_400_BAD_REQUEST)
+
+        changed = []
+        for index, item_id in enumerate(ordered_ids):
+            item = items_by_id[item_id]
+            if item.order != index or item.status != target_status:
+                item.order = index
+                item.status = target_status
+                item.is_done = target_status == TodoItem.Status.DONE
+                if item.is_done and item.done_at is None:
+                    item.done_at = timezone.now()
+                elif not item.is_done:
+                    item.done_at = None
+                changed.append(item)
+
+        if changed:
+            TodoItem.objects.bulk_update(changed, ["order", "status", "is_done", "done_at", "updated_at"])
+
+        return Response(TodoItemSerializer(items_by_id.values(), many=True).data)
 
 
 class TodoAttachmentViewSet(

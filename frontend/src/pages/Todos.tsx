@@ -33,6 +33,7 @@ import {
   fetchProjects,
   fetchTenantMembers,
   fetchTodos,
+  reorderTodos,
   toggleTodo,
   updateProject,
   updateTodo,
@@ -974,11 +975,15 @@ function KanbanCard({ item, onOpen, onToggle, onEdit, onDelete, onStatusChange, 
 
 // ─── Kanban Column ────────────────────────────────────────────────────────────
 
-function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onStatusChange, isDragOver, draggingId, onCardMouseDown }: {
+function DropIndicator() {
+  return <div style={{ height: 3, borderRadius: 999, background: 'var(--color-accent)' }} />;
+}
+
+function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onStatusChange, isDragOver, dragOverIndex, draggingId, onCardMouseDown }: {
   status: TodoStatus; items: TodoItem[];
   onOpen: (item: TodoItem) => void; onToggle: (id: number) => void; onEdit: (item: TodoItem) => void;
   onDelete: (id: number) => void; onStatusChange: (id: number, s: TodoStatus) => void;
-  isDragOver: boolean; draggingId: number | null;
+  isDragOver: boolean; dragOverIndex: number | null; draggingId: number | null;
   onCardMouseDown: (item: TodoItem, e: React.MouseEvent) => void;
 }) {
   return (
@@ -991,19 +996,24 @@ function KanbanColumn({ status, items, onOpen, onToggle, onEdit, onDelete, onSta
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {items.map((item) => (
-          <KanbanCard
-            key={item.id}
-            item={item}
-            isDragging={item.id === draggingId}
-            onMouseDown={(e) => onCardMouseDown(item, e)}
-            onOpen={() => onOpen(item)}
-            onToggle={() => onToggle(item.id)}
-            onEdit={() => onEdit(item)}
-            onDelete={() => onDelete(item.id)}
-            onStatusChange={(s) => onStatusChange(item.id, s)}
-          />
+        {items.map((item, idx) => (
+          <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {isDragOver && dragOverIndex === idx && <DropIndicator />}
+            <div data-kanban-item-id={item.id}>
+              <KanbanCard
+                item={item}
+                isDragging={item.id === draggingId}
+                onMouseDown={(e) => onCardMouseDown(item, e)}
+                onOpen={() => onOpen(item)}
+                onToggle={() => onToggle(item.id)}
+                onEdit={() => onEdit(item)}
+                onDelete={() => onDelete(item.id)}
+                onStatusChange={(s) => onStatusChange(item.id, s)}
+              />
+            </div>
+          </div>
         ))}
+        {isDragOver && dragOverIndex === items.length && <DropIndicator />}
         <div style={{ border: `2px dashed ${isDragOver ? 'var(--color-accent)' : 'var(--color-border)'}`, borderRadius: 'var(--radius-md)', padding: items.length === 0 ? '1.5rem' : isDragOver ? '0.75rem' : '0', textAlign: 'center', color: isDragOver ? 'var(--color-accent)' : 'var(--color-text-muted)', fontSize: '0.78rem', background: isDragOver ? 'var(--color-accent-muted)' : 'transparent', transition: 'all 0.15s', display: items.length === 0 || isDragOver ? 'block' : 'none' }}>
           {items.length === 0 ? 'Nenhuma tarefa' : ''}
         </div>
@@ -1065,6 +1075,29 @@ function TaskView({ projectId }: { projectId: number | null }) {
   });
   const deleteAttachmentMutation = useMutation({ mutationFn: deleteTodoAttachment, onSuccess: invalidate });
 
+  const todosQueryKey = ['todos', projectId, assignedFilter];
+  const reorderMutation = useMutation({
+    mutationFn: ({ targetStatus, orderedIds }: { targetStatus: TodoStatus; orderedIds: number[] }) =>
+      reorderTodos(targetStatus, orderedIds),
+    onMutate: async ({ targetStatus, orderedIds }) => {
+      await qc.cancelQueries({ queryKey: todosQueryKey });
+      const previous = qc.getQueryData<TodoItem[]>(todosQueryKey);
+      if (previous) {
+        const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+        qc.setQueryData<TodoItem[]>(todosQueryKey, previous.map((t) =>
+          orderById.has(t.id)
+            ? { ...t, status: targetStatus, order: orderById.get(t.id)!, is_done: targetStatus === 'done' }
+            : t
+        ));
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) qc.setQueryData(todosQueryKey, context.previous);
+    },
+    onSettled: invalidate,
+  });
+
   const filtered = todos.filter((item) => {
     const status = getTodoStatus(item);
     if (filter === 'pending' && status === 'done') return false;
@@ -1085,8 +1118,13 @@ function TaskView({ projectId }: { projectId: number | null }) {
   const accentColor = DEFAULT_PROJECT_COLOR;
 
   const dragIdRef = useRef<number | null>(null);
+  const dragOverStatusRef = useRef<TodoStatus | null>(null);
+  const dragOverIndexRef = useRef<number | null>(null);
+  const filteredRef = useRef<TodoItem[]>([]);
+  filteredRef.current = filtered;
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TodoStatus | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dragPos, setDragPos] = useState<{ x: number; y: number; offsetX: number; offsetY: number; width: number } | null>(null);
   const dragItem = draggingId !== null ? todos.find((t) => t.id === draggingId) ?? null : null;
 
@@ -1096,21 +1134,44 @@ function TaskView({ projectId }: { projectId: number | null }) {
       setDragPos((prev) => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const col = el?.closest('[data-kanban-status]');
-      setDragOverStatus((col?.getAttribute('data-kanban-status') as TodoStatus) ?? null);
+      const targetStatus = (col?.getAttribute('data-kanban-status') as TodoStatus) ?? null;
+      dragOverStatusRef.current = targetStatus;
+      setDragOverStatus(targetStatus);
+
+      if (col) {
+        const cardEls = Array.from(col.querySelectorAll<HTMLElement>('[data-kanban-item-id]')).filter(
+          (cardEl) => Number(cardEl.dataset.kanbanItemId) !== dragIdRef.current
+        );
+        let index = cardEls.length;
+        for (let i = 0; i < cardEls.length; i++) {
+          const rect = cardEls[i].getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) { index = i; break; }
+        }
+        dragOverIndexRef.current = index;
+        setDragOverIndex(index);
+      } else {
+        dragOverIndexRef.current = null;
+        setDragOverIndex(null);
+      }
     };
-    const handleMouseUp = (e: MouseEvent) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const col = el?.closest('[data-kanban-status]');
-      const targetStatus = col?.getAttribute('data-kanban-status') as TodoStatus | null;
+    const handleMouseUp = () => {
       const id = dragIdRef.current;
-      if (id !== null && targetStatus) {
-        const item = todos.find((t) => t.id === id);
-        if (item && getTodoStatus(item) !== targetStatus) handleStatusChange(id, targetStatus);
+      const targetStatus = dragOverStatusRef.current;
+      const insertAt = dragOverIndexRef.current;
+      if (id !== null && targetStatus && insertAt !== null) {
+        const columnIds = filteredRef.current
+          .filter((t) => getTodoStatus(t) === targetStatus && t.id !== id)
+          .sort((a, b) => a.order - b.order || a.id - b.id)
+          .map((t) => t.id);
+        const orderedIds = [...columnIds.slice(0, insertAt), id, ...columnIds.slice(insertAt)];
+        reorderMutation.mutate({ targetStatus, orderedIds });
       }
       dragIdRef.current = null;
+      dragOverIndexRef.current = null;
       setDraggingId(null);
       setDragPos(null);
       setDragOverStatus(null);
+      setDragOverIndex(null);
     };
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -1229,14 +1290,16 @@ function TaskView({ projectId }: { projectId: number | null }) {
               <KanbanColumn
                 key={s}
                 status={s}
-                items={filtered.filter((item) => getTodoStatus(item) === s)}
+                items={filtered.filter((item) => getTodoStatus(item) === s).sort((a, b) => a.order - b.order || a.id - b.id)}
                 draggingId={draggingId}
                 isDragOver={dragOverStatus === s}
+                dragOverIndex={dragOverIndex}
                 onCardMouseDown={(item, e) => {
                   if ((e.target as HTMLElement).closest('button, select')) return;
                   e.preventDefault();
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   dragIdRef.current = item.id;
+                  dragOverIndexRef.current = null;
                   setDraggingId(item.id);
                   setDragPos({ x: e.clientX, y: e.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, width: rect.width });
                 }}

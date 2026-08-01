@@ -61,7 +61,7 @@ class TodoItemSerializer(serializers.ModelSerializer):
         model = TodoItem
         fields = (
             "id", "title", "description", "is_done", "status",
-            "priority", "due_date", "done_at", "project", "parent",
+            "priority", "due_date", "order", "done_at", "project", "parent",
             "assigned_to", "assigned_to_name",
             "subtasks", "subtask_count", "completed_subtask_count",
             "attachments", "attachment_count",

@@ -109,12 +109,17 @@ class TodoItem(models.Model):
         default=Priority.MEDIUM,
     )
     due_date = models.DateField("Prazo", null=True, blank=True)
+    order = models.IntegerField(
+        "Ordem",
+        default=0,
+        help_text="Posicao do card dentro da coluna do quadro Kanban.",
+    )
     done_at = models.DateTimeField("Concluida em", null=True, blank=True)
     created_at = models.DateTimeField("Criada em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizada em", auto_now=True)
 
     class Meta:
-        ordering = ("is_done", "-created_at")
+        ordering = ("is_done", "order", "-created_at")
         verbose_name = "Tarefa"
         verbose_name_plural = "Tarefas"
         indexes = [

@@ -49,3 +49,77 @@ def test_create_todo_rejects_project_from_another_tenant(baker):
 
     assert response.status_code == 400
     assert "project" in response.data
+
+
+@pytest.mark.django_db
+def test_reorder_sets_order_and_status_for_target_column(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    a = baker.make("todos.TodoItem", tenant=tenant, user=user, status="pending", order=0)
+    b = baker.make("todos.TodoItem", tenant=tenant, user=user, status="pending", order=1)
+    c = baker.make("todos.TodoItem", tenant=tenant, user=user, status="in_progress", order=0)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:todo-reorder")
+    response = client.post(
+        url,
+        {"status": "pending", "ordered_ids": [c.id, b.id, a.id]},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    c.refresh_from_db()
+    b.refresh_from_db()
+    a.refresh_from_db()
+    assert (c.status, c.order) == ("pending", 0)
+    assert (b.status, b.order) == ("pending", 1)
+    assert (a.status, a.order) == ("pending", 2)
+
+
+@pytest.mark.django_db
+def test_reorder_rejects_ids_from_another_tenant(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    other_tenant = baker.make("tenants.Tenant", document="11111111111", is_active=True)
+    other_item = baker.make("todos.TodoItem", tenant=other_tenant, status="pending", order=0)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:todo-reorder")
+    response = client.post(
+        url,
+        {"status": "pending", "ordered_ids": [other_item.id]},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_reorder_rejects_invalid_status(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    item = baker.make("todos.TodoItem", tenant=tenant, user=user, status="pending", order=0)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:todo-reorder")
+    response = client.post(
+        url,
+        {"status": "bogus", "ordered_ids": [item.id]},
+        format="json",
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 400
