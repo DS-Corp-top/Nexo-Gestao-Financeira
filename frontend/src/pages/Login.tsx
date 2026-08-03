@@ -144,12 +144,7 @@ export default function Login() {
         </div>
 
         <div style={{ marginBottom: 'var(--space-lg)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <label className="label" htmlFor="password">Senha</label>
-            <Link to="/forgot-password" style={{ fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 600 }}>
-              Esqueci minha senha
-            </Link>
-          </div>
+          <label className="label" htmlFor="password">Senha</label>
           <input
             id="password"
             className="input"
@@ -160,6 +155,11 @@ export default function Login() {
             autoComplete="current-password"
             required
           />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <Link to="/forgot-password" style={{ fontSize: '0.82rem', color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }}>
+              Esqueci minha senha
+            </Link>
+          </div>
         </div>
 
         <button
