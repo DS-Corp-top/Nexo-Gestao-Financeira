@@ -33,6 +33,13 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering_fields = ("date", "amount", "created_at", "is_cleared")
     ordering = ("-date", "-created_at")
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == "list" and not self.request.query_params.get("account"):
+            from accounts.models import Account
+            queryset = queryset.exclude(account__account_type=Account.AccountType.CARD)
+        return queryset
+
     def _is_month_closed(self, target_date):
         return ClosedMonth.objects.filter(
             tenant=self.get_tenant(),
@@ -399,6 +406,8 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         )
         monthly_income_total = monthly_transactions.filter(
             transaction_type=Transaction.TransactionType.INCOME,
+        ).exclude(
+            account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
         monthly_expense_total = monthly_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE,

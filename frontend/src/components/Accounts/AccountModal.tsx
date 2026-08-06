@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { type Account, type CreateAccountPayload } from '../../api/accounts';
-import { fetchBacenBanks, fetchInvestments } from '../../api/investments';
+import { fetchBacenBanks } from '../../api/investments';
 import CurrencyInput from '../CurrencyInput';
 
 interface AccountModalProps {
@@ -37,9 +37,7 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
   );
   const [initialBalance, setInitialBalance] = useState(account?.initial_balance || '0.00');
   const [creditLimit, setCreditLimit] = useState(account?.credit_limit || '');
-  const [backingInvestmentId, setBackingInvestmentId] = useState(
-    account?.backing_investment != null ? String(account.backing_investment) : ''
-  );
+  const backingInvestmentId = account?.backing_investment != null ? String(account.backing_investment) : '';
   const [includeInBalance, setIncludeInBalance] = useState(
     account?.include_in_balance ?? true
   );
@@ -52,11 +50,6 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const { data: investments = [] } = useQuery({
-    queryKey: ['investments'],
-    queryFn: fetchInvestments,
-    enabled: isOpen && accountType === 'card',
-  });
 
   const bankSuggestions = useMemo(() => {
     const query = normalizeSearch(name.trim());
@@ -249,33 +242,9 @@ export default function AccountModal({ account, isOpen, onClose, onSave, onDelet
                 value={initialBalance}
                 onChange={setInitialBalance}
                 required
-                disabled={!!account} // Não permite alterar após criação
               />
             </div>
           </div>
-
-          {accountType === 'card' && (
-            <div style={{ marginBottom: 'var(--space-md)', width: '100%' }}>
-              <label className="label" htmlFor="account-backing-investment">Limite garantido por investimento (opcional)</label>
-              <select
-                id="account-backing-investment"
-                className="select"
-                value={backingInvestmentId}
-                onChange={(e) => setBackingInvestmentId(e.target.value)}
-              >
-                <option value="">Nenhum — usar limite fixo</option>
-                {investments.map((inv) => (
-                  <option key={inv.id} value={inv.id}>
-                    {inv.name} (R$ {Number(inv.total_invested).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} aportados)
-                  </option>
-                ))}
-              </select>
-              <div style={{ marginTop: 6, fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
-                Quando escolhido, o limite disponível vira o valor investido líquido nesse investimento
-                (aportes − resgates, sem somar rendimentos), no lugar do limite fixo abaixo.
-              </div>
-            </div>
-          )}
 
           {accountType === 'card' && !backingInvestmentId && (
             <div style={{ marginBottom: 'var(--space-md)', width: '100%' }}>

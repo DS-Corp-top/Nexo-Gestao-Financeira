@@ -59,8 +59,12 @@ class DashboardView(APIView):
         )
 
         # Income / Expense — no include_in_balance filter (matches views.py)
+        # Receitas no cartão de crédito não contam (caso raro, não é dinheiro em conta);
+        # despesas no cartão contam normalmente, pois representam gasto real do mês.
         income = monthly_txns.filter(
             transaction_type=Transaction.TransactionType.INCOME,
+        ).exclude(
+            account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
         expense = monthly_txns.filter(
@@ -148,6 +152,7 @@ class DashboardView(APIView):
             monthly_txns.filter(
                 transaction_type=Transaction.TransactionType.INCOME,
             )
+            .exclude(account__account_type=Account.AccountType.CARD)
             .values("category__name")
             .annotate(total=Coalesce(Sum("amount"), ZERO))
             .order_by("-total")
@@ -166,6 +171,7 @@ class DashboardView(APIView):
             monthly_txns.filter(
                 transaction_type=Transaction.TransactionType.INCOME,
             )
+            .exclude(account__account_type=Account.AccountType.CARD)
             .values("date")
             .annotate(total=Coalesce(Sum("amount"), ZERO))
             .order_by("date")
@@ -187,6 +193,8 @@ class DashboardView(APIView):
             ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
             inc_total = base_qs.filter(
                 transaction_type=Transaction.TransactionType.INCOME,
+            ).exclude(
+                account__account_type=Account.AccountType.CARD
             ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
             short_month = MONTH_NAMES_PT.get(month_date.month, "")[:3]
             label = f"{short_month}/{month_date.year % 100:02d}"

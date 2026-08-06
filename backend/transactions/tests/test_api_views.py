@@ -91,6 +91,36 @@ class TransactionApiViewSetTest(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
 
+    def test_list_hides_card_transactions_unless_filtering_by_that_account(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Cartao de Credito",
+            account_type=Account.AccountType.CARD,
+            include_in_balance=False,
+        )
+        bank_transaction = Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=self.account,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="150.00", date=date(2026, 7, 10),
+        )
+        card_transaction = Transaction.objects.create(
+            user=self.user, tenant=self.tenant, account=card_account,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount="100.00", date=date(2026, 7, 10),
+        )
+
+        response = self.client.get("/api/v1/transactions/")
+        ids = {item["id"] for item in response.data}
+        self.assertIn(bank_transaction.pk, ids)
+        self.assertNotIn(card_transaction.pk, ids)
+
+        response = self.client.get(
+            "/api/v1/transactions/", data={"account": card_account.pk}
+        )
+        ids = {item["id"] for item in response.data}
+        self.assertEqual(ids, {card_transaction.pk})
+
     def test_update_scope_all_updates_future_pending_occurrences(self):
         transaction = Transaction.objects.create(
             user=self.user,
@@ -334,7 +364,7 @@ class StatementSummaryTest(TestCase):
             account_type=Account.AccountType.CARD, include_in_balance=False,
         )
 
-    def test_statement_summary_pending_income_excludes_card_but_totals_include_it(self):
+    def test_statement_summary_monthly_totals_exclude_card_income_but_include_card_expense(self):
         Transaction.objects.create(
             user=self.user, tenant=self.tenant, account=self.bank_account,
             transaction_type=Transaction.TransactionType.INCOME,
@@ -375,5 +405,5 @@ class StatementSummaryTest(TestCase):
         self.assertEqual(data["pending_income_total"], "500.00")
         self.assertEqual(data["pending_bank_total"], "100.00")
         self.assertEqual(data["credit_card_open_total"], "150.00")
-        self.assertEqual(data["monthly_income_total"], "2580.00")
+        self.assertEqual(data["monthly_income_total"], "2500.00")
         self.assertEqual(data["monthly_expense_total"], "550.00")
