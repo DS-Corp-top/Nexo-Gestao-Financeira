@@ -180,8 +180,11 @@ export default function Login() {
             Cadastrar
           </Link>
         </p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 'var(--space-sm)', opacity: 0.6 }}>
+          v.{__COMMIT_HASH__}
+        </p>
       </div>
-      
+
     </div>
   );
 }
