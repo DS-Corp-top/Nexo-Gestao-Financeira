@@ -91,7 +91,7 @@ class TransactionApiViewSetTest(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Transaction.objects.filter(pk=transaction.pk).exists())
 
-    def test_list_hides_card_transactions_unless_filtering_by_that_account(self):
+    def test_list_shows_card_and_bank_transactions_together(self):
         card_account = Account.objects.create(
             user=self.user,
             tenant=self.tenant,
@@ -113,13 +113,40 @@ class TransactionApiViewSetTest(TestCase):
         response = self.client.get("/api/v1/transactions/")
         ids = {item["id"] for item in response.data}
         self.assertIn(bank_transaction.pk, ids)
-        self.assertNotIn(card_transaction.pk, ids)
+        self.assertIn(card_transaction.pk, ids)
 
         response = self.client.get(
             "/api/v1/transactions/", data={"account": card_account.pk}
         )
         ids = {item["id"] for item in response.data}
         self.assertEqual(ids, {card_transaction.pk})
+
+    def test_filtering_by_account_includes_incoming_transfers_to_it(self):
+        card_account = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Cartao de Credito",
+            account_type=Account.AccountType.CARD,
+            include_in_balance=False,
+        )
+        transfer = Transaction.objects.create(
+            user=self.user, tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.TRANSFER,
+            amount="200.00", date=date(2026, 7, 10),
+            account=self.account, destination_account=card_account,
+        )
+
+        response = self.client.get(
+            "/api/v1/transactions/", data={"account": card_account.pk}
+        )
+        ids = {item["id"] for item in response.data}
+        self.assertIn(transfer.pk, ids)
+
+        response = self.client.get(
+            "/api/v1/transactions/", data={"account": self.account.pk}
+        )
+        ids = {item["id"] for item in response.data}
+        self.assertIn(transfer.pk, ids)
 
     def test_update_scope_all_updates_future_pending_occurrences(self):
         transaction = Transaction.objects.create(

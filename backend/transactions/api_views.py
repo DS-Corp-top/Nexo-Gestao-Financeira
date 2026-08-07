@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import django_filters
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,6 +16,26 @@ def _money_str(value):
     return str(Decimal(value).quantize(Decimal("0.01")))
 
 
+class TransactionFilterSet(django_filters.rest_framework.FilterSet):
+    # Uma transferência só grava `account` (origem); filtrar pela conta de
+    # destino também é necessário pra a entrada aparecer no extrato dela.
+    account = django_filters.NumberFilter(method="filter_account")
+
+    class Meta:
+        model = Transaction
+        fields = {
+            "transaction_type": ["exact"],
+            "category": ["exact"],
+            "is_cleared": ["exact"],
+            "is_ignored": ["exact"],
+            "date": ["exact", "gte", "lte"],
+            "recurrence_type": ["exact"],
+        }
+
+    def filter_account(self, queryset, name, value):
+        return queryset.filter(Q(account=value) | Q(destination_account=value))
+
+
 class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     pagination_class = None
     queryset = Transaction.objects.select_related(
@@ -21,24 +43,9 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ).all()
     serializer_class = TransactionSerializer
     search_fields = ("description",)
-    filterset_fields = {
-        "transaction_type": ["exact"],
-        "account": ["exact"],
-        "category": ["exact"],
-        "is_cleared": ["exact"],
-        "is_ignored": ["exact"],
-        "date": ["exact", "gte", "lte"],
-        "recurrence_type": ["exact"],
-    }
+    filterset_class = TransactionFilterSet
     ordering_fields = ("date", "amount", "created_at", "is_cleared")
     ordering = ("-date", "-created_at")
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        if self.action == "list" and not self.request.query_params.get("account"):
-            from accounts.models import Account
-            queryset = queryset.exclude(account__account_type=Account.AccountType.CARD)
-        return queryset
 
     def _is_month_closed(self, target_date):
         return ClosedMonth.objects.filter(
