@@ -1,16 +1,7 @@
-import { execSync } from 'node:child_process'
 import { defineConfig } from 'vitest/config'
 import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-
-function getCommitHash() {
-  try {
-    return execSync('git rev-parse --short HEAD').toString().trim();
-  } catch {
-    return 'dev';
-  }
-}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -20,9 +11,6 @@ export default defineConfig(({ mode }) => {
 
   return ({
   base: '/',
-  define: {
-    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
-  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
