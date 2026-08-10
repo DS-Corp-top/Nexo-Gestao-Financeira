@@ -61,8 +61,6 @@ export interface DashboardAlerts {
   credit_card_month_count: number;
   credit_card_month_total: string | null;
   credit_card_limit: string | null;
-  credit_card_total_limit: string | null;
-  credit_card_used_limit: string | null;
   debt_percentage: string | null;
   consolidated_balance: string | null;
   balance_after_pending: string | null;

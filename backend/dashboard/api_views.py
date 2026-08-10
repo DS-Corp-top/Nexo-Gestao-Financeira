@@ -13,7 +13,6 @@ from accounts.models import Account
 from common.api_mixins import get_user_tenant, is_view_only_superuser, set_mask_financial_values
 from common.balance import (
     calculate_credit_card_available_limit,
-    calculate_credit_card_total_limit,
     calculate_monthly_balance,
     calculate_user_balance,
 )
@@ -82,9 +81,6 @@ class DashboardView(APIView):
         credit_available = calculate_credit_card_available_limit(
             tenant, selected_month
         )
-        credit_total_limit = calculate_credit_card_total_limit(
-            tenant, selected_month
-        )
 
         # Pendências e alertas
         pending_expenses = monthly_txns.filter(
@@ -138,13 +134,10 @@ class DashboardView(APIView):
         net_invested = inv_deposited - inv_withdrawn
 
         safe_credit = credit_available if credit_available is not None else ZERO
-        safe_credit_total_limit = (
-            credit_total_limit if credit_total_limit is not None else ZERO
-        )
-        credit_card_used_limit = max(ZERO, safe_credit_total_limit - safe_credit)
+        # Renda comprometida: percentual da receita do mês já consumido pelas despesas.
         debt_percentage = (
-            (credit_card_used_limit / safe_credit_total_limit) * Decimal("100")
-            if safe_credit_total_limit > ZERO
+            (expense / income) * Decimal("100")
+            if income > ZERO
             else None
         )
         consolidated_balance = monthly_balance + safe_credit
@@ -287,8 +280,6 @@ class DashboardView(APIView):
                 "credit_card_month_count": credit_card_month_count,
                 "credit_card_month_total": str(credit_card_month_total),
                 "credit_card_limit": str(safe_credit),
-                "credit_card_total_limit": str(safe_credit_total_limit),
-                "credit_card_used_limit": str(credit_card_used_limit),
                 "debt_percentage": (
                     str(debt_percentage.quantize(Decimal("0.01")))
                     if debt_percentage is not None

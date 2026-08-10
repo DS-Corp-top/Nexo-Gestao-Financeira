@@ -19,8 +19,51 @@ def setup_tenant(baker):
     return user, tenant
 
 
-def test_dashboard_returns_credit_card_debt_percentage(baker):
+def test_dashboard_returns_income_committed_debt_percentage(baker):
     user, tenant = setup_tenant(baker)
+    bank = baker.make(
+        "accounts.Account",
+        tenant=tenant,
+        user=user,
+        account_type=Account.AccountType.BANK,
+        include_in_balance=True,
+    )
+    Transaction.objects.create(
+        tenant=tenant,
+        user=user,
+        account=bank,
+        transaction_type=Transaction.TransactionType.INCOME,
+        amount=Decimal("1000.00"),
+        date=timezone.localdate(),
+        is_cleared=True,
+    )
+    Transaction.objects.create(
+        tenant=tenant,
+        user=user,
+        account=bank,
+        transaction_type=Transaction.TransactionType.EXPENSE,
+        amount=Decimal("250.00"),
+        date=timezone.localdate(),
+        is_cleared=True,
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+    response = client.get(reverse("api:dashboard"))
+
+    assert response.status_code == 200
+    assert response.data["alerts"]["debt_percentage"] == "25.00"
+
+
+def test_dashboard_debt_percentage_uses_full_expense_including_card(baker):
+    user, tenant = setup_tenant(baker)
+    bank = baker.make(
+        "accounts.Account",
+        tenant=tenant,
+        user=user,
+        account_type=Account.AccountType.BANK,
+        include_in_balance=True,
+    )
     card = baker.make(
         "accounts.Account",
         tenant=tenant,
@@ -32,55 +75,25 @@ def test_dashboard_returns_credit_card_debt_percentage(baker):
     Transaction.objects.create(
         tenant=tenant,
         user=user,
+        account=bank,
+        transaction_type=Transaction.TransactionType.INCOME,
+        amount=Decimal("1500.00"),
+        date=timezone.localdate(),
+        is_cleared=True,
+    )
+    Transaction.objects.create(
+        tenant=tenant,
+        user=user,
+        account=bank,
+        transaction_type=Transaction.TransactionType.EXPENSE,
+        amount=Decimal("250.00"),
+        date=timezone.localdate(),
+        is_cleared=True,
+    )
+    Transaction.objects.create(
+        tenant=tenant,
+        user=user,
         account=card,
-        transaction_type=Transaction.TransactionType.EXPENSE,
-        amount=Decimal("250.00"),
-        date=timezone.localdate(),
-        is_cleared=True,
-    )
-
-    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
-    client.force_authenticate(user=user)
-    response = client.get(reverse("api:dashboard"))
-
-    assert response.status_code == 200
-    assert response.data["alerts"]["credit_card_limit"] == "750.00"
-    assert response.data["alerts"]["credit_card_total_limit"] == "1000.00"
-    assert response.data["alerts"]["credit_card_used_limit"] == "250.00"
-    assert response.data["alerts"]["debt_percentage"] == "25.00"
-
-
-def test_dashboard_sums_multiple_cards_in_debt_percentage(baker):
-    user, tenant = setup_tenant(baker)
-    first_card = baker.make(
-        "accounts.Account",
-        tenant=tenant,
-        user=user,
-        account_type=Account.AccountType.CARD,
-        credit_limit=Decimal("1000.00"),
-        include_in_balance=False,
-    )
-    second_card = baker.make(
-        "accounts.Account",
-        tenant=tenant,
-        user=user,
-        account_type=Account.AccountType.CARD,
-        credit_limit=Decimal("500.00"),
-        include_in_balance=False,
-    )
-    Transaction.objects.create(
-        tenant=tenant,
-        user=user,
-        account=first_card,
-        transaction_type=Transaction.TransactionType.EXPENSE,
-        amount=Decimal("250.00"),
-        date=timezone.localdate(),
-        is_cleared=True,
-    )
-    Transaction.objects.create(
-        tenant=tenant,
-        user=user,
-        account=second_card,
         transaction_type=Transaction.TransactionType.EXPENSE,
         amount=Decimal("100.00"),
         date=timezone.localdate(),
@@ -92,13 +105,10 @@ def test_dashboard_sums_multiple_cards_in_debt_percentage(baker):
     response = client.get(reverse("api:dashboard"))
 
     assert response.status_code == 200
-    assert response.data["alerts"]["credit_card_limit"] == "1150.00"
-    assert response.data["alerts"]["credit_card_total_limit"] == "1500.00"
-    assert response.data["alerts"]["credit_card_used_limit"] == "350.00"
     assert response.data["alerts"]["debt_percentage"] == "23.33"
 
 
-def test_dashboard_masks_credit_card_debt_percentage_for_foreign_superuser(baker):
+def test_dashboard_debt_percentage_is_none_without_income(baker):
     _, tenant = setup_tenant(baker)
     superuser = baker.make("auth.User", is_superuser=True, is_active=True)
 
@@ -108,6 +118,4 @@ def test_dashboard_masks_credit_card_debt_percentage_for_foreign_superuser(baker
 
     assert response.status_code == 200
     assert response.data["masked"] is True
-    assert response.data["alerts"]["credit_card_total_limit"] is None
-    assert response.data["alerts"]["credit_card_used_limit"] is None
     assert response.data["alerts"]["debt_percentage"] is None

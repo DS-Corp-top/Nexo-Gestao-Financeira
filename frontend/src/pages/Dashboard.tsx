@@ -388,10 +388,10 @@ export default function Dashboard() {
           </div>
 
           <div className="kpi-card">
-            <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Endividamento</div>
+            <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Renda comprometida</div>
             <div className={`kpi-value ${debtTone}`}>{formatPercentage(data.alerts.debt_percentage)}</div>
             <div style={{ marginTop: 6, fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-              {formatCurrency(data.alerts.credit_card_used_limit)} de {formatCurrency(data.alerts.credit_card_total_limit)}
+              {formatCurrency(data.kpis.monthly_expense)} de {formatCurrency(data.kpis.monthly_income)}
             </div>
           </div>
 

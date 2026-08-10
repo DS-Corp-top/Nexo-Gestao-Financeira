@@ -196,24 +196,6 @@ def calculate_credit_card_available_limit(tenant, selected_month):
     return total_available
 
 
-def calculate_credit_card_total_limit(tenant, selected_month):
-    account_model = apps.get_model("accounts", "Account")
-
-    active_cards = account_model.objects.filter(
-        tenant=tenant,
-        account_type="card",
-        is_active=True,
-    ).select_related("backing_investment")
-
-    total_limit = ZERO
-    for card in active_cards:
-        limit_value = calculate_single_card_total_limit(card, selected_month)
-        if limit_value is not None and limit_value > 0:
-            total_limit += limit_value
-
-    return total_limit
-
-
 def calculate_monthly_balance(user, selected_month, account=None, category=None, tenant=None):
     tenant = resolve_tenant(tenant=tenant, user=user)
     monthly_transactions = Transaction.objects.filter(

@@ -87,9 +87,7 @@ function makeDashboardData(overrides: Partial<DashboardData> = {}): DashboardDat
       credit_card_month_count: 0,
       credit_card_month_total: '250.00',
       credit_card_limit: '750.00',
-      credit_card_total_limit: '1000.00',
-      credit_card_used_limit: '250.00',
-      debt_percentage: '25.00',
+      debt_percentage: '40.00',
       consolidated_balance: '3750.00',
       balance_after_pending: '3750.00',
     },
@@ -123,30 +121,28 @@ describe('Dashboard', () => {
     mockDashboard();
   });
 
-  it('renders the debt percentage card from dashboard alerts', async () => {
+  it('renders the committed income percentage card from dashboard alerts', async () => {
     renderDashboard();
 
-    const debtHeading = await screen.findByText('Endividamento');
+    const debtHeading = await screen.findByText('Renda comprometida');
     const debtCard = debtHeading.closest('.kpi-card') as HTMLElement;
     expect(debtCard).not.toBeNull();
-    expect(within(debtCard).getByText('25,0%')).toBeInTheDocument();
-    expect(debtCard).toHaveTextContent('R$ 250,00');
-    expect(debtCard).toHaveTextContent('R$ 1.000,00');
+    expect(within(debtCard).getByText('40,0%')).toBeInTheDocument();
+    expect(debtCard).toHaveTextContent('R$ 2.000,00');
+    expect(debtCard).toHaveTextContent('R$ 5.000,00');
   });
 
-  it('renders a placeholder when there is no debt percentage to show', async () => {
+  it('renders a placeholder when there is no committed income percentage to show', async () => {
     mockDashboard({
       alerts: {
         ...makeDashboardData().alerts,
         debt_percentage: null,
-        credit_card_total_limit: '0.00',
-        credit_card_used_limit: '0.00',
       },
     });
 
     renderDashboard();
 
-    expect(await screen.findByText('Endividamento')).toBeInTheDocument();
+    expect(await screen.findByText('Renda comprometida')).toBeInTheDocument();
     expect(screen.getByText('----')).toBeInTheDocument();
   });
 

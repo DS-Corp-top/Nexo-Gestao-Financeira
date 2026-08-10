@@ -21,7 +21,7 @@ class FinancialMaskingMiddleware:
         "credit_available", "investments_total", "investments_earnings",
         "investments_month_deposited", "investments_month_withdrawn", "investments_month_earnings",
         "pending_expense_total", "credit_card_open_total", "credit_card_month_total",
-        "credit_card_limit", "credit_card_total_limit", "credit_card_used_limit", "debt_percentage",
+        "credit_card_limit", "debt_percentage",
         "consolidated_balance", "balance_after_pending",
         "total_gross", "total",
         "current_balance", "pending_bank_total", "pending_income_total", "monthly_income_total", "monthly_expense_total",
