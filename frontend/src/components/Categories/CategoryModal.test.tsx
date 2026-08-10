@@ -108,4 +108,57 @@ describe('CategoryModal - category type flow', () => {
 
     expect(await screen.findByText('Já existe uma categoria com este nome para este tipo.')).toBeInTheDocument();
   });
+
+  it('shows an internal confirmation before deleting a category', async () => {
+    const category: Category = {
+      id: 7,
+      name: 'Materiais',
+      category_type: 'expense',
+      expense_kind: 'operating',
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+
+    renderModal({ category, onDelete });
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+
+    expect(await screen.findByText('Excluir categoria')).toBeInTheDocument();
+    expect(screen.getByText('Tem certeza que deseja excluir esta categoria? As transações vinculadas poderão ser afetadas.')).toBeInTheDocument();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('allows cancelling the internal delete confirmation', async () => {
+    const category: Category = {
+      id: 8,
+      name: 'Materiais',
+      category_type: 'expense',
+      expense_kind: 'operating',
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+
+    renderModal({ category, onDelete });
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[1]);
+
+    expect(screen.queryByText('Excluir categoria')).not.toBeInTheDocument();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('confirms delete inside the modal', async () => {
+    const category: Category = {
+      id: 9,
+      name: 'Materiais',
+      category_type: 'expense',
+      expense_kind: 'operating',
+      created_at: '2026-01-01T00:00:00Z',
+    };
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+
+    renderModal({ category, onDelete });
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+
+    expect(onDelete).toHaveBeenCalledWith(9);
+  });
 });

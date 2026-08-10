@@ -19,6 +19,7 @@ export default function CategoryModal({
 }: CategoryModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Form state
   const [name, setName] = useState(category?.name || '');
@@ -33,6 +34,7 @@ export default function CategoryModal({
     if (!isOpen) return;
     setLoading(false);
     setError('');
+    setConfirmingDelete(false);
     setName(category?.name || '');
     setCategoryType(category?.category_type || null);
     setExpenseKind(category?.expense_kind || 'operating');
@@ -81,14 +83,14 @@ export default function CategoryModal({
 
   const handleDelete = async () => {
     if (!category || !onDelete) return;
-    if (!window.confirm('Tem certeza que deseja excluir esta categoria? As transações vinculadas poderão ser afetadas.')) return;
-    
+
     setLoading(true);
     try {
       await onDelete(category.id);
       onClose();
     } catch (err: any) {
       setError('Erro ao excluir categoria. Ela pode estar em uso.');
+      setConfirmingDelete(false);
       setLoading(false);
     }
   };
@@ -195,8 +197,8 @@ export default function CategoryModal({
               <button
                 type="button"
                 className="btn btn-ghost"
-                style={{ color: 'var(--color-danger)' }}
-                onClick={handleDelete}
+                style={{ color: 'var(--color-danger)', border: '1px solid var(--color-danger)' }}
+                onClick={() => setConfirmingDelete(true)}
                 disabled={loading}
               >
                 Excluir
@@ -213,6 +215,55 @@ export default function CategoryModal({
             </div>
           </div>
         </form>
+        {confirmingDelete && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.74)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 'var(--space-lg)',
+              borderRadius: 'inherit',
+            }}
+          >
+            <div
+              className="card"
+              style={{
+                width: '100%',
+                maxWidth: 420,
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.9rem',
+              }}
+            >
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Excluir categoria</h3>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                Tem certeza que deseja excluir esta categoria? As transações vinculadas poderão ser afetadas.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleDelete}
+                  disabled={loading}
+                >
+                  {loading ? 'Excluindo...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body
