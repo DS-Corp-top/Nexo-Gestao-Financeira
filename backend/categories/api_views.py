@@ -8,6 +8,7 @@ from common.api_mixins import TenantQuerySetMixin
 class CategoryViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    pagination_class = None
     search_fields = ("name",)
     filterset_fields = ("category_type",)
     ordering_fields = ("name", "category_type")

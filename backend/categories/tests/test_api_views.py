@@ -26,9 +26,35 @@ def test_list_categories_returns_only_tenant_data(baker):
     response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
 
     assert response.status_code == 200
-    names = [r["name"] for r in response.data["results"]]
+    names = [r["name"] for r in response.data]
     assert "Categoria Minha" in names
     assert "Categoria Alheia" not in names
+
+
+@pytest.mark.django_db
+def test_list_categories_is_not_paginated_and_returns_all_items(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="44444444444", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    for index in range(30):
+        baker.make(
+            "categories.Category",
+            user=user,
+            tenant=tenant,
+            name=f"Categoria {index:02d}",
+            category_type=Category.CategoryType.EXPENSE if index < 20 else Category.CategoryType.INCOME,
+        )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:category-list")
+    response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 200
+    assert isinstance(response.data, list)
+    assert len(response.data) == 30
 
 
 @pytest.mark.django_db
