@@ -76,4 +76,21 @@ describe('CategoryModal — Natureza da Despesa', () => {
     expect(screen.getByLabelText('Receita')).toBeChecked();
     expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
   });
+
+  it('shows the API field error when save fails', async () => {
+    const onSave = vi.fn().mockRejectedValue({
+      response: {
+        data: {
+          name: ['Já existe uma categoria com este nome para este tipo.'],
+        },
+      },
+    });
+
+    renderModal({ onSave });
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Serviços Prestados' } });
+    fireEvent.click(screen.getByLabelText('Receita'));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    expect(await screen.findByText('Já existe uma categoria com este nome para este tipo.')).toBeInTheDocument();
+  });
 });

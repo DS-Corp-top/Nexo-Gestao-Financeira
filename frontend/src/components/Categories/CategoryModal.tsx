@@ -42,6 +42,15 @@ export default function CategoryModal({
 
   if (!isOpen) return null;
 
+  const getErrorMessage = (err: any): string => {
+    const data = err?.response?.data;
+    if (typeof data?.detail === 'string') return data.detail;
+    if (Array.isArray(data?.name) && typeof data.name[0] === 'string') return data.name[0];
+    if (Array.isArray(data?.non_field_errors) && typeof data.non_field_errors[0] === 'string') return data.non_field_errors[0];
+    if (typeof data === 'string') return data;
+    return 'Erro ao salvar categoria.';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -55,7 +64,7 @@ export default function CategoryModal({
       });
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erro ao salvar categoria.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

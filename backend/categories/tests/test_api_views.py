@@ -55,6 +55,61 @@ def test_create_category_assigns_user_and_tenant(baker):
 
 
 @pytest.mark.django_db
+def test_create_income_category_succeeds(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="22222222222", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:category-list")
+    response = client.post(
+        url,
+        {
+            "name": "Serviços Prestados",
+            "category_type": Category.CategoryType.INCOME,
+            "expense_kind": Category.ExpenseKind.OPERATING,
+        },
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 201
+    assert response.data["category_type"] == Category.CategoryType.INCOME
+
+
+@pytest.mark.django_db
+def test_create_duplicate_income_category_returns_400(baker):
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="33333333333", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    baker.make(
+        "categories.Category",
+        user=user,
+        tenant=tenant,
+        name="Serviços Prestados",
+        category_type=Category.CategoryType.INCOME,
+    )
+
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    client.force_authenticate(user=user)
+
+    url = reverse("api:category-list")
+    response = client.post(
+        url,
+        {
+            "name": "Serviços Prestados",
+            "category_type": Category.CategoryType.INCOME,
+            "expense_kind": Category.ExpenseKind.OPERATING,
+        },
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 400
+    assert response.data["name"] == ["Já existe uma categoria com este nome para este tipo."]
+
+
+@pytest.mark.django_db
 def test_delete_category(baker):
     """Exclusao de categoria deve retornar 204."""
     user = baker.make("auth.User")
