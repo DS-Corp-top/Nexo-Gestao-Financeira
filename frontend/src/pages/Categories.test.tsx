@@ -49,7 +49,7 @@ describe('Categories Page', () => {
       expect(screen.getByText('Nenhuma categoria cadastrada')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Nova Receita'));
+    fireEvent.click(screen.getByText('Nova Categoria'));
 
     const heading = await screen.findByText('Nova Categoria', { selector: 'h2' });
     const modalRoot = heading.closest('.modal-overlay') as HTMLElement;
@@ -57,16 +57,17 @@ describe('Categories Page', () => {
     expectPortaledToBody(modalRoot, container);
   });
 
-  it('opens the modal preselected as Receita when creating an income category', async () => {
+  it('opens the modal with no type preselected when creating a category', async () => {
     renderCategories();
 
     await waitFor(() => {
       expect(screen.getByText('Nenhuma categoria cadastrada')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Nova Receita'));
+    fireEvent.click(screen.getByText('Nova Categoria'));
 
-    expect(await screen.findByLabelText('Receita')).toBeChecked();
+    expect(await screen.findByLabelText('Receita')).not.toBeChecked();
+    expect(screen.getByLabelText('Despesa')).not.toBeChecked();
     expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
   });
 });

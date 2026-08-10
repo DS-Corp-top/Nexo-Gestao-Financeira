@@ -12,7 +12,6 @@ export default function Categories() {
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newCategoryType, setNewCategoryType] = useState<'income' | 'expense'>('expense');
   
   const queryClient = useQueryClient();
 
@@ -36,9 +35,8 @@ export default function Categories() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
   });
 
-  const handleOpenNew = (categoryType: 'income' | 'expense') => {
+  const handleOpenNew = () => {
     setEditingCategory(null);
-    setNewCategoryType(categoryType);
     setModalOpen(true);
   };
 
@@ -118,14 +116,9 @@ export default function Categories() {
     <div className="animate-fade-in">
       <div className="page-header">
         {isAdmin && (
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={() => handleOpenNew('expense')}>
-              <Plus size={18} /> Nova Despesa
-            </button>
-            <button className="btn btn-secondary" onClick={() => handleOpenNew('income')}>
-              <Plus size={18} /> Nova Receita
-            </button>
-          </div>
+          <button className="btn btn-primary" onClick={handleOpenNew}>
+            <Plus size={18} /> Nova Categoria
+          </button>
         )}
       </div>
 
@@ -154,7 +147,6 @@ export default function Categories() {
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
           onDelete={handleDelete}
-          defaultCategoryType={newCategoryType}
         />
       )}
     </div>

@@ -19,23 +19,29 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof CategoryModa
   return { onSave, onClose };
 }
 
-describe('CategoryModal — Natureza da Despesa', () => {
-  it('shows the "Natureza da Despesa" selector by default (new category defaults to Despesa)', () => {
+describe('CategoryModal - category type flow', () => {
+  it('starts with no type selected for a new category', () => {
     renderModal();
+
+    expect(screen.getByLabelText('Despesa')).not.toBeChecked();
+    expect(screen.getByLabelText('Receita')).not.toBeChecked();
+    expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
+  });
+
+  it('shows "Natureza da Despesa" when the type is switched to Despesa', () => {
+    renderModal();
+
+    fireEvent.click(screen.getByLabelText('Despesa'));
+
     expect(screen.getByText('Natureza da Despesa')).toBeInTheDocument();
     expect(screen.getByLabelText('Despesa Operacional')).toBeChecked();
   });
 
-  it('hides "Natureza da Despesa" when the type is switched to Receita', () => {
-    renderModal();
-    fireEvent.click(screen.getByLabelText('Receita'));
-    expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
-  });
-
-  it('submits expense_kind: "cost" when Custo do Serviço/Produto is selected', async () => {
+  it('submits expense_kind: "cost" when Custo do Servico/Produto is selected', () => {
     const { onSave } = renderModal();
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Materiais' } });
+    fireEvent.click(screen.getByLabelText('Despesa'));
     fireEvent.click(screen.getByLabelText('Custo do Serviço/Produto'));
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
 
@@ -46,10 +52,11 @@ describe('CategoryModal — Natureza da Despesa', () => {
     });
   });
 
-  it('forces expense_kind: "operating" when saving an income category, even if cost was picked before switching', async () => {
+  it('forces expense_kind: "operating" when saving an income category', () => {
     const { onSave } = renderModal();
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Salário' } });
+    fireEvent.click(screen.getByLabelText('Despesa'));
     fireEvent.click(screen.getByLabelText('Custo do Serviço/Produto'));
     fireEvent.click(screen.getByLabelText('Receita'));
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
@@ -61,20 +68,28 @@ describe('CategoryModal — Natureza da Despesa', () => {
     });
   });
 
-  it('pre-selects "Custo do Serviço/Produto" when editing a category with expense_kind: cost', () => {
+  it('pre-selects "Custo do Servico/Produto" when editing a category with expense_kind: cost', () => {
     const category: Category = {
-      id: 1, name: 'Materiais', category_type: 'expense', expense_kind: 'cost', created_at: '2026-01-01T00:00:00Z',
+      id: 1,
+      name: 'Materiais',
+      category_type: 'expense',
+      expense_kind: 'cost',
+      created_at: '2026-01-01T00:00:00Z',
     };
     renderModal({ category });
 
     expect(screen.getByLabelText('Custo do Serviço/Produto')).toBeChecked();
     expect(screen.getByLabelText('Despesa Operacional')).not.toBeChecked();
   });
-  it('can default a new category to Receita', () => {
-    renderModal({ defaultCategoryType: 'income' });
 
-    expect(screen.getByLabelText('Receita')).toBeChecked();
-    expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
+  it('shows an error when trying to save without selecting the type', async () => {
+    const { onSave } = renderModal();
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Serviços Prestados' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    expect(await screen.findByText('Selecione se a categoria é uma receita ou despesa.')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('shows the API field error when save fails', async () => {

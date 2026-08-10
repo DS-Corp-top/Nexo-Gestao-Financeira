@@ -8,7 +8,6 @@ interface CategoryModalProps {
   onClose: () => void;
   onSave: (payload: CreateCategoryPayload) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
-  defaultCategoryType?: 'income' | 'expense';
 }
 
 export default function CategoryModal({
@@ -17,15 +16,14 @@ export default function CategoryModal({
   onClose,
   onSave,
   onDelete,
-  defaultCategoryType = 'expense',
 }: CategoryModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Form state
   const [name, setName] = useState(category?.name || '');
-  const [categoryType, setCategoryType] = useState<'income' | 'expense'>(
-    category?.category_type || defaultCategoryType
+  const [categoryType, setCategoryType] = useState<'income' | 'expense' | null>(
+    category?.category_type || null
   );
   const [expenseKind, setExpenseKind] = useState<'operating' | 'cost'>(
     category?.expense_kind || 'operating'
@@ -36,9 +34,9 @@ export default function CategoryModal({
     setLoading(false);
     setError('');
     setName(category?.name || '');
-    setCategoryType(category?.category_type || defaultCategoryType);
+    setCategoryType(category?.category_type || null);
     setExpenseKind(category?.expense_kind || 'operating');
-  }, [category, defaultCategoryType, isOpen]);
+  }, [category, isOpen]);
 
   if (!isOpen) return null;
 
@@ -54,11 +52,22 @@ export default function CategoryModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Informe o nome da categoria.');
+      return;
+    }
+    if (!categoryType) {
+      setError('Selecione se a categoria é uma receita ou despesa.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await onSave({
-        name,
+        name: trimmedName,
         category_type: categoryType,
         expense_kind: categoryType === 'expense' ? expenseKind : 'operating',
       });
@@ -143,6 +152,11 @@ export default function CategoryModal({
                 <span>Receita</span>
               </label>
             </div>
+            {!categoryType && (
+              <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                Escolha se esta categoria é uma receita ou uma despesa.
+              </span>
+            )}
           </div>
 
           {categoryType === 'expense' && (
