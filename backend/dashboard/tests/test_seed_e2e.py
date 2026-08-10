@@ -23,7 +23,12 @@ def test_seed_e2e_creates_user_tenant_and_account():
         user=user, tenant=tenant, role=TenantMembership.Role.OWNER, is_default=True
     ).exists()
     assert Account.objects.filter(tenant=tenant, name="Conta E2E").exists()
-    assert Account.objects.filter(tenant=tenant, name="Cartao E2E", credit_limit="1000.00").exists()
+    assert Account.objects.filter(
+        tenant=tenant,
+        name="Cartao E2E",
+        credit_limit="1000.00",
+        is_active=False,
+    ).exists()
     assert Category.objects.filter(tenant=tenant, name="Cartao Dashboard E2E", category_type="expense").exists()
     assert Transaction.objects.filter(
         tenant=tenant,

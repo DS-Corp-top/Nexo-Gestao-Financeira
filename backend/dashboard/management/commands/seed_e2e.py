@@ -81,7 +81,7 @@ class Command(BaseCommand):
                 "account_type": Account.AccountType.CARD,
                 "credit_limit": Decimal("1000.00"),
                 "include_in_balance": False,
-                "is_active": True,
+                "is_active": False,
             },
         )
 

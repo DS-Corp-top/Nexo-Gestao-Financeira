@@ -185,7 +185,6 @@ async function deactivateOtherDashboardCards(
 
   for (const account of accounts) {
     if (account.account_type !== 'card') continue;
-    if (!account.name.startsWith(CARD_PREFIX)) continue;
     if (allowedNames.has(account.name)) continue;
     if (!account.is_active) continue;
 
