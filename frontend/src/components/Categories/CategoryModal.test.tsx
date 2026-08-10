@@ -70,4 +70,10 @@ describe('CategoryModal — Natureza da Despesa', () => {
     expect(screen.getByLabelText('Custo do Serviço/Produto')).toBeChecked();
     expect(screen.getByLabelText('Despesa Operacional')).not.toBeChecked();
   });
+  it('can default a new category to Receita', () => {
+    renderModal({ defaultCategoryType: 'income' });
+
+    expect(screen.getByLabelText('Receita')).toBeChecked();
+    expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
+  });
 });

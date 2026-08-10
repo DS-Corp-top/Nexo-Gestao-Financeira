@@ -12,6 +12,7 @@ vi.mock('../api/categories', async () => {
   return {
     ...actual,
     fetchCategories: vi.fn(),
+    createCategory: vi.fn(),
   };
 });
 vi.mock('../hooks/useIsAdmin', () => ({
@@ -32,6 +33,13 @@ describe('Categories Page', () => {
     vi.clearAllMocks();
     (useIsAdmin as any).mockReturnValue(true);
     (categoriesApi.fetchCategories as any).mockResolvedValue([]);
+    (categoriesApi.createCategory as any).mockResolvedValue({
+      id: 1,
+      name: 'Salário',
+      category_type: 'income',
+      expense_kind: 'operating',
+      created_at: '2026-01-01T00:00:00Z',
+    });
   });
 
   it('renders the CategoryModal outside the page container when opened', async () => {
@@ -41,11 +49,24 @@ describe('Categories Page', () => {
       expect(screen.getByText('Nenhuma categoria cadastrada')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Nova Categoria'));
+    fireEvent.click(screen.getByText('Nova Receita'));
 
     const heading = await screen.findByText('Nova Categoria', { selector: 'h2' });
     const modalRoot = heading.closest('.modal-overlay') as HTMLElement;
     expect(modalRoot).not.toBeNull();
     expectPortaledToBody(modalRoot, container);
+  });
+
+  it('opens the modal preselected as Receita when creating an income category', async () => {
+    renderCategories();
+
+    await waitFor(() => {
+      expect(screen.getByText('Nenhuma categoria cadastrada')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Nova Receita'));
+
+    expect(await screen.findByLabelText('Receita')).toBeChecked();
+    expect(screen.queryByText('Natureza da Despesa')).not.toBeInTheDocument();
   });
 });

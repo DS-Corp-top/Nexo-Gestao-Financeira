@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type Category, type CreateCategoryPayload } from '../../api/categories';
 
@@ -8,20 +8,37 @@ interface CategoryModalProps {
   onClose: () => void;
   onSave: (payload: CreateCategoryPayload) => Promise<void>;
   onDelete?: (id: number) => Promise<void>;
+  defaultCategoryType?: 'income' | 'expense';
 }
 
-export default function CategoryModal({ category, isOpen, onClose, onSave, onDelete }: CategoryModalProps) {
+export default function CategoryModal({
+  category,
+  isOpen,
+  onClose,
+  onSave,
+  onDelete,
+  defaultCategoryType = 'expense',
+}: CategoryModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Form state
   const [name, setName] = useState(category?.name || '');
   const [categoryType, setCategoryType] = useState<'income' | 'expense'>(
-    category?.category_type || 'expense'
+    category?.category_type || defaultCategoryType
   );
   const [expenseKind, setExpenseKind] = useState<'operating' | 'cost'>(
     category?.expense_kind || 'operating'
   );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(false);
+    setError('');
+    setName(category?.name || '');
+    setCategoryType(category?.category_type || defaultCategoryType);
+    setExpenseKind(category?.expense_kind || 'operating');
+  }, [category, defaultCategoryType, isOpen]);
 
   if (!isOpen) return null;
 
