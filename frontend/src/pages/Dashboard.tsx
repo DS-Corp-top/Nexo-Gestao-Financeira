@@ -27,6 +27,15 @@ import {
   Pie,
 } from 'recharts';
 
+function formatPercentage(value: string | number | null): string {
+  if (value == null) return '----';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return `${num.toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`;
+}
+
 function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -168,6 +177,14 @@ export default function Dashboard() {
     value: parseFloat(c.total ?? '0'),
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
+  const debtPercentage = data.alerts.debt_percentage == null ? null : parseFloat(data.alerts.debt_percentage);
+  const debtTone = debtPercentage == null
+    ? 'accent'
+    : debtPercentage >= 80
+      ? 'negative'
+      : debtPercentage >= 50
+        ? 'accent'
+        : 'positive';
 
   return (
     <>
@@ -178,11 +195,11 @@ export default function Dashboard() {
         {/* Linha de navegação */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: 'var(--space-sm)', minHeight: 40 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-sm)' }}>
-            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)}>
+            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)} aria-label="Mês anterior">
               <ChevronLeft size={20} />
             </button>
             <h2 className="page-title" style={{ margin: 0, textAlign: 'center' }}>{data.month_label}</h2>
-            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)}>
+            <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">
               <ChevronRight size={20} />
             </button>
           </div>
@@ -368,6 +385,14 @@ export default function Dashboard() {
           <div className="kpi-card">
             <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite do cartão</div>
             <div className="kpi-value accent">{formatCurrency(data.alerts.credit_card_limit)}</div>
+          </div>
+
+          <div className="kpi-card">
+            <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Endividamento</div>
+            <div className={`kpi-value ${debtTone}`}>{formatPercentage(data.alerts.debt_percentage)}</div>
+            <div style={{ marginTop: 6, fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+              {formatCurrency(data.alerts.credit_card_used_limit)} de {formatCurrency(data.alerts.credit_card_total_limit)}
+            </div>
           </div>
 
           {/* Rendimentos */}

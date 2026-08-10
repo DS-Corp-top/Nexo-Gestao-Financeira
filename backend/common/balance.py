@@ -69,21 +69,8 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
     return total_balance
 
 
-def calculate_single_card_available_limit(card, selected_month):
-    """Limite disponível de UM cartão específico no mês informado.
-
-    Ao contrário de calculate_credit_card_available_limit (que soma vários
-    cartões de um tenant e descarta resultados negativos/meses sem limite
-    explícito), esta função devolve o valor "cru" — inclusive negativo, se o
-    cartão estourou o limite no mês — porque é usada também pra exibição
-    individual do cartão (ex: tela de Contas), onde "None"/negativo é uma
-    informação relevante pro usuário, não um caso a ser silenciosamente
-    ignorado.
-
-    Retorna None quando o mês não é o atual e não há limite mensal explícito
-    cadastrado (CardMonthlyLimit) — nesse caso não há como saber o limite
-    daquele mês específico.
-    """
+def calculate_single_card_total_limit(card, selected_month):
+    """Limite total utilizavel de um cartao no mes, antes dos gastos."""
     monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
     transaction_model = apps.get_model("transactions", "Transaction")
     tenant = card.tenant
@@ -99,6 +86,24 @@ def calculate_single_card_available_limit(card, selected_month):
         month=selected_month.month,
     ).values_list("amount", flat=True).first()
 
+    if monthly_limit is not None and monthly_limit > 0:
+        return monthly_limit
+    if not is_current_month:
+        return None
+    if card.backing_investment_id:
+        return max(ZERO, card.backing_investment.net_invested)
+    if card.credit_limit is not None and card.credit_limit > 0:
+        return card.credit_limit
+
+    monthly_income = transaction_model.objects.filter(
+        tenant=tenant,
+        account=card,
+        is_cleared=True,
+        is_ignored=False,
+        date__year=selected_month.year,
+        date__month=selected_month.month,
+        transaction_type=Transaction.TransactionType.INCOME,
+    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
     monthly_incoming_transfers = transaction_model.objects.filter(
         tenant=tenant,
         destination_account=card,
@@ -109,32 +114,56 @@ def calculate_single_card_available_limit(card, selected_month):
         transaction_type=Transaction.TransactionType.TRANSFER,
     ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-    if monthly_limit is not None and monthly_limit > 0:
-        card_limit = monthly_limit
-    elif not is_current_month:
-        # Meses que não são o atual sem limite explícito são ignorados — cada mês é isolado.
+    card_limit = card.initial_balance + monthly_income + monthly_incoming_transfers
+    return card_limit if card_limit > ZERO else None
+
+
+def calculate_single_card_available_limit(card, selected_month):
+    """Limite disponivel de um cartao especifico no mes informado.
+
+    Ao contrario de calculate_credit_card_available_limit (que soma varios
+    cartoes de um tenant e descarta resultados negativos/meses sem limite
+    explicito), esta funcao devolve o valor "cru" - inclusive negativo, se o
+    cartao estourou o limite no mes - porque e usada tambem pra exibicao
+    individual do cartao (ex: tela de Contas), onde "None"/negativo e uma
+    informacao relevante pro usuario, nao um caso a ser silenciosamente
+    ignorado.
+
+    Retorna None quando o mes nao e o atual e nao ha limite mensal explicito
+    cadastrado (CardMonthlyLimit) - nesse caso nao ha como saber o limite
+    daquele mes especifico.
+    """
+    transaction_model = apps.get_model("transactions", "Transaction")
+    tenant = card.tenant
+
+    monthly_incoming_transfers = transaction_model.objects.filter(
+        tenant=tenant,
+        destination_account=card,
+        is_cleared=True,
+        is_ignored=False,
+        date__year=selected_month.year,
+        date__month=selected_month.month,
+        transaction_type=Transaction.TransactionType.TRANSFER,
+    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+
+    card_limit = calculate_single_card_total_limit(card, selected_month)
+    if card_limit is None:
         return None
-    elif card.backing_investment_id:
-        # Limite garantido por um investimento (ex.: CDB) substitui o limite fixo.
-        # Considera apenas o valor investido líquido (aportes - resgates), sem
-        # somar rendimentos/dividendos. Resgates reduzem o limite disponível na
-        # hora, nunca abaixo de zero.
-        card_limit = max(ZERO, card.backing_investment.net_invested)
-    elif card.credit_limit is not None and card.credit_limit > 0:
-        card_limit = card.credit_limit
-    else:
-        monthly_income = transaction_model.objects.filter(
-            tenant=tenant,
-            account=card,
-            is_cleared=True,
-            is_ignored=False,
-            date__year=selected_month.year,
-            date__month=selected_month.month,
-            transaction_type=Transaction.TransactionType.INCOME,
-        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
-        card_limit = card.initial_balance + monthly_income
-        if card_limit + monthly_incoming_transfers <= 0:
-            return None
+
+    monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
+    monthly_limit = monthly_limit_model.objects.filter(
+        tenant=tenant,
+        account=card,
+        year=selected_month.year,
+        month=selected_month.month,
+    ).values_list("amount", flat=True).first()
+    uses_dynamic_limit = (
+        monthly_limit is None
+        and not card.backing_investment_id
+        and not (card.credit_limit is not None and card.credit_limit > 0)
+    )
+    if uses_dynamic_limit:
+        monthly_incoming_transfers = ZERO
 
     monthly_expenses = transaction_model.objects.filter(
         tenant=tenant,
@@ -165,6 +194,24 @@ def calculate_credit_card_available_limit(tenant, selected_month):
             total_available += available
 
     return total_available
+
+
+def calculate_credit_card_total_limit(tenant, selected_month):
+    account_model = apps.get_model("accounts", "Account")
+
+    active_cards = account_model.objects.filter(
+        tenant=tenant,
+        account_type="card",
+        is_active=True,
+    ).select_related("backing_investment")
+
+    total_limit = ZERO
+    for card in active_cards:
+        limit_value = calculate_single_card_total_limit(card, selected_month)
+        if limit_value is not None and limit_value > 0:
+            total_limit += limit_value
+
+    return total_limit
 
 
 def calculate_monthly_balance(user, selected_month, account=None, category=None, tenant=None):

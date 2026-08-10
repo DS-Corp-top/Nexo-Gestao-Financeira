@@ -1,11 +1,15 @@
 import os
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 from django.utils.text import slugify
 
 from accounts.models import Account
+from categories.models import Category
 from tenants.models import Tenant, TenantMembership
+from transactions.models import Transaction
 
 User = get_user_model()
 
@@ -14,6 +18,9 @@ DEFAULT_USERNAME = "e2e-user"
 DEFAULT_PASSWORD = "E2ePlaywright!123"
 DEFAULT_TENANT_NAME = "E2E Tenant"
 DEFAULT_ACCOUNT_NAME = "Conta E2E"
+DEFAULT_CARD_NAME = "Cartao E2E"
+DEFAULT_CARD_CATEGORY = "Cartao Dashboard E2E"
+DEFAULT_CARD_PURCHASE_DESCRIPTION = "Compra Dashboard E2E"
 
 
 class Command(BaseCommand):
@@ -56,13 +63,48 @@ class Command(BaseCommand):
             defaults={"role": TenantMembership.Role.OWNER, "is_default": True},
         )
 
-        Account.objects.get_or_create(
+        Account.objects.update_or_create(
             tenant=tenant,
             name=DEFAULT_ACCOUNT_NAME,
             defaults={
                 "user": user,
                 "account_type": Account.AccountType.BANK,
                 "is_active": True,
+            },
+        )
+
+        card_account, _ = Account.objects.update_or_create(
+            tenant=tenant,
+            name=DEFAULT_CARD_NAME,
+            defaults={
+                "user": user,
+                "account_type": Account.AccountType.CARD,
+                "credit_limit": Decimal("1000.00"),
+                "include_in_balance": False,
+                "is_active": True,
+            },
+        )
+
+        category, _ = Category.objects.get_or_create(
+            tenant=tenant,
+            user=user,
+            name=DEFAULT_CARD_CATEGORY,
+            category_type=Category.CategoryType.EXPENSE,
+            defaults={"expense_kind": Category.ExpenseKind.OPERATING},
+        )
+
+        Transaction.objects.update_or_create(
+            tenant=tenant,
+            user=user,
+            account=card_account,
+            category=category,
+            description=DEFAULT_CARD_PURCHASE_DESCRIPTION,
+            date=timezone.localdate().replace(day=1),
+            defaults={
+                "transaction_type": Transaction.TransactionType.EXPENSE,
+                "amount": Decimal("250.00"),
+                "is_cleared": True,
+                "is_ignored": False,
             },
         )
 
