@@ -1,5 +1,7 @@
 import api from './client';
 
+export const AUTH_SESSION_HINT_KEY = 'nexo.hasAuthSession';
+
 export interface LoginPayload {
   username: string;
   password: string;
@@ -40,8 +42,9 @@ export interface MeResponse {
 }
 
 export async function login(payload: LoginPayload): Promise<void> {
-  // Tokens are set as httpOnly cookies by the server — nothing stored client-side.
+  // Tokens stay in httpOnly cookies; this flag is only a non-sensitive session hint.
   await api.post('/auth/token/', payload);
+  localStorage.setItem(AUTH_SESSION_HINT_KEY, 'true');
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
@@ -74,6 +77,7 @@ export async function register(payload: RegisterPayload): Promise<void> {
 
 export async function fetchMe(): Promise<MeResponse> {
   const { data } = await api.get<MeResponse>('/me/');
+  localStorage.setItem(AUTH_SESSION_HINT_KEY, 'true');
   return data;
 }
 
@@ -87,5 +91,6 @@ export async function logout(): Promise<void> {
   } catch {
     // best-effort: clear cookies server-side even if request fails
   }
+  localStorage.removeItem(AUTH_SESSION_HINT_KEY);
   window.location.href = '/login';
 }

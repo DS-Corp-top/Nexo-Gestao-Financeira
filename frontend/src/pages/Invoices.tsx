@@ -19,6 +19,7 @@ import InvoiceModal from '../components/Invoices/InvoiceModal';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import { useViewMode } from '../contexts/ViewModeContext';
 import { writePrintDocument } from '../utils/printDocument';
+import { todayInBrasilia } from '../utils/date';
 
 function formatCurrency(value: string | number | null): string {
   if (value == null) return '••••••';
@@ -27,13 +28,13 @@ function formatCurrency(value: string | number | null): string {
 }
 
 function firstOfMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  return `${todayInBrasilia().slice(0, 7)}-01`;
 }
 
 function lastOfMonth() {
-  const d = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [year, month] = todayInBrasilia().split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 }
 
 function resolveMediaUrl(value?: string | null) {
@@ -484,11 +485,11 @@ export default function Invoices() {
   const handlePay = async (invoice: Invoice) => {
     if (!accounts?.length) {
       if (window.confirm(`Marcar fatura ${invoice.number_display} como paga sem lançamento financeiro?`)) {
-        payMutation.mutate({ id: invoice.id, payload: { paid_at: new Date().toISOString().split('T')[0], launch_financial: false } });
+        payMutation.mutate({ id: invoice.id, payload: { paid_at: todayInBrasilia(), launch_financial: false } });
       }
       return;
     }
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInBrasilia();
     const activeAccounts = accounts.filter(a => a.is_active);
     const accountIdStr = prompt(
       `Pagar fatura ${invoice.number_display}\nValor: ${formatCurrency(invoice.net_value)}\n\nDigite o ID da conta para registrar no financeiro, ou deixe em branco para apenas marcar como paga.\n\nContas ativas: ${activeAccounts.map(a => `${a.id}=${a.name}`).join(', ')}`,

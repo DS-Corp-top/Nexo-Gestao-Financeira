@@ -26,6 +26,7 @@ import {
 } from '../api/investments';
 import InvestmentModal from '../components/Investments/InvestmentModal';
 import CurrencyInput from '../components/CurrencyInput';
+import { monthBounds, todayInBrasilia } from '../utils/date';
 
 function getMonthParam(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -35,13 +36,6 @@ function shiftMonth(current: string, delta: number): string {
   const [y, m] = current.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   return getMonthParam(d);
-}
-
-function getMonthBounds(monthStr: string) {
-  const [y, m] = monthStr.split('-').map(Number);
-  const start = new Date(y, m - 1, 1).toISOString().split('T')[0];
-  const end = new Date(y, m, 0).toISOString().split('T')[0];
-  return { start, end };
 }
 
 const currencyOrder: Currency[] = ['BRL', 'USD', 'EUR'];
@@ -101,7 +95,7 @@ function getCurrencyTotals(items: Investment[], getValue: (investment: Investmen
 export default function Investments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const monthParam = searchParams.get('month') || getMonthParam(new Date());
-  const { start: monthStart, end: monthEnd } = getMonthBounds(monthParam);
+  const { start: monthStart, end: monthEnd } = monthBounds(monthParam);
   const navigateMonth = (delta: number) => setSearchParams({ month: shiftMonth(monthParam, delta) });
   const selectedMonthLabel = useMemo(() => {
     const [y, m] = monthParam.split('-').map(Number);
@@ -221,7 +215,7 @@ export default function Investments() {
       setEntryAmount('');
       // default date back to today
       const dateInput = e.currentTarget.elements.namedItem('date') as HTMLInputElement;
-      if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+      if (dateInput) dateInput.value = todayInBrasilia();
     }
   };
 
@@ -363,7 +357,7 @@ export default function Investments() {
     return Array.from({ length: 6 }, (_, index) => {
       const date = new Date(year, month - 6 + index, 1);
       const key = getMonthParam(date);
-      const { start, end } = getMonthBounds(key);
+      const { start, end } = monthBounds(key);
       const totals = { invested: 0, withdrawn: 0, earnings: 0, taxes: 0 };
 
       for (const entry of allEntries) {
@@ -520,7 +514,7 @@ export default function Investments() {
               <option value="yield">Rendimento</option>
               <option value="tax">Imposto / IR/IOF</option>
             </select>
-            <input type="date" name="date" className="input" defaultValue={new Date().toISOString().split('T')[0]} style={{ width: 140 }} required />
+            <input type="date" name="date" className="input" defaultValue={todayInBrasilia()} style={{ width: 140 }} required />
             <CurrencyInput value={entryAmount} onChange={setEntryAmount} className="input" placeholder={`Valor (${currentCurrency})`} style={{ width: 140 }} required />
             <input type="text" name="description" className="input" placeholder="Descrição (opcional)" style={{ flex: 1, minWidth: 200 }} />
             <button type="submit" className="btn btn-primary" disabled={createEntryMutation.isPending}>

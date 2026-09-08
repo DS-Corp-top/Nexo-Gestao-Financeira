@@ -1,5 +1,5 @@
 ﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchMe, login, logout, register } from './auth';
+import { AUTH_SESSION_HINT_KEY, fetchMe, login, logout, register } from './auth';
 
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -28,6 +28,7 @@ describe('auth api', () => {
       username: 'user@example.com',
       password: 'secret',
     });
+    expect(localStorage.getItem(AUTH_SESSION_HINT_KEY)).toBe('true');
   });
 
   it('fetches the authenticated user profile', async () => {
@@ -53,6 +54,7 @@ describe('auth api', () => {
 
     await expect(fetchMe()).resolves.toEqual(profile);
     expect(apiMock.get).toHaveBeenCalledWith('/me/');
+    expect(localStorage.getItem(AUTH_SESSION_HINT_KEY)).toBe('true');
   });
 
   it('registers a pending user', async () => {
@@ -82,11 +84,13 @@ describe('auth api', () => {
     // mock window.location.href
     delete (window as any).location;
     window.location = { ...originalLocation, href: '' } as any;
+    localStorage.setItem(AUTH_SESSION_HINT_KEY, 'true');
 
     apiMock.post.mockResolvedValueOnce({});
     await logout();
 
     expect(apiMock.post).toHaveBeenCalledWith('/auth/logout/');
+    expect(localStorage.getItem(AUTH_SESSION_HINT_KEY)).toBeNull();
     expect(window.location.href).toBe('/login');
 
     // restore

@@ -8,6 +8,7 @@ import {
   type ShoppingItem
 } from '../api/shopping';
 import CurrencyInput from '../components/CurrencyInput';
+import { todayInBrasilia } from '../utils/date';
 
 function formatCurrency(value: string | number): string {
   if (value == null) return '';
@@ -119,7 +120,7 @@ export default function Shopping() {
   });
 
   const handleCreateList = () => {
-    setListModal({ mode: 'create', name: '', date: new Date().toISOString().split('T')[0] });
+    setListModal({ mode: 'create', name: '', date: todayInBrasilia() });
   };
 
   const handleEditList = () => {

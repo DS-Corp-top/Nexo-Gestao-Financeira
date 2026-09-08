@@ -20,6 +20,7 @@ import Accounts from './Accounts';
 import Categories from './Categories';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, Tags, EllipsisVertical, Plus, Settings } from 'lucide-react';
+import { monthBounds } from '../utils/date';
 
 const DASHBOARD_TILES = [
   { id: 'current_balance', label: 'Saldo atual' },
@@ -103,17 +104,10 @@ function shiftMonth(current: string, delta: number): string {
   return getMonthParam(d);
 }
 
-function getMonthBounds(monthStr: string) {
-  const [y, m] = monthStr.split('-').map(Number);
-  const start = new Date(y, m - 1, 1).toISOString().split('T')[0];
-  const end = new Date(y, m, 0).toISOString().split('T')[0];
-  return { start, end };
-}
-
 export default function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const monthParam = searchParams.get('month') || getMonthParam(new Date());
-  const { start, end } = getMonthBounds(monthParam);
+  const { start, end } = monthBounds(monthParam);
 
   const [accountFilter, setAccountFilter] = useState('');
   const [orderBy, setOrderBy] = useState('-date');

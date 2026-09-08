@@ -4,6 +4,7 @@ import * as authApi from '../api/auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../api/auth', () => ({
+  AUTH_SESSION_HINT_KEY: 'nexo.hasAuthSession',
   fetchMe: vi.fn(),
   logout: vi.fn(),
 }));
@@ -12,6 +13,7 @@ describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    window.history.pushState({}, '', '/dashboard');
   });
 
   it('initializes with loading state and attempts to fetch user', async () => {
@@ -47,6 +49,19 @@ describe('AuthContext', () => {
     expect(result.current.isLoggedIn).toBe(false);
     expect(result.current.user).toBeNull();
     expect(result.current.tenant).toBeNull();
+  });
+
+  it('does not check the API on public pages without a session hint', async () => {
+    window.history.pushState({}, '', '/login');
+
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(authApi.fetchMe).not.toHaveBeenCalled();
+    expect(result.current.isLoggedIn).toBe(false);
   });
 
   it('logout function clears state and local storage', async () => {

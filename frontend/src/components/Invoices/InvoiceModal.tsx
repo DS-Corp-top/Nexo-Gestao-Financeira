@@ -15,6 +15,7 @@ import {
 } from '../../api/invoices';
 import { fetchAccounts, type Account } from '../../api/accounts';
 import { fetchTenantCompanies } from '../../api/tenant';
+import { todayInBrasilia } from '../../utils/date';
 
 const ACTIVE_COMPANY_STORAGE_KEY = 'nexo.activeCompanyId';
 
@@ -380,11 +381,11 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           <div className="form-amount-date-grid" style={{ gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
             <div>
               <label className="label">Data de Emissão</label>
-              <input type="date" name="issue_date" className="input" defaultValue={invoice?.issue_date || new Date().toISOString().split('T')[0]} required />
+              <input type="date" name="issue_date" className="input" defaultValue={invoice?.issue_date || todayInBrasilia()} required />
             </div>
             <div>
               <label className="label">Data de Vencimento</label>
-              <input type="date" name="due_date" className="input" defaultValue={invoice?.due_date || new Date().toISOString().split('T')[0]} required />
+              <input type="date" name="due_date" className="input" defaultValue={invoice?.due_date || todayInBrasilia()} required />
             </div>
           </div>
 

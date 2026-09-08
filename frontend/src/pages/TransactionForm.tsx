@@ -6,6 +6,7 @@ import { fetchTransactionById, createTransaction, updateTransaction, type Create
 import { fetchAccounts, type Account } from '../api/accounts';
 import { fetchCategories, type Category } from '../api/categories';
 import CurrencyInput from '../components/CurrencyInput';
+import { todayInBrasilia } from '../utils/date';
 
 const GAP = { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' };
 type RecurrenceType = CreateTransactionPayload['recurrence_type'];
@@ -45,7 +46,7 @@ export default function TransactionForm() {
     enabled: isEditing,
   });
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = todayInBrasilia();
 
   const [type, setType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [amount, setAmount] = useState('');

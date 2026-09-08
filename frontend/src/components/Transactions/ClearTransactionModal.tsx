@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { type Transaction } from '../../api/transactions';
 import { type Category } from '../../api/categories';
 import CurrencyInput from '../CurrencyInput';
+import { todayInBrasilia } from '../../utils/date';
 
 interface ClearTransactionModalProps {
   transaction: Transaction | null;
@@ -29,7 +30,7 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
 
   useEffect(() => {
     if (transaction) {
-      setClearedDate(transaction.date || new Date().toISOString().split('T')[0]);
+      setClearedDate(transaction.date || todayInBrasilia());
       setUnlockPassword('');
       setAmount(transaction.amount);
       setAccountId(String(transaction.account));

@@ -1,9 +1,9 @@
 import os
-from datetime import date
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 from accounts.models import Account
 from categories.models import Category
@@ -93,7 +93,7 @@ class Command(BaseCommand):
                 defaults={"user": user},
             )
 
-        today = date.today()
+        today = timezone.localdate()
         this_month_start = today.replace(day=1)
         last_month_start = this_month_start - relativedelta(months=1)
 
