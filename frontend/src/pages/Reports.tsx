@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileBarChart, FileText, TrendingUp, Wallet, Printer, Loader2, Landmark, Banknote } from 'lucide-react';
+import { FileBarChart, FileText, TrendingUp, Printer, Loader2, Landmark, Banknote, ChevronDown, ChevronRight } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 import { fetchAccounts } from '../api/accounts';
-import { fetchCategories } from '../api/categories';
 import { fetchInvoices, type Invoice } from '../api/invoices';
 import { fetchTenantProfile } from '../api/tenant';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +14,7 @@ import {
   fetchInvestmentsReport,
   fetchSummaryReport,
   fetchTransactionsReport,
+  type AccountReportRow,
   type AccountsReport,
   type CategoryTotal,
   type DREReport,
@@ -35,7 +35,7 @@ import {
   writePrintDocument,
 } from '../utils/printDocument';
 
-type ReportType = 'transactions' | 'by_account' | 'summary' | 'invoices' | 'investments' | 'dre';
+type ReportType = 'by_account' | 'summary' | 'invoices' | 'investments' | 'dre';
 
 // Faturas Emitidas depende do módulo de Fatura de Serviços, restrito a
 // superusuários (ver invoices/api_views.py) — filtrado abaixo. O DRE
@@ -44,7 +44,6 @@ type ReportType = 'transactions' | 'by_account' | 'summary' | 'invoices' | 'inve
 const SUPERUSER_ONLY_REPORTS: ReportType[] = ['invoices'];
 
 const REPORT_TYPES: { key: ReportType; label: string; icon: typeof FileBarChart }[] = [
-  { key: 'transactions', label: 'Extrato de Transações', icon: Wallet },
   { key: 'by_account', label: 'Relatório por Conta', icon: Banknote },
   { key: 'summary', label: 'Resumo Financeiro', icon: FileBarChart },
   { key: 'dre', label: 'DRE Gerencial', icon: Landmark },
@@ -87,41 +86,36 @@ function totalsBlock(rows: { label: string; value: string; grand?: boolean }[]):
     .join('')}</div>`;
 }
 
-function buildTransactionsReportBody(report: TransactionsReport): string {
-  const rows = report.transactions.length
-    ? report.transactions
-        .map((t) =>
-          tableRow([
-            formatDateHtml(t.date),
-            escapeHtml(t.description),
-            escapeHtml(t.account || '—'),
-            escapeHtml(t.category || '—'),
-            t.transaction_type === 'income' ? 'Receita' : t.transaction_type === 'expense' ? 'Despesa' : 'Transferência',
-            `${t.transaction_type === 'expense' ? '− ' : ''}${formatCurrencyHtml(t.amount)}`,
-          ])
-        )
-        .join('')
-    : `<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:20px 0">Nenhuma transação no período.</td></tr>`;
+function transactionsTableHtml(transactions: TransactionsReport['transactions']): string {
+  if (!transactions.length) {
+    return `<p style="color:#9ca3af;text-align:center;padding:12px 0">Nenhuma transação no período.</p>`;
+  }
+  const rows = transactions
+    .map((t) =>
+      tableRow([
+        formatDateHtml(t.date),
+        escapeHtml(t.description),
+        escapeHtml(t.category || '—'),
+        t.transaction_type === 'income' ? 'Receita' : t.transaction_type === 'expense' ? 'Despesa' : 'Transferência',
+        `${t.transaction_type === 'expense' ? '− ' : ''}${formatCurrencyHtml(t.amount)}`,
+      ])
+    )
+    .join('');
 
-  return `
-<div class="section-label">${escapeHtml(report.account ? `Conta: ${report.account}` : 'Todas as contas')}</div>
-<table>
-  <thead><tr><th>Data</th><th>Descrição</th><th>Conta</th><th>Categoria</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead>
+  return `<table>
+  <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th style="text-align:right">Valor</th></tr></thead>
   <tbody>${rows}</tbody>
-</table>
-${totalsBlock([
-  { label: 'Saldo Inicial', value: formatCurrencyHtml(report.opening_balance) },
-  { label: 'Total de Receitas', value: formatCurrencyHtml(report.total_income) },
-  { label: 'Total de Despesas', value: `− ${formatCurrencyHtml(report.total_expense)}` },
-  { label: 'Saldo Final', value: formatCurrencyHtml(report.closing_balance), grand: true },
-])}`;
+</table>`;
 }
 
 function toPieSlices(rows: CategoryTotal[]) {
   return rows.map((r, i) => ({ name: r.name, value: parseFloat(r.total) || 0, fill: CHART_COLORS[i % CHART_COLORS.length] }));
 }
 
-function buildAccountsReportBody(report: AccountsReport): string {
+function buildAccountsReportBody(
+  report: AccountsReport,
+  transactionsByAccount: Record<number, TransactionsReport['transactions']>
+): string {
   const rows = report.accounts.length
     ? report.accounts
         .map((a) =>
@@ -143,6 +137,20 @@ function buildAccountsReportBody(report: AccountsReport): string {
     emptyLabel: 'Nenhuma conta com saldo positivo no período.',
   });
 
+  const accountStatements = report.accounts
+    .map(
+      (a) => `
+<div class="section-label" style="margin-top:30px">Extrato — ${escapeHtml(a.name)}</div>
+${transactionsTableHtml(transactionsByAccount[a.id] || [])}
+${totalsBlock([
+  { label: 'Saldo Inicial', value: formatCurrencyHtml(a.opening_balance) },
+  { label: 'Total de Receitas', value: formatCurrencyHtml(a.total_income) },
+  { label: 'Total de Despesas', value: `− ${formatCurrencyHtml(a.total_expense)}` },
+  { label: 'Saldo Final', value: formatCurrencyHtml(a.closing_balance), grand: true },
+])}`
+    )
+    .join('');
+
   return `
 <table>
   <thead><tr><th>Conta</th><th>Tipo</th><th style="text-align:right">Saldo Inicial</th><th style="text-align:right">Receitas</th><th style="text-align:right">Despesas</th><th style="text-align:right">Saldo Final</th></tr></thead>
@@ -156,7 +164,8 @@ ${totalsBlock([
 ])}
 <div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:26px">
   ${balanceChart}
-</div>`;
+</div>
+${accountStatements}`;
 }
 
 function buildSummaryReportBody(report: SummaryReport): string {
@@ -295,31 +304,17 @@ ${totalsBlock([
 export default function Reports() {
   const { user } = useAuth();
   const availableReportTypes = REPORT_TYPES.filter((r) => !SUPERUSER_ONLY_REPORTS.includes(r.key) || user?.is_superuser);
-  const [reportType, setReportType] = useState<ReportType>('transactions');
+  const [reportType, setReportType] = useState<ReportType>('by_account');
   const [dateStart, setDateStart] = useState(firstOfMonth());
   const [dateEnd, setDateEnd] = useState(lastOfMonth());
   const [accountFilter, setAccountFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('');
   const [investmentTypeFilter, setInvestmentTypeFilter] = useState('');
   const [generated, setGenerated] = useState(false);
   const [printing, setPrinting] = useState(false);
 
   const { data: accounts = [] } = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts });
-  const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: fetchCategories });
   const { data: tenant } = useQuery({ queryKey: ['tenantProfile'], queryFn: fetchTenantProfile });
-
-  const transactionsQuery = useQuery({
-    queryKey: ['reports', 'transactions', dateStart, dateEnd, accountFilter, categoryFilter],
-    queryFn: () =>
-      fetchTransactionsReport({
-        date_start: dateStart,
-        date_end: dateEnd,
-        account: accountFilter ? Number(accountFilter) : undefined,
-        category: categoryFilter ? Number(categoryFilter) : undefined,
-      }),
-    enabled: generated && reportType === 'transactions',
-  });
 
   const accountsReportQuery = useQuery({
     queryKey: ['reports', 'by_account', dateStart, dateEnd],
@@ -357,7 +352,6 @@ export default function Reports() {
   });
 
   const activeQuery = {
-    transactions: transactionsQuery,
     by_account: accountsReportQuery,
     summary: summaryQuery,
     invoices: invoicesQuery,
@@ -381,16 +375,17 @@ export default function Reports() {
     setPrinting(true);
     try {
       let bodyHtml = '';
-      if (reportType === 'transactions') {
-        const data = transactionsQuery.data ?? (await fetchTransactionsReport({
-          date_start: dateStart, date_end: dateEnd,
-          account: accountFilter ? Number(accountFilter) : undefined,
-          category: categoryFilter ? Number(categoryFilter) : undefined,
-        }));
-        bodyHtml = buildTransactionsReportBody(data);
-      } else if (reportType === 'by_account') {
+      if (reportType === 'by_account') {
         const data = accountsReportQuery.data ?? (await fetchAccountsReport({ date_start: dateStart, date_end: dateEnd }));
-        bodyHtml = buildAccountsReportBody(data);
+        const transactionsByAccount: Record<number, TransactionsReport['transactions']> = Object.fromEntries(
+          await Promise.all(
+            data.accounts.map(async (a) => {
+              const accountReport = await fetchTransactionsReport({ date_start: dateStart, date_end: dateEnd, account: a.id });
+              return [a.id, accountReport.transactions] as const;
+            })
+          )
+        );
+        bodyHtml = buildAccountsReportBody(data, transactionsByAccount);
       } else if (reportType === 'summary') {
         const data = summaryQuery.data ?? (await fetchSummaryReport({ date_start: dateStart, date_end: dateEnd }));
         bodyHtml = buildSummaryReportBody(data);
@@ -461,23 +456,14 @@ export default function Reports() {
             <input type="date" className="input" value={dateEnd} onChange={(e) => { setDateEnd(e.target.value); setGenerated(false); }} />
           </div>
 
-          {reportType === 'transactions' && (
-            <>
-              <div>
-                <label className="label">Conta</label>
-                <select className="input" value={accountFilter} onChange={(e) => { setAccountFilter(e.target.value); setGenerated(false); }}>
-                  <option value="">Todas</option>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label">Categoria</label>
-                <select className="input" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setGenerated(false); }}>
-                  <option value="">Todas</option>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-            </>
+          {reportType === 'by_account' && (
+            <div>
+              <label className="label">Conta</label>
+              <select className="input" value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}>
+                <option value="">Todas</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
           )}
 
           {reportType === 'invoices' && (
@@ -530,11 +516,13 @@ export default function Reports() {
 
       {generated && activeQuery.data && (
         <div className="card">
-          {reportType === 'transactions' && transactionsQuery.data && (
-            <TransactionsPreview report={transactionsQuery.data} />
-          )}
           {reportType === 'by_account' && accountsReportQuery.data && (
-            <AccountsReportPreview report={accountsReportQuery.data} />
+            <AccountsReportPreview
+              report={accountsReportQuery.data}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
+              accountFilter={accountFilter}
+            />
           )}
           {reportType === 'summary' && summaryQuery.data && <SummaryPreview report={summaryQuery.data} />}
           {reportType === 'invoices' && invoicesQuery.data && <InvoicesPreview invoices={invoicesQuery.data} />}
@@ -555,46 +543,53 @@ function StatRow({ label, value, strong }: { label: string; value: string; stron
   );
 }
 
-function TransactionsPreview({ report }: { report: TransactionsReport }) {
-  return (
-    <div>
-      <StatRow label="Saldo Inicial" value={formatCurrency(report.opening_balance)} />
-      <StatRow label="Total de Receitas" value={formatCurrency(report.total_income)} />
-      <StatRow label="Total de Despesas" value={`− ${formatCurrency(report.total_expense)}`} />
-      <StatRow label="Saldo Final" value={formatCurrency(report.closing_balance)} strong />
-      <div style={{ marginTop: 'var(--space-md)', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-        {report.transactions.length} transação(ões) no período.
-      </div>
-    </div>
-  );
+function formatDate(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
 }
 
-function AccountsReportPreview({ report }: { report: AccountsReport }) {
-  const balanceRows: CategoryTotal[] = report.accounts.map((a) => ({ name: a.name, total: a.closing_balance }));
+function AccountsReportPreview({
+  report,
+  dateStart,
+  dateEnd,
+  accountFilter,
+}: {
+  report: AccountsReport;
+  dateStart: string;
+  dateEnd: string;
+  accountFilter: string;
+}) {
+  const visibleAccounts = accountFilter ? report.accounts.filter((a) => String(a.id) === accountFilter) : report.accounts;
+  const sumField = (field: 'opening_balance' | 'total_income' | 'total_expense' | 'closing_balance') =>
+    visibleAccounts.reduce((acc, a) => acc + (parseFloat(a[field]) || 0), 0);
+  const balanceRows: CategoryTotal[] = visibleAccounts.map((a) => ({ name: a.name, total: a.closing_balance }));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
       <div className="kpi-grid">
         <div className="kpi-card">
           <div className="kpi-label">Saldo Inicial Total</div>
-          <div className="kpi-value">{formatCurrency(report.total_opening_balance)}</div>
+          <div className="kpi-value">{formatCurrency(sumField('opening_balance'))}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Total de Receitas</div>
-          <div className="kpi-value positive">{formatCurrency(report.total_income)}</div>
+          <div className="kpi-value positive">{formatCurrency(sumField('total_income'))}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Total de Despesas</div>
-          <div className="kpi-value negative">{formatCurrency(report.total_expense)}</div>
+          <div className="kpi-value negative">{formatCurrency(sumField('total_expense'))}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">Saldo Final Total</div>
-          <div className="kpi-value accent">{formatCurrency(report.total_closing_balance)}</div>
+          <div className="kpi-value accent">{formatCurrency(sumField('closing_balance'))}</div>
         </div>
       </div>
 
-      {report.accounts.length ? (
+      {visibleAccounts.length ? (
         <div className="card" style={{ overflowX: 'auto' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+            Clique em uma conta para ver as transações do período.
+          </p>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -607,15 +602,8 @@ function AccountsReportPreview({ report }: { report: AccountsReport }) {
               </tr>
             </thead>
             <tbody>
-              {report.accounts.map((a) => (
-                <tr key={a.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '8px 6px', fontWeight: 600 }}>{a.name}</td>
-                  <td style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{a.account_type_display}</td>
-                  <td style={{ padding: '8px 6px', textAlign: 'right' }}>{formatCurrency(a.opening_balance)}</td>
-                  <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-success)' }}>{formatCurrency(a.total_income)}</td>
-                  <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-danger)' }}>− {formatCurrency(a.total_expense)}</td>
-                  <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(a.closing_balance)}</td>
-                </tr>
+              {visibleAccounts.map((a) => (
+                <AccountRowGroup key={a.id} account={a} dateStart={dateStart} dateEnd={dateEnd} />
               ))}
             </tbody>
           </table>
@@ -628,6 +616,75 @@ function AccountsReportPreview({ report }: { report: AccountsReport }) {
 
       <CategoryPieCard title="Saldo Final por Conta" rows={balanceRows} />
     </div>
+  );
+}
+
+function AccountRowGroup({ account, dateStart, dateEnd }: { account: AccountReportRow; dateStart: string; dateEnd: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data, isFetching } = useQuery({
+    queryKey: ['reports', 'account-transactions', account.id, dateStart, dateEnd],
+    queryFn: () => fetchTransactionsReport({ date_start: dateStart, date_end: dateEnd, account: account.id }),
+    enabled: expanded,
+  });
+
+  return (
+    <>
+      <tr
+        onClick={() => setExpanded((prev) => !prev)}
+        style={{ borderBottom: expanded ? 'none' : '1px solid var(--color-border)', cursor: 'pointer' }}
+      >
+        <td style={{ padding: '8px 6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {account.name}
+        </td>
+        <td style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{account.account_type_display}</td>
+        <td style={{ padding: '8px 6px', textAlign: 'right' }}>{formatCurrency(account.opening_balance)}</td>
+        <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-success)' }}>{formatCurrency(account.total_income)}</td>
+        <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-danger)' }}>− {formatCurrency(account.total_expense)}</td>
+        <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(account.closing_balance)}</td>
+      </tr>
+      {expanded && (
+        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+          <td colSpan={6} style={{ padding: 0, background: 'var(--color-bg-elevated)' }}>
+            {isFetching ? (
+              <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Carregando transações...</div>
+            ) : data && data.transactions.length ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Data</th>
+                    <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Descrição</th>
+                    <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Categoria</th>
+                    <th style={{ textAlign: 'right', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.transactions.map((t) => (
+                    <tr key={t.id}>
+                      <td style={{ padding: '6px 12px' }}>{formatDate(t.date)}</td>
+                      <td style={{ padding: '6px 12px' }}>{t.description}</td>
+                      <td style={{ padding: '6px 12px', color: 'var(--color-text-secondary)' }}>{t.category || '—'}</td>
+                      <td
+                        style={{
+                          padding: '6px 12px',
+                          textAlign: 'right',
+                          color: t.transaction_type === 'expense' ? 'var(--color-danger)' : 'var(--color-success)',
+                        }}
+                      >
+                        {t.transaction_type === 'expense' ? '− ' : ''}
+                        {formatCurrency(t.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Nenhuma transação no período.</div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

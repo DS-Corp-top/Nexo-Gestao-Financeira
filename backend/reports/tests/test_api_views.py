@@ -94,6 +94,39 @@ def test_transactions_report_balances_and_totals(baker):
 
 
 @pytest.mark.django_db
+def test_transactions_report_excludes_uncleared_transactions_from_totals(baker):
+    """Regressao: uma despesa ainda nao baixada (is_cleared=False) aparecia
+    em total_expense mas nao afetava opening/closing_balance (que so contam
+    transacoes baixadas) - o relatorio mostrava despesas sem o saldo mudar.
+    Total e saldo precisam usar o mesmo criterio."""
+    user, tenant = _tenant_user(baker)
+    account = baker.make(
+        "accounts.Account", tenant=tenant, user=user, initial_balance=0,
+        account_type="bank", include_in_balance=True, is_active=True,
+    )
+
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="expense", amount=Decimal("3070.78"), date=date(2026, 2, 10), is_cleared=False,
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_transactions"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    data = response.data
+    assert data["total_expense"] == "0.00"
+    assert data["opening_balance"] == "0.00"
+    assert data["closing_balance"] == "0.00"
+    # Continua listada no extrato — so nao entra nos totais/saldo.
+    assert len(data["transactions"]) == 1
+
+
+@pytest.mark.django_db
 def test_transactions_report_account_filter_scopes_to_account(baker):
     user, tenant = _tenant_user(baker)
     account_a = baker.make("accounts.Account", tenant=tenant, user=user, initial_balance=100)
@@ -197,6 +230,33 @@ def test_accounts_report_balances_and_totals_per_account(baker):
     assert data["total_closing_balance"] == "1930.00"
     assert data["total_income"] == "350.00"
     assert data["total_expense"] == "120.00"
+
+
+@pytest.mark.django_db
+def test_accounts_report_excludes_uncleared_transactions_from_totals(baker):
+    """Regressao: mesma inconsistencia do Extrato de Transacoes — uma despesa
+    pendente (is_cleared=False) nao pode aparecer em total_expense sem afetar
+    o saldo, senao os totais nao batem com Saldo Inicial/Final da conta."""
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, initial_balance=0)
+
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="expense", amount=Decimal("3070.78"), date=date(2026, 2, 10), is_cleared=False,
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_accounts"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    row = response.data["accounts"][0]
+    assert row["total_expense"] == "0.00"
+    assert row["opening_balance"] == "0.00"
+    assert row["closing_balance"] == "0.00"
 
 
 @pytest.mark.django_db

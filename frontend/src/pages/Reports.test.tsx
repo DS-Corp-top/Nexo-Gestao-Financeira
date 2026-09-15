@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -72,7 +72,7 @@ describe('Reports Page', () => {
 
   it('hides "Faturas Emitidas" for non-superusers', async () => {
     renderReports();
-    await waitFor(() => expect(screen.getByRole('button', { name: /Extrato de Transações/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: /Relatório por Conta/ })).toBeInTheDocument());
 
     expect(screen.queryByRole('button', { name: /Faturas Emitidas/ })).not.toBeInTheDocument();
     // DRE is transaction-based, not invoice-based — must stay available to everyone.
@@ -168,6 +168,129 @@ describe('Reports Page', () => {
     // "Conta Corrente" appears twice — the table row and the balance pie chart legend.
     expect((await screen.findAllByText('Conta Corrente')).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/R\$\s*1\.300,00/).length).toBeGreaterThan(0);
+  });
+
+  it('expands an account row to fetch and show its transactions', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '500.00', total_expense: '200.00', closing_balance: '1300.00',
+        },
+      ],
+      total_opening_balance: '1000.00',
+      total_closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+    });
+    (reportsApi.fetchTransactionsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      account: 'Conta Corrente',
+      opening_balance: '1000.00',
+      closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+      transactions: [
+        { id: 10, date: '2026-02-05', description: 'Salário', transaction_type: 'income', amount: '500.00', account: 'Conta Corrente', category: 'Trabalho', is_cleared: true },
+      ],
+    });
+
+    renderReports();
+    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+
+    const table = await screen.findByRole('table');
+    expect(reportsApi.fetchTransactionsReport).not.toHaveBeenCalled();
+
+    fireEvent.click(within(table).getByText('Conta Corrente'));
+
+    await waitFor(() =>
+      expect(reportsApi.fetchTransactionsReport).toHaveBeenCalledWith(expect.objectContaining({ account: 1 }))
+    );
+    expect(await screen.findByText('Salário')).toBeInTheDocument();
+  });
+
+  it('filtering by account narrows the table and recalculates the KPI totals', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '500.00', total_expense: '200.00', closing_balance: '1300.00',
+        },
+        {
+          id: 2, name: 'Reserva', account_type: 'savings', account_type_display: 'Poupança',
+          opening_balance: '2000.00', total_income: '0.00', total_expense: '0.00', closing_balance: '2000.00',
+        },
+      ],
+      total_opening_balance: '3000.00',
+      total_closing_balance: '3300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+    });
+    (accountsApi.fetchAccounts as any).mockResolvedValue([
+      { id: 1, name: 'Conta Corrente' },
+      { id: 2, name: 'Reserva' },
+    ]);
+
+    renderReports();
+    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('Reserva')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '1' } });
+
+    // "Reserva" still exists as an <option> in the filter select — the
+    // assertion must stay scoped to the results table.
+    await waitFor(() => expect(within(table).queryByText('Reserva')).not.toBeInTheDocument());
+    expect(within(table).getAllByText(/R\$\s*1\.300,00/).length).toBeGreaterThan(0);
+  });
+
+  it('printing the Relatório por Conta report embeds each account statement', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '500.00', total_expense: '200.00', closing_balance: '1300.00',
+        },
+      ],
+      total_opening_balance: '1000.00',
+      total_closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+    });
+    (reportsApi.fetchTransactionsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      account: 'Conta Corrente',
+      opening_balance: '1000.00',
+      closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+      transactions: [
+        { id: 10, date: '2026-02-05', description: 'Salário', transaction_type: 'income', amount: '500.00', account: 'Conta Corrente', category: 'Trabalho', is_cleared: true },
+      ],
+    });
+    const fakeWindow = {} as Window;
+    (printDocument.openPrintWindow as any).mockReturnValue(fakeWindow);
+
+    renderReports();
+    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Imprimir' }));
+
+    await waitFor(() => expect(printDocument.writePrintDocument).toHaveBeenCalledTimes(1));
+    const [, html] = (printDocument.writePrintDocument as any).mock.calls[0];
+    expect(html).toContain('Extrato — Conta Corrente');
+    expect(html).toContain('Salário');
   });
 
   it('switching report type hides the previous result until generated again', async () => {

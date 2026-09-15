@@ -94,8 +94,18 @@ class TransactionsReportView(APIView):
             )
             closing_balance = calculate_user_balance(request.user, cutoff_date=date_end, tenant=tenant)
 
-        total_income = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.INCOME))
-        total_expense = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.EXPENSE))
+        # Saldo inicial/final so conta transacoes baixadas (is_cleared=True) e
+        # nao ignoradas — os totais precisam da mesma restricao, senao uma
+        # despesa ainda pendente aparece no total sem refletir no saldo.
+        posted_qs = qs.filter(is_cleared=True, is_ignored=False)
+        if account is None:
+            posted_qs = posted_qs.filter(
+                account__is_active=True,
+                account__include_in_balance=True,
+                account__account_type__in=["bank", "cash"],
+            )
+        total_income = _sum_amount(posted_qs.filter(transaction_type=Transaction.TransactionType.INCOME))
+        total_expense = _sum_amount(posted_qs.filter(transaction_type=Transaction.TransactionType.EXPENSE))
 
         transactions = [] if masked else [
             {
@@ -139,9 +149,12 @@ class AccountsReportView(APIView):
 
         accounts = []
         for account in Account.objects.filter(tenant=tenant, is_active=True).order_by("name"):
+            # is_cleared=True para bater com calculate_account_balance abaixo —
+            # senao uma despesa ainda pendente entra no total sem refletir no saldo.
             movements = Transaction.objects.filter(
                 tenant=tenant,
                 account=account,
+                is_cleared=True,
                 is_ignored=False,
                 date__gte=date_start,
                 date__lte=date_end,
