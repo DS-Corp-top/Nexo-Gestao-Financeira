@@ -7,8 +7,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 
 vi.mock('../api/auth', () => ({
+  AUTH_SESSION_HINT_KEY: 'nexo.hasAuthSession',
   login: vi.fn(),
   fetchMe: vi.fn(),
+  logout: vi.fn(),
 }));
 
 const renderLogin = () => {
