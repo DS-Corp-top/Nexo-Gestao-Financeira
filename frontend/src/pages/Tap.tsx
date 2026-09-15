@@ -147,7 +147,7 @@ function CharterForm({
         </select>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+      <div className="form-grid-2">
         <div>
           <label className="label" htmlFor="charter-sponsor">Patrocinador</label>
           <input id="charter-sponsor" className="input" value={form.sponsor_name} onChange={(e) => set('sponsor_name', e.target.value)} />
@@ -163,7 +163,7 @@ function CharterForm({
         <textarea id="charter-co-responsibles" className="input" style={textareaStyle} value={form.co_responsibles} onChange={(e) => set('co_responsibles', e.target.value)} placeholder="Nomes dos co-responsáveis, um por linha ou separados por vírgula" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+      <div className="form-grid-2">
         <div>
           <label className="label" htmlFor="charter-start">Início previsto</label>
           <input id="charter-start" className="input" type="date" value={form.start_date ?? ''} onChange={(e) => set('start_date', e.target.value || null)} />
@@ -225,7 +225,7 @@ function CharterForm({
       </div>
 
       {form.status === 'approved' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="form-grid-2">
           <div>
             <label className="label" htmlFor="charter-approved-by">Aprovado por</label>
             <input id="charter-approved-by" className="input" value={form.approved_by_name} onChange={(e) => set('approved_by_name', e.target.value)} />

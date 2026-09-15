@@ -202,9 +202,9 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               style={{
                 padding: '10px 0',
                 borderRadius: 'var(--radius-md)',
-                border: `1px solid ${tab === t ? '#3b82f6' : '#e5e7eb'}`,
-                background: tab === t ? '#3b82f6' : '#fff',
-                color: tab === t ? '#fff' : '#111',
+                border: `1px solid ${tab === t ? '#3b82f6' : 'var(--color-border)'}`,
+                background: tab === t ? '#3b82f6' : 'transparent',
+                color: tab === t ? '#fff' : 'var(--color-text-muted)',
                 fontWeight: 700,
                 fontSize: '0.75rem',
                 textTransform: 'uppercase',

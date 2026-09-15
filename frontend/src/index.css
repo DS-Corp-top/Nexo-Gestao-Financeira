@@ -179,6 +179,18 @@ a:hover {
    Form Elements
    ============================================ */
 
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .input,
 .select,
 .textarea {
@@ -990,6 +1002,11 @@ select.clear-modal-date option:checked {
     padding: var(--space-md) var(--space-md) 200px;
   }
 
+  .btn-icon {
+    width: 44px;
+    height: 44px;
+  }
+
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-sm);
@@ -1614,6 +1631,13 @@ select.clear-modal-date option:checked {
 .txn-actions-trigger svg {
   height: 1rem;
   width: 1rem;
+}
+
+@media (max-width: 768px) {
+  .txn-actions-trigger {
+    height: 2.2rem;
+    width: 2.2rem;
+  }
 }
 
 .txn-actions-dropdown[open] .txn-actions-trigger {

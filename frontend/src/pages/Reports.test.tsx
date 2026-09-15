@@ -72,25 +72,26 @@ describe('Reports Page', () => {
 
   it('hides "Faturas Emitidas" for non-superusers', async () => {
     renderReports();
-    await waitFor(() => expect(screen.getByRole('button', { name: /Relatório por Conta/ })).toBeInTheDocument());
+    const select = await screen.findByLabelText('Tipo de Relatório');
 
-    expect(screen.queryByRole('button', { name: /Faturas Emitidas/ })).not.toBeInTheDocument();
+    expect(within(select).queryByRole('option', { name: /Faturas Emitidas/ })).not.toBeInTheDocument();
     // DRE is transaction-based, not invoice-based — must stay available to everyone.
-    expect(screen.getByRole('button', { name: /DRE Gerencial/ })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: /DRE Gerencial/ })).toBeInTheDocument();
   });
 
   it('shows "Faturas Emitidas" for superusers', async () => {
     (useAuth as any).mockReturnValue({ user: { is_superuser: true }, tenant: null });
     renderReports();
 
+    const select = await screen.findByLabelText('Tipo de Relatório');
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Faturas Emitidas/ })).toBeInTheDocument();
+      expect(within(select).getByRole('option', { name: /Faturas Emitidas/ })).toBeInTheDocument();
     });
   });
 
   it('does not fetch a report before "Gerar Relatório" is clicked', async () => {
     renderReports();
-    await waitFor(() => expect(screen.getByRole('button', { name: /DRE Gerencial/ })).toBeInTheDocument());
+    fireEvent.change(await screen.findByLabelText('Tipo de Relatório'), { target: { value: 'dre' } });
 
     expect(reportsApi.fetchDREReport).not.toHaveBeenCalled();
   });
@@ -99,7 +100,7 @@ describe('Reports Page', () => {
     (reportsApi.fetchDREReport as any).mockResolvedValue(DRE_REPORT);
     renderReports();
 
-    fireEvent.click(await screen.findByRole('button', { name: /DRE Gerencial/ }));
+    fireEvent.change(await screen.findByLabelText('Tipo de Relatório'), { target: { value: 'dre' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
 
     await waitFor(() => expect(reportsApi.fetchDREReport).toHaveBeenCalledTimes(1));
@@ -115,7 +116,7 @@ describe('Reports Page', () => {
     (reportsApi.fetchDREReport as any).mockResolvedValue(DRE_REPORT);
     renderReports();
 
-    fireEvent.click(await screen.findByRole('button', { name: /DRE Gerencial/ }));
+    fireEvent.change(await screen.findByLabelText('Tipo de Relatório'), { target: { value: 'dre' } });
     expect(screen.queryByRole('button', { name: 'Imprimir' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
@@ -131,7 +132,7 @@ describe('Reports Page', () => {
     (printDocument.openPrintWindow as any).mockReturnValue(fakeWindow);
 
     renderReports();
-    fireEvent.click(await screen.findByRole('button', { name: /DRE Gerencial/ }));
+    fireEvent.change(await screen.findByLabelText('Tipo de Relatório'), { target: { value: 'dre' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Imprimir' }));
 
@@ -160,8 +161,8 @@ describe('Reports Page', () => {
       total_expense: '200.00',
     });
     renderReports();
+    await screen.findByLabelText('Tipo de Relatório');
 
-    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
 
     await waitFor(() => expect(reportsApi.fetchAccountsReport).toHaveBeenCalledTimes(1));
@@ -199,7 +200,7 @@ describe('Reports Page', () => {
     });
 
     renderReports();
-    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    await screen.findByLabelText('Tipo de Relatório');
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
 
     const table = await screen.findByRole('table');
@@ -211,6 +212,50 @@ describe('Reports Page', () => {
       expect(reportsApi.fetchTransactionsReport).toHaveBeenCalledWith(expect.objectContaining({ account: 1 }))
     );
     expect(await screen.findByText('Salário')).toBeInTheDocument();
+  });
+
+  it('filtering by type passes it to the expanded transaction fetch', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '500.00', total_expense: '200.00', closing_balance: '1300.00',
+        },
+      ],
+      total_opening_balance: '1000.00',
+      total_closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+    });
+    (reportsApi.fetchTransactionsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      account: 'Conta Corrente',
+      opening_balance: '1000.00',
+      closing_balance: '1300.00',
+      total_income: '0.00',
+      total_expense: '200.00',
+      transactions: [
+        { id: 11, date: '2026-02-20', description: 'Aluguel', transaction_type: 'expense', amount: '200.00', account: 'Conta Corrente', category: 'Moradia', is_cleared: true },
+      ],
+    });
+
+    renderReports();
+    await screen.findByLabelText('Tipo de Relatório');
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+
+    const table = await screen.findByRole('table');
+    fireEvent.change(screen.getByLabelText('Tipo'), { target: { value: 'expense' } });
+    fireEvent.click(within(table).getByText('Conta Corrente'));
+
+    await waitFor(() =>
+      expect(reportsApi.fetchTransactionsReport).toHaveBeenCalledWith(
+        expect.objectContaining({ account: 1, type: 'expense' })
+      )
+    );
+    expect(await screen.findByText('Aluguel')).toBeInTheDocument();
   });
 
   it('filtering by account narrows the table and recalculates the KPI totals', async () => {
@@ -238,13 +283,13 @@ describe('Reports Page', () => {
     ]);
 
     renderReports();
-    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    await screen.findByLabelText('Tipo de Relatório');
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
 
     const table = await screen.findByRole('table');
     expect(within(table).getByText('Reserva')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Conta'), { target: { value: '1' } });
 
     // "Reserva" still exists as an <option> in the filter select — the
     // assertion must stay scoped to the results table.
@@ -283,7 +328,7 @@ describe('Reports Page', () => {
     (printDocument.openPrintWindow as any).mockReturnValue(fakeWindow);
 
     renderReports();
-    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    await screen.findByLabelText('Tipo de Relatório');
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Imprimir' }));
 
@@ -291,6 +336,26 @@ describe('Reports Page', () => {
     const [, html] = (printDocument.writePrintDocument as any).mock.calls[0];
     expect(html).toContain('Extrato — Conta Corrente');
     expect(html).toContain('Salário');
+  });
+
+  it('filtering the Resumo Financeiro by type refetches with the type param', async () => {
+    (reportsApi.fetchSummaryReport as any).mockResolvedValue({
+      date_start: '2026-02-01', date_end: '2026-02-28',
+      total_income: '3000.00', total_expense: '0.00', balance: '3000.00',
+      income_by_category: [{ name: 'Salario', total: '3000.00' }], expense_by_category: [],
+    });
+
+    renderReports();
+    const select = await screen.findByLabelText('Tipo de Relatório');
+    fireEvent.change(select, { target: { value: 'summary' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+    await waitFor(() => expect(reportsApi.fetchSummaryReport).toHaveBeenCalledWith(expect.objectContaining({ type: undefined })));
+
+    fireEvent.change(screen.getByLabelText('Tipo'), { target: { value: 'income' } });
+
+    await waitFor(() =>
+      expect(reportsApi.fetchSummaryReport).toHaveBeenCalledWith(expect.objectContaining({ type: 'income' }))
+    );
   });
 
   it('switching report type hides the previous result until generated again', async () => {
@@ -302,11 +367,12 @@ describe('Reports Page', () => {
     });
 
     renderReports();
-    fireEvent.click(await screen.findByRole('button', { name: /DRE Gerencial/ }));
+    const select = await screen.findByLabelText('Tipo de Relatório');
+    fireEvent.change(select, { target: { value: 'dre' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
     await waitFor(() => expect(screen.getByText('Lucro Bruto')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /Resumo Financeiro/ }));
+    fireEvent.change(select, { target: { value: 'summary' } });
     expect(screen.queryByText('Lucro Bruto')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Imprimir' })).not.toBeInTheDocument();
   });

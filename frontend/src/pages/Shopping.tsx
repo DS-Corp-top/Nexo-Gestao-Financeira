@@ -213,10 +213,10 @@ export default function Shopping() {
         </div>
 
         <div className="card">
-          <form onSubmit={handleCreateItem} style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
-            <input type="text" name="title" className="input" placeholder="Novo item..." style={{ flex: 2 }} required />
-            <input type="number" name="quantity" className="input" placeholder="Qtd" defaultValue="1" min="1" style={{ width: 80 }} />
-            <CurrencyInput value={newUnitPrice} onChange={setNewUnitPrice} className="input" placeholder="Preço Un. (opcional)" style={{ width: 140 }} />
+          <form onSubmit={handleCreateItem} style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+            <input type="text" name="title" className="input" placeholder="Novo item..." style={{ flex: '2 1 160px' }} required />
+            <input type="number" name="quantity" className="input" placeholder="Qtd" defaultValue="1" min="1" style={{ flex: '1 1 80px', width: 80 }} />
+            <CurrencyInput value={newUnitPrice} onChange={setNewUnitPrice} className="input" placeholder="Preço Un. (opcional)" style={{ flex: '1 1 140px', width: 140 }} />
             <button type="submit" className="btn btn-primary" disabled={createItemMutation.isPending}>
               Adicionar
             </button>
@@ -330,7 +330,7 @@ export default function Shopping() {
       </div>
 
       {listsLoading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 120 }} />)}
         </div>
       ) : lists?.length === 0 ? (
@@ -340,7 +340,7 @@ export default function Shopping() {
           <p className="empty-state-text">Crie uma lista para planejar suas compras no mercado.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {lists?.map((list) => (
             <div
               key={list.id}

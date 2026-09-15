@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileBarChart, FileText, TrendingUp, Printer, Loader2, Landmark, Banknote, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileBarChart, Printer, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 import { fetchAccounts } from '../api/accounts';
@@ -43,12 +43,12 @@ type ReportType = 'by_account' | 'summary' | 'invoices' | 'investments' | 'dre';
 // qualquer membro do tenant.
 const SUPERUSER_ONLY_REPORTS: ReportType[] = ['invoices'];
 
-const REPORT_TYPES: { key: ReportType; label: string; icon: typeof FileBarChart }[] = [
-  { key: 'by_account', label: 'Relatório por Conta', icon: Banknote },
-  { key: 'summary', label: 'Resumo Financeiro', icon: FileBarChart },
-  { key: 'dre', label: 'DRE Gerencial', icon: Landmark },
-  { key: 'invoices', label: 'Faturas Emitidas', icon: FileText },
-  { key: 'investments', label: 'Investimentos', icon: TrendingUp },
+const REPORT_TYPES: { key: ReportType; label: string }[] = [
+  { key: 'by_account', label: 'Relatório por Conta' },
+  { key: 'summary', label: 'Resumo Financeiro' },
+  { key: 'dre', label: 'DRE Gerencial' },
+  { key: 'invoices', label: 'Faturas Emitidas' },
+  { key: 'investments', label: 'Investimentos' },
 ];
 
 const INVOICE_STATUS_LABEL: Record<string, string> = { issued: 'Emitida', paid: 'Paga' };
@@ -308,6 +308,7 @@ export default function Reports() {
   const [dateStart, setDateStart] = useState(firstOfMonth());
   const [dateEnd, setDateEnd] = useState(lastOfMonth());
   const [accountFilter, setAccountFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'' | 'income' | 'expense'>('');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('');
   const [investmentTypeFilter, setInvestmentTypeFilter] = useState('');
   const [generated, setGenerated] = useState(false);
@@ -323,8 +324,8 @@ export default function Reports() {
   });
 
   const summaryQuery = useQuery({
-    queryKey: ['reports', 'summary', dateStart, dateEnd],
-    queryFn: () => fetchSummaryReport({ date_start: dateStart, date_end: dateEnd }),
+    queryKey: ['reports', 'summary', dateStart, dateEnd, typeFilter],
+    queryFn: () => fetchSummaryReport({ date_start: dateStart, date_end: dateEnd, type: typeFilter || undefined }),
     enabled: generated && reportType === 'summary',
   });
 
@@ -380,14 +381,16 @@ export default function Reports() {
         const transactionsByAccount: Record<number, TransactionsReport['transactions']> = Object.fromEntries(
           await Promise.all(
             data.accounts.map(async (a) => {
-              const accountReport = await fetchTransactionsReport({ date_start: dateStart, date_end: dateEnd, account: a.id });
+              const accountReport = await fetchTransactionsReport({
+                date_start: dateStart, date_end: dateEnd, account: a.id, type: typeFilter || undefined,
+              });
               return [a.id, accountReport.transactions] as const;
             })
           )
         );
         bodyHtml = buildAccountsReportBody(data, transactionsByAccount);
       } else if (reportType === 'summary') {
-        const data = summaryQuery.data ?? (await fetchSummaryReport({ date_start: dateStart, date_end: dateEnd }));
+        const data = summaryQuery.data ?? (await fetchSummaryReport({ date_start: dateStart, date_end: dateEnd, type: typeFilter || undefined }));
         bodyHtml = buildSummaryReportBody(data);
       } else if (reportType === 'invoices') {
         const data = invoicesQuery.data ?? (await fetchInvoices({ start: dateStart, end: dateEnd, status: invoiceStatusFilter || undefined }));
@@ -425,25 +428,18 @@ export default function Reports() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
       <div className="card">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-          {availableReportTypes.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => handleChangeType(key)}
-              className="btn"
-              style={{
-                flexDirection: 'column',
-                gap: 8,
-                padding: '1rem 0.75rem',
-                background: reportType === key ? 'var(--color-accent-muted)' : 'var(--color-bg-elevated)',
-                borderColor: reportType === key ? 'var(--color-accent)' : 'var(--color-border)',
-                color: reportType === key ? 'var(--color-accent)' : 'var(--color-text-primary)',
-              }}
-            >
-              <Icon size={20} />
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, textAlign: 'center' }}>{label}</span>
-            </button>
-          ))}
+        <div style={{ marginBottom: 'var(--space-lg)' }}>
+          <label className="label" htmlFor="report-type-select">Tipo de Relatório</label>
+          <select
+            id="report-type-select"
+            className="select"
+            value={reportType}
+            onChange={(e) => handleChangeType(e.target.value as ReportType)}
+          >
+            {availableReportTypes.map(({ key, label }) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-md)' }}>
@@ -457,11 +453,42 @@ export default function Reports() {
           </div>
 
           {reportType === 'by_account' && (
+            <>
+              <div>
+                <label className="label" htmlFor="account-filter-select">Conta</label>
+                <select id="account-filter-select" className="input" value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}>
+                  <option value="">Todas</option>
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="type-filter-select">Tipo</label>
+                <select
+                  id="type-filter-select"
+                  className="input"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as '' | 'income' | 'expense')}
+                >
+                  <option value="">Todos</option>
+                  <option value="income">Receita</option>
+                  <option value="expense">Despesa</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {reportType === 'summary' && (
             <div>
-              <label className="label">Conta</label>
-              <select className="input" value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}>
-                <option value="">Todas</option>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              <label className="label" htmlFor="type-filter-select">Tipo</label>
+              <select
+                id="type-filter-select"
+                className="input"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as '' | 'income' | 'expense')}
+              >
+                <option value="">Todos</option>
+                <option value="income">Receita</option>
+                <option value="expense">Despesa</option>
               </select>
             </div>
           )}
@@ -522,6 +549,7 @@ export default function Reports() {
               dateStart={dateStart}
               dateEnd={dateEnd}
               accountFilter={accountFilter}
+              typeFilter={typeFilter}
             />
           )}
           {reportType === 'summary' && summaryQuery.data && <SummaryPreview report={summaryQuery.data} />}
@@ -553,12 +581,15 @@ function AccountsReportPreview({
   dateStart,
   dateEnd,
   accountFilter,
+  typeFilter,
 }: {
   report: AccountsReport;
   dateStart: string;
   dateEnd: string;
   accountFilter: string;
+  typeFilter: '' | 'income' | 'expense';
 }) {
+  const { isMobile } = useViewMode();
   const visibleAccounts = accountFilter ? report.accounts.filter((a) => String(a.id) === accountFilter) : report.accounts;
   const sumField = (field: 'opening_balance' | 'total_income' | 'total_expense' | 'closing_balance') =>
     visibleAccounts.reduce((acc, a) => acc + (parseFloat(a[field]) || 0), 0);
@@ -594,8 +625,8 @@ function AccountsReportPreview({
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <th style={{ textAlign: 'left', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Conta</th>
-                <th style={{ textAlign: 'left', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Tipo</th>
-                <th style={{ textAlign: 'right', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Saldo Inicial</th>
+                {!isMobile && <th style={{ textAlign: 'left', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Tipo</th>}
+                {!isMobile && <th style={{ textAlign: 'right', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Saldo Inicial</th>}
                 <th style={{ textAlign: 'right', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Receitas</th>
                 <th style={{ textAlign: 'right', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Despesas</th>
                 <th style={{ textAlign: 'right', padding: '8px 6px', color: 'var(--color-text-secondary)' }}>Saldo Final</th>
@@ -603,7 +634,7 @@ function AccountsReportPreview({
             </thead>
             <tbody>
               {visibleAccounts.map((a) => (
-                <AccountRowGroup key={a.id} account={a} dateStart={dateStart} dateEnd={dateEnd} />
+                <AccountRowGroup key={a.id} account={a} dateStart={dateStart} dateEnd={dateEnd} typeFilter={typeFilter} />
               ))}
             </tbody>
           </table>
@@ -619,11 +650,23 @@ function AccountsReportPreview({
   );
 }
 
-function AccountRowGroup({ account, dateStart, dateEnd }: { account: AccountReportRow; dateStart: string; dateEnd: string }) {
+function AccountRowGroup({
+  account,
+  dateStart,
+  dateEnd,
+  typeFilter,
+}: {
+  account: AccountReportRow;
+  dateStart: string;
+  dateEnd: string;
+  typeFilter: '' | 'income' | 'expense';
+}) {
   const [expanded, setExpanded] = useState(false);
+  const { isMobile } = useViewMode();
   const { data, isFetching } = useQuery({
-    queryKey: ['reports', 'account-transactions', account.id, dateStart, dateEnd],
-    queryFn: () => fetchTransactionsReport({ date_start: dateStart, date_end: dateEnd, account: account.id }),
+    queryKey: ['reports', 'account-transactions', account.id, dateStart, dateEnd, typeFilter],
+    queryFn: () =>
+      fetchTransactionsReport({ date_start: dateStart, date_end: dateEnd, account: account.id, type: typeFilter || undefined }),
     enabled: expanded,
   });
 
@@ -637,15 +680,15 @@ function AccountRowGroup({ account, dateStart, dateEnd }: { account: AccountRepo
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           {account.name}
         </td>
-        <td style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{account.account_type_display}</td>
-        <td style={{ padding: '8px 6px', textAlign: 'right' }}>{formatCurrency(account.opening_balance)}</td>
+        {!isMobile && <td style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{account.account_type_display}</td>}
+        {!isMobile && <td style={{ padding: '8px 6px', textAlign: 'right' }}>{formatCurrency(account.opening_balance)}</td>}
         <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-success)' }}>{formatCurrency(account.total_income)}</td>
         <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-danger)' }}>− {formatCurrency(account.total_expense)}</td>
         <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(account.closing_balance)}</td>
       </tr>
       {expanded && (
         <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <td colSpan={6} style={{ padding: 0, background: 'var(--color-bg-elevated)' }}>
+          <td colSpan={isMobile ? 4 : 6} style={{ padding: 0, background: 'var(--color-bg-elevated)' }}>
             {isFetching ? (
               <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Carregando transações...</div>
             ) : data && data.transactions.length ? (
@@ -654,7 +697,7 @@ function AccountRowGroup({ account, dateStart, dateEnd }: { account: AccountRepo
                   <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                     <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Data</th>
                     <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Descrição</th>
-                    <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Categoria</th>
+                    {!isMobile && <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Categoria</th>}
                     <th style={{ textAlign: 'right', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Valor</th>
                   </tr>
                 </thead>
@@ -663,7 +706,7 @@ function AccountRowGroup({ account, dateStart, dateEnd }: { account: AccountRepo
                     <tr key={t.id}>
                       <td style={{ padding: '6px 12px' }}>{formatDate(t.date)}</td>
                       <td style={{ padding: '6px 12px' }}>{t.description}</td>
-                      <td style={{ padding: '6px 12px', color: 'var(--color-text-secondary)' }}>{t.category || '—'}</td>
+                      {!isMobile && <td style={{ padding: '6px 12px', color: 'var(--color-text-secondary)' }}>{t.category || '—'}</td>}
                       <td
                         style={{
                           padding: '6px 12px',

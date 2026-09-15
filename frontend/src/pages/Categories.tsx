@@ -134,7 +134,7 @@ export default function Categories() {
           <p className="empty-state-text">Crie categorias para organizar suas despesas e receitas.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-lg)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 'var(--space-lg)' }}>
           {renderCategoryGroup('Despesas', expenseCategories, <TrendingDown size={18} style={{ color: 'var(--color-danger)' }} />)}
           {renderCategoryGroup('Receitas', incomeCategories, <TrendingUp size={18} style={{ color: 'var(--color-success)' }} />)}
         </div>

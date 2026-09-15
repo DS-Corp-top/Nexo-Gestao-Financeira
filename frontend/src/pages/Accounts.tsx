@@ -74,7 +74,7 @@ export default function Accounts() {
       </div>
 
       {isLoading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {[1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 160 }} />)}
         </div>
       ) : accounts?.length === 0 ? (
@@ -84,7 +84,7 @@ export default function Accounts() {
           <p className="empty-state-text">Crie sua primeira conta para começar a registrar transações.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {accounts?.map((account) => (
             <div key={account.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-md)' }}>

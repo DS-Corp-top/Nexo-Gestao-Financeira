@@ -61,7 +61,7 @@ def _parse_date_range(request):
 
 
 class TransactionsReportView(APIView):
-    """GET /api/v1/reports/transactions/?date_start&date_end&account&category"""
+    """GET /api/v1/reports/transactions/?date_start&date_end&account&category&type"""
 
     def get(self, request):
         tenant = get_user_tenant(request.user, request)
@@ -71,6 +71,7 @@ class TransactionsReportView(APIView):
 
         account_id = request.query_params.get("account")
         category_id = request.query_params.get("category")
+        transaction_type = request.query_params.get("type")
 
         qs = Transaction.objects.filter(tenant=tenant, date__gte=date_start, date__lte=date_end)
 
@@ -82,6 +83,8 @@ class TransactionsReportView(APIView):
             qs = qs.filter(account=account)
         if category_id:
             qs = qs.filter(category_id=category_id)
+        if transaction_type in (Transaction.TransactionType.INCOME, Transaction.TransactionType.EXPENSE):
+            qs = qs.filter(transaction_type=transaction_type)
 
         qs = qs.select_related("account", "category").order_by("date", "created_at")
 
@@ -192,7 +195,7 @@ class AccountsReportView(APIView):
 
 
 class SummaryReportView(APIView):
-    """GET /api/v1/reports/summary/?date_start&date_end"""
+    """GET /api/v1/reports/summary/?date_start&date_end&type"""
 
     def get(self, request):
         tenant = get_user_tenant(request.user, request)
@@ -206,6 +209,10 @@ class SummaryReportView(APIView):
             date__gte=date_start,
             date__lte=date_end,
         )
+
+        transaction_type = request.query_params.get("type")
+        if transaction_type in (Transaction.TransactionType.INCOME, Transaction.TransactionType.EXPENSE):
+            qs = qs.filter(transaction_type=transaction_type)
 
         total_income = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.INCOME))
         total_expense = _sum_amount(qs.filter(transaction_type=Transaction.TransactionType.EXPENSE))

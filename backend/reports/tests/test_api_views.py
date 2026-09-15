@@ -154,6 +154,35 @@ def test_transactions_report_account_filter_scopes_to_account(baker):
 
 
 @pytest.mark.django_db
+def test_transactions_report_type_filter_scopes_to_income_or_expense(baker):
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, initial_balance=0)
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="income", amount=500, date=date(2026, 2, 10), is_cleared=True, description="Salario",
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="expense", amount=120, date=date(2026, 2, 20), is_cleared=True, description="Aluguel",
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_transactions"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "type": "expense"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    data = response.data
+    assert data["total_income"] == "0.00"
+    assert data["total_expense"] == "120.00"
+    assert [t["description"] for t in data["transactions"]] == ["Aluguel"]
+    # Saldo reflete a conta real, independente do filtro de tipo aplicado ao extrato.
+    assert data["closing_balance"] == "380.00"
+
+
+@pytest.mark.django_db
 def test_transactions_report_rejects_account_from_other_tenant(baker):
     user, tenant = _tenant_user(baker)
     other_tenant = baker.make("tenants.Tenant", document="11111111111", is_active=True)
@@ -310,6 +339,37 @@ def test_summary_report_groups_income_and_expense_by_category(baker):
     assert data["balance"] == "1800.00"
     assert data["income_by_category"] == [{"name": "Salario", "total": "3000.00"}]
     assert data["expense_by_category"] == [{"name": "Aluguel", "total": "1200.00"}]
+
+
+@pytest.mark.django_db
+def test_summary_report_type_filter_scopes_to_income_or_expense(baker):
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user)
+    salary = baker.make("categories.Category", tenant=tenant, category_type="income", name="Salario")
+    rent = baker.make("categories.Category", tenant=tenant, category_type="expense", name="Aluguel")
+
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user, category=salary,
+        transaction_type="income", amount=3000, date=date(2026, 2, 5),
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user, category=rent,
+        transaction_type="expense", amount=1200, date=date(2026, 2, 10),
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_summary"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "type": "income"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    data = response.data
+    assert data["total_income"] == "3000.00"
+    assert data["total_expense"] == "0.00"
+    assert data["income_by_category"] == [{"name": "Salario", "total": "3000.00"}]
+    assert data["expense_by_category"] == []
 
 
 @pytest.mark.django_db

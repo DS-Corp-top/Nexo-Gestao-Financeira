@@ -28,7 +28,7 @@ export interface TransactionsReport {
 }
 
 export async function fetchTransactionsReport(
-  params: DateRangeParams & { account?: number; category?: number }
+  params: DateRangeParams & { account?: number; category?: number; type?: 'income' | 'expense' }
 ): Promise<TransactionsReport> {
   const { data } = await api.get<TransactionsReport>('/reports/transactions/', { params });
   return data;
@@ -75,7 +75,9 @@ export interface SummaryReport {
   expense_by_category: CategoryTotal[];
 }
 
-export async function fetchSummaryReport(params: DateRangeParams): Promise<SummaryReport> {
+export async function fetchSummaryReport(
+  params: DateRangeParams & { type?: 'income' | 'expense' }
+): Promise<SummaryReport> {
   const { data } = await api.get<SummaryReport>('/reports/summary/', { params });
   return data;
 }

@@ -478,7 +478,7 @@ export default function Drive() {
 
       {showTrash ? (
         isLoading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(250px, 100%), 1fr))', gap: 'var(--space-md)' }}>
             {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 120 }} />)}
           </div>
         ) : (trashFolders.length === 0 && trashDocs.length === 0) ? (
@@ -488,7 +488,7 @@ export default function Drive() {
             <p className="empty-state-text">Itens excluídos ficam aqui por 30 dias antes de serem apagados definitivamente.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 'var(--space-md)' }}>
             {trashFolders.map(folder => (
               <div key={`trash-folder-${folder.id}`} className="card" style={{ display: 'flex', flexDirection: 'column', padding: 'var(--space-md)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-sm)' }}>
@@ -547,7 +547,7 @@ export default function Drive() {
           </div>
         )
       ) : isLoading ? (
-         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 'var(--space-md)' }}>
+         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(250px, 100%), 1fr))', gap: 'var(--space-md)' }}>
            {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: 120 }} />)}
          </div>
       ) : (folders.length === 0 && docs.length === 0) ? (
@@ -559,7 +559,7 @@ export default function Drive() {
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {/* Folders (only hidden while searching — otherwise shown at every level) */}
           {!search && folders.map(folder => (
             <div

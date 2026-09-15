@@ -891,7 +891,7 @@ export default function Investments() {
           <p className="empty-state-text">Recarregue a pagina ou verifique sua conexao.</p>
         </div>
       ) : invsLoading ? (
-        <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+        <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 160 }} />)}
         </div>
       ) : filtered.length === 0 ? (
@@ -901,7 +901,7 @@ export default function Investments() {
           <p className="empty-state-text">{investments?.length ? 'Tente ajustar os filtros.' : 'Comece a registrar seus investimentos e controle seus aportes.'}</p>
         </div>
       ) : (
-        <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
+        <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: 'var(--space-md)' }}>
           {filtered.map((inv) => {
             const invCurrency = getCurrency(inv.currency);
             const liquidBalance = parseFloat(inv.total_balance || '0');
