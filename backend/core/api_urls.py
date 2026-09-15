@@ -32,7 +32,13 @@ from notes.api_views import NoteListViewSet, NoteSubtaskViewSet, NoteViewSet
 from notifications.api_views import PushSubscribeView, PushUnsubscribeView, VapidPublicKeyView
 from telegram_bot.api_views import TelegramLinkCodeView, TelegramLinkStatusView, TelegramWebhookView
 from drive.api_views import DocumentViewSet, FolderViewSet
-from reports.api_views import DREReportView, InvestmentsReportView, SummaryReportView, TransactionsReportView
+from reports.api_views import (
+    AccountsReportView,
+    DREReportView,
+    InvestmentsReportView,
+    SummaryReportView,
+    TransactionsReportView,
+)
 from todos.api_views import ProjectViewSet, TenantMembersView, TodoAttachmentViewSet, TodoItemViewSet
 from tap.api_views import ProjectCharterViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
@@ -142,6 +148,7 @@ urlpatterns = [
 
     # Reports
     path("reports/transactions/", TransactionsReportView.as_view(), name="report_transactions"),
+    path("reports/accounts/", AccountsReportView.as_view(), name="report_accounts"),
     path("reports/summary/", SummaryReportView.as_view(), name="report_summary"),
     path("reports/investments/", InvestmentsReportView.as_view(), name="report_investments"),
     path("reports/dre/", DREReportView.as_view(), name="report_dre"),

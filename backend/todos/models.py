@@ -134,8 +134,10 @@ class TodoItem(models.Model):
     @classmethod
     def from_db(cls, db, field_names, values):
         instance = super().from_db(db, field_names, values)
-        instance._loaded_status = instance.status
-        instance._loaded_is_done = instance.is_done
+        if "status" in field_names:
+            instance._loaded_status = instance.status
+        if "is_done" in field_names:
+            instance._loaded_is_done = instance.is_done
         return instance
 
     def toggle(self):

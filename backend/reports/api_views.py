@@ -123,6 +123,61 @@ class TransactionsReportView(APIView):
         })
 
 
+class AccountsReportView(APIView):
+    """GET /api/v1/reports/accounts/?date_start&date_end
+
+    Saldo de abertura/fechamento e movimentação do período para cada conta
+    ativa do tenant — como TransactionsReportView com account=<id>, mas para
+    todas as contas de uma vez em vez de uma por vez.
+    """
+
+    def get(self, request):
+        tenant = get_user_tenant(request.user, request)
+        masked = is_view_only_superuser(request.user, tenant)
+        set_mask_financial_values(request, masked)
+        date_start, date_end = _parse_date_range(request)
+
+        accounts = []
+        for account in Account.objects.filter(tenant=tenant, is_active=True).order_by("name"):
+            movements = Transaction.objects.filter(
+                tenant=tenant,
+                account=account,
+                is_ignored=False,
+                date__gte=date_start,
+                date__lte=date_end,
+            )
+            total_income = _sum_amount(movements.filter(transaction_type=Transaction.TransactionType.INCOME))
+            total_expense = _sum_amount(movements.filter(transaction_type=Transaction.TransactionType.EXPENSE))
+            opening_balance = calculate_account_balance(account, cutoff_date=date_start - timedelta(days=1))
+            closing_balance = calculate_account_balance(account, cutoff_date=date_end)
+
+            accounts.append({
+                "id": account.pk,
+                "name": account.name,
+                "account_type": account.account_type,
+                "account_type_display": account.get_account_type_display(),
+                "opening_balance": _money(opening_balance),
+                "total_income": _money(total_income),
+                "total_expense": _money(total_expense),
+                "closing_balance": _money(closing_balance),
+            })
+
+        total_opening_balance = sum((Decimal(a["opening_balance"]) for a in accounts), ZERO)
+        total_closing_balance = sum((Decimal(a["closing_balance"]) for a in accounts), ZERO)
+        total_income = sum((Decimal(a["total_income"]) for a in accounts), ZERO)
+        total_expense = sum((Decimal(a["total_expense"]) for a in accounts), ZERO)
+
+        return Response({
+            "date_start": date_start.isoformat(),
+            "date_end": date_end.isoformat(),
+            "accounts": [] if masked else accounts,
+            "total_opening_balance": _money(total_opening_balance),
+            "total_closing_balance": _money(total_closing_balance),
+            "total_income": _money(total_income),
+            "total_expense": _money(total_expense),
+        })
+
+
 class SummaryReportView(APIView):
     """GET /api/v1/reports/summary/?date_start&date_end"""
 

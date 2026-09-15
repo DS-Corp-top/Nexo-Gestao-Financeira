@@ -137,6 +137,85 @@ def test_transactions_report_rejects_account_from_other_tenant(baker):
 
 
 @pytest.mark.django_db
+def test_accounts_report_requires_auth():
+    client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+    response = client.get(reverse("api:report_accounts"), {"date_start": "2026-02-01", "date_end": "2026-02-28"})
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_accounts_report_balances_and_totals_per_account(baker):
+    user, tenant = _tenant_user(baker)
+    account_a = baker.make("accounts.Account", tenant=tenant, user=user, name="Conta A", initial_balance=1000)
+    account_b = baker.make("accounts.Account", tenant=tenant, user=user, name="Conta B", initial_balance=200)
+
+    # Before the report range — must be reflected in opening_balance only.
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account_a, user=user,
+        transaction_type="income", amount=500, date=date(2026, 1, 15), is_cleared=True,
+    )
+    # Within range.
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account_a, user=user,
+        transaction_type="income", amount=300, date=date(2026, 2, 10), is_cleared=True,
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account_a, user=user,
+        transaction_type="expense", amount=120, date=date(2026, 2, 20), is_cleared=True,
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account_b, user=user,
+        transaction_type="income", amount=50, date=date(2026, 2, 5), is_cleared=True,
+    )
+    # Ignored transactions must be excluded from the totals.
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account_a, user=user,
+        transaction_type="expense", amount=99999, date=date(2026, 2, 15), is_ignored=True,
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_accounts"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    data = response.data
+    by_name = {row["name"]: row for row in data["accounts"]}
+
+    assert by_name["Conta A"]["opening_balance"] == "1500.00"
+    assert by_name["Conta A"]["total_income"] == "300.00"
+    assert by_name["Conta A"]["total_expense"] == "120.00"
+    assert by_name["Conta A"]["closing_balance"] == "1680.00"
+
+    assert by_name["Conta B"]["opening_balance"] == "200.00"
+    assert by_name["Conta B"]["total_income"] == "50.00"
+    assert by_name["Conta B"]["closing_balance"] == "250.00"
+
+    assert data["total_opening_balance"] == "1700.00"
+    assert data["total_closing_balance"] == "1930.00"
+    assert data["total_income"] == "350.00"
+    assert data["total_expense"] == "120.00"
+
+
+@pytest.mark.django_db
+def test_accounts_report_omits_inactive_accounts(baker):
+    user, tenant = _tenant_user(baker)
+    baker.make("accounts.Account", tenant=tenant, user=user, name="Inativa", is_active=False)
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_accounts"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    assert response.data["accounts"] == []
+
+
+@pytest.mark.django_db
 def test_summary_report_groups_income_and_expense_by_category(baker):
     user, tenant = _tenant_user(baker)
     account = baker.make("accounts.Account", tenant=tenant, user=user)

@@ -34,6 +34,32 @@ export async function fetchTransactionsReport(
   return data;
 }
 
+export interface AccountReportRow {
+  id: number;
+  name: string;
+  account_type: string;
+  account_type_display: string;
+  opening_balance: string;
+  total_income: string;
+  total_expense: string;
+  closing_balance: string;
+}
+
+export interface AccountsReport {
+  date_start: string;
+  date_end: string;
+  accounts: AccountReportRow[];
+  total_opening_balance: string;
+  total_closing_balance: string;
+  total_income: string;
+  total_expense: string;
+}
+
+export async function fetchAccountsReport(params: DateRangeParams): Promise<AccountsReport> {
+  const { data } = await api.get<AccountsReport>('/reports/accounts/', { params });
+  return data;
+}
+
 export interface CategoryTotal {
   name: string;
   total: string;

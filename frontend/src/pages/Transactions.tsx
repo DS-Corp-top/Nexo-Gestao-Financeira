@@ -457,7 +457,7 @@ export default function Transactions() {
                           </svg>
                         </div>
                         <div className="flex-1 min-w-0" onClick={() => handleOpenEdit(tx)} style={{ cursor: 'pointer' }}>
-                          <p className="txn-item-title">{tx.display_title}</p>
+                          <p className={`txn-item-title ${tx.is_cleared ? 'txn-amount-cleared' : ''}`}>{tx.display_title}</p>
                           <p className="txn-item-meta">
                             {tx.category_name || 'Sem categoria'} | {tx.account_name}
                             {tx.is_ignored ? ' | Ignorada' : tx.is_cleared ? ' | Baixada' : ' | Pendente'}

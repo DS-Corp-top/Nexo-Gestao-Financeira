@@ -160,6 +160,47 @@ def test_todo_item_status_only_update_reopens_a_done_item(baker):
 
 
 @pytest.mark.django_db
+def test_todo_item_from_db_handles_partially_loaded_rows(baker):
+    """Regressao: from_db() acessava instance.status e instance.is_done
+    incondicionalmente, mesmo quando a query so carregou um dos dois (via
+    .only()/.defer(), como o Collector de exclusao em cascata do Django faz
+    para FKs SET_NULL/CASCADE). Acessar um campo adiado dispara
+    refresh_from_db(), que chama from_db() de novo, que acessa o outro campo
+    adiado - recursao infinita ate estourar a pilha. Isso travava, por
+    exemplo, a exclusao de um usuario com tarefas."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+
+    baker.make(
+        "todos.TodoItem", user=user, tenant=tenant,
+        status=TodoItem.Status.DONE, is_done=True,
+    )
+
+    only_status = TodoItem.objects.only("id", "status").get()
+    assert only_status.status == TodoItem.Status.DONE
+    assert only_status.is_done is True  # loads lazily, must not recurse
+
+    only_is_done = TodoItem.objects.only("id", "is_done").get()
+    assert only_is_done.is_done is True
+    assert only_is_done.status == TodoItem.Status.DONE  # loads lazily, must not recurse
+
+
+@pytest.mark.django_db
+def test_deleting_user_cascades_through_todo_items_without_error(baker):
+    """Regressao: excluir um usuario com tarefas associadas disparava a
+    recursao infinita de from_db() durante a coleta de exclusao em cascata."""
+    user = baker.make("auth.User")
+    tenant = baker.make("tenants.Tenant", document="00000000000", is_active=True)
+    baker.make("tenants.TenantMembership", user=user, tenant=tenant)
+    baker.make("todos.TodoItem", user=user, tenant=tenant)
+
+    user.delete()
+
+    assert not TodoItem.objects.exists()
+
+
+@pytest.mark.django_db
 def test_todo_item_is_done_only_update_reopens_status(baker):
     """Simetricamente, alterar so is_done (sem tocar status) tambem deve
     sincronizar o status a partir do valor carregado do banco."""

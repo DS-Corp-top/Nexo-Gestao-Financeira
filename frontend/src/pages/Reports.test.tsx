@@ -15,6 +15,7 @@ vi.mock('../api/reports', async () => {
   return {
     ...actual,
     fetchTransactionsReport: vi.fn(),
+    fetchAccountsReport: vi.fn(),
     fetchSummaryReport: vi.fn(),
     fetchInvestmentsReport: vi.fn(),
     fetchDREReport: vi.fn(),
@@ -141,6 +142,32 @@ describe('Reports Page', () => {
     expect(windowArg).toBe(fakeWindow);
     expect(html).toContain('DRE Gerencial');
     expect(html).toMatch(/R\$\s*5\.700,00/);
+  });
+
+  it('generates the Relatório por Conta report and renders its table', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '500.00', total_expense: '200.00', closing_balance: '1300.00',
+        },
+      ],
+      total_opening_balance: '1000.00',
+      total_closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+    });
+    renderReports();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Relatório por Conta/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+
+    await waitFor(() => expect(reportsApi.fetchAccountsReport).toHaveBeenCalledTimes(1));
+    // "Conta Corrente" appears twice — the table row and the balance pie chart legend.
+    expect((await screen.findAllByText('Conta Corrente')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/R\$\s*1\.300,00/).length).toBeGreaterThan(0);
   });
 
   it('switching report type hides the previous result until generated again', async () => {

@@ -128,6 +128,24 @@ describe('Transactions Page', () => {
     expect(call.category).toBe(20);
   });
 
+  it('shows a strikethrough on the description when the transaction is cleared', async () => {
+    (transactionsApi.fetchTransactions as any).mockResolvedValue([
+      makeTransaction({ is_cleared: true }),
+    ]);
+
+    renderTransactions();
+
+    const title = await screen.findByText('Compra teste', { selector: '.txn-item-title' });
+    expect(title).toHaveClass('txn-amount-cleared');
+  });
+
+  it('does not show a strikethrough on the description when the transaction is pending', async () => {
+    renderTransactions();
+
+    const title = await screen.findByText('Compra teste', { selector: '.txn-item-title' });
+    expect(title).not.toHaveClass('txn-amount-cleared');
+  });
+
   it('opens Contas/Categorias as an overlay modal instead of navigating away', async () => {
     const { container } = renderTransactions();
 
