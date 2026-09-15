@@ -5,6 +5,8 @@ export interface DateRangeParams {
   date_end: string;
 }
 
+export type ReportStatusFilter = 'cleared' | 'pending' | 'all';
+
 export interface TransactionsReportRow {
   id: number;
   date: string;
@@ -20,6 +22,7 @@ export interface TransactionsReport {
   date_start: string;
   date_end: string;
   account: string | null;
+  status: ReportStatusFilter;
   opening_balance: string;
   closing_balance: string;
   total_income: string;
@@ -28,7 +31,12 @@ export interface TransactionsReport {
 }
 
 export async function fetchTransactionsReport(
-  params: DateRangeParams & { account?: number; category?: number; type?: 'income' | 'expense' }
+  params: DateRangeParams & {
+    account?: number;
+    category?: number;
+    type?: 'income' | 'expense';
+    status?: ReportStatusFilter;
+  }
 ): Promise<TransactionsReport> {
   const { data } = await api.get<TransactionsReport>('/reports/transactions/', { params });
   return data;
@@ -48,6 +56,7 @@ export interface AccountReportRow {
 export interface AccountsReport {
   date_start: string;
   date_end: string;
+  status: ReportStatusFilter;
   accounts: AccountReportRow[];
   total_opening_balance: string;
   total_closing_balance: string;
@@ -55,7 +64,9 @@ export interface AccountsReport {
   total_expense: string;
 }
 
-export async function fetchAccountsReport(params: DateRangeParams): Promise<AccountsReport> {
+export async function fetchAccountsReport(
+  params: DateRangeParams & { status?: ReportStatusFilter }
+): Promise<AccountsReport> {
   const { data } = await api.get<AccountsReport>('/reports/accounts/', { params });
   return data;
 }

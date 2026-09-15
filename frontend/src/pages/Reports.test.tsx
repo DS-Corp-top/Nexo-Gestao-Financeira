@@ -258,6 +258,88 @@ describe('Reports Page', () => {
     expect(await screen.findByText('Aluguel')).toBeInTheDocument();
   });
 
+  it('defaults the status filter to "Baixadas" and refetches when changed', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      status: 'cleared',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '500.00', total_expense: '200.00', closing_balance: '1300.00',
+        },
+      ],
+      total_opening_balance: '1000.00',
+      total_closing_balance: '1300.00',
+      total_income: '500.00',
+      total_expense: '200.00',
+    });
+
+    renderReports();
+    await screen.findByLabelText('Tipo de Relatório');
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+
+    await waitFor(() =>
+      expect(reportsApi.fetchAccountsReport).toHaveBeenCalledWith(expect.objectContaining({ status: 'cleared' }))
+    );
+
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'pending' } });
+
+    await waitFor(() =>
+      expect(reportsApi.fetchAccountsReport).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' }))
+    );
+  });
+
+  it('passes the status filter to the expanded transaction fetch', async () => {
+    (reportsApi.fetchAccountsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      status: 'pending',
+      accounts: [
+        {
+          id: 1, name: 'Conta Corrente', account_type: 'bank', account_type_display: 'Banco',
+          opening_balance: '1000.00', total_income: '0.00', total_expense: '450.00', closing_balance: '550.00',
+        },
+      ],
+      total_opening_balance: '1000.00',
+      total_closing_balance: '550.00',
+      total_income: '0.00',
+      total_expense: '450.00',
+    });
+    (reportsApi.fetchTransactionsReport as any).mockResolvedValue({
+      date_start: '2026-02-01',
+      date_end: '2026-02-28',
+      account: 'Conta Corrente',
+      status: 'pending',
+      opening_balance: '1000.00',
+      closing_balance: '550.00',
+      total_income: '0.00',
+      total_expense: '450.00',
+      transactions: [
+        { id: 12, date: '2026-02-20', description: 'Fatura a pagar', transaction_type: 'expense', amount: '450.00', account: 'Conta Corrente', category: 'Contas', is_cleared: false },
+      ],
+    });
+
+    renderReports();
+    await screen.findByLabelText('Tipo de Relatório');
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Relatório' }));
+
+    await screen.findByRole('table');
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'pending' } });
+
+    // Changing the status refetches the accounts report (different query
+    // key), which briefly unmounts the table — re-query it once settled.
+    const table = await screen.findByRole('table');
+    fireEvent.click(within(table).getByText('Conta Corrente'));
+
+    await waitFor(() =>
+      expect(reportsApi.fetchTransactionsReport).toHaveBeenCalledWith(
+        expect.objectContaining({ account: 1, status: 'pending' })
+      )
+    );
+    expect(await screen.findByText('Fatura a pagar')).toBeInTheDocument();
+  });
+
   it('filtering by account narrows the table and recalculates the KPI totals', async () => {
     (reportsApi.fetchAccountsReport as any).mockResolvedValue({
       date_start: '2026-02-01',

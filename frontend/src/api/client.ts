@@ -29,6 +29,26 @@ api.interceptors.request.use((config) => {
 
 const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password'];
 
+// Refresh tokens rotate and are blacklisted on use (one-time use), so
+// concurrent 401s must share a single refresh call — otherwise every request
+// after the first races to redeem the same refresh cookie and gets logged out.
+let refreshPromise: Promise<void> | null = null;
+
+function refreshAuthToken(): Promise<void> {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_BASE_URL}/auth/token/refresh/`, {}, {
+        withCredentials: true,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      })
+      .then(() => undefined)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 // Response interceptor: auto-refresh token on 401
 api.interceptors.response.use(
   (response) => response,
@@ -46,10 +66,7 @@ api.interceptors.response.use(
 
       try {
         // Refresh token is in httpOnly cookie — sent automatically with withCredentials
-        await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {}, {
-          withCredentials: true,
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        });
+        await refreshAuthToken();
         return api(originalRequest);
       } catch {
         window.location.href = '/login';

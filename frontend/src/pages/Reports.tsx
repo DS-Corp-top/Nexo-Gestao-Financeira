@@ -19,6 +19,7 @@ import {
   type CategoryTotal,
   type DREReport,
   type InvestmentsReport,
+  type ReportStatusFilter,
   type SummaryReport,
   type TransactionsReport,
 } from '../api/reports';
@@ -309,6 +310,7 @@ export default function Reports() {
   const [dateEnd, setDateEnd] = useState(lastOfMonth());
   const [accountFilter, setAccountFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<'' | 'income' | 'expense'>('');
+  const [statusFilter, setStatusFilter] = useState<ReportStatusFilter>('cleared');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('');
   const [investmentTypeFilter, setInvestmentTypeFilter] = useState('');
   const [generated, setGenerated] = useState(false);
@@ -318,8 +320,8 @@ export default function Reports() {
   const { data: tenant } = useQuery({ queryKey: ['tenantProfile'], queryFn: fetchTenantProfile });
 
   const accountsReportQuery = useQuery({
-    queryKey: ['reports', 'by_account', dateStart, dateEnd],
-    queryFn: () => fetchAccountsReport({ date_start: dateStart, date_end: dateEnd }),
+    queryKey: ['reports', 'by_account', dateStart, dateEnd, statusFilter],
+    queryFn: () => fetchAccountsReport({ date_start: dateStart, date_end: dateEnd, status: statusFilter }),
     enabled: generated && reportType === 'by_account',
   });
 
@@ -377,12 +379,12 @@ export default function Reports() {
     try {
       let bodyHtml = '';
       if (reportType === 'by_account') {
-        const data = accountsReportQuery.data ?? (await fetchAccountsReport({ date_start: dateStart, date_end: dateEnd }));
+        const data = accountsReportQuery.data ?? (await fetchAccountsReport({ date_start: dateStart, date_end: dateEnd, status: statusFilter }));
         const transactionsByAccount: Record<number, TransactionsReport['transactions']> = Object.fromEntries(
           await Promise.all(
             data.accounts.map(async (a) => {
               const accountReport = await fetchTransactionsReport({
-                date_start: dateStart, date_end: dateEnd, account: a.id, type: typeFilter || undefined,
+                date_start: dateStart, date_end: dateEnd, account: a.id, type: typeFilter || undefined, status: statusFilter,
               });
               return [a.id, accountReport.transactions] as const;
             })
@@ -474,6 +476,19 @@ export default function Reports() {
                   <option value="expense">Despesa</option>
                 </select>
               </div>
+              <div>
+                <label className="label" htmlFor="status-filter-select">Status</label>
+                <select
+                  id="status-filter-select"
+                  className="input"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as ReportStatusFilter)}
+                >
+                  <option value="cleared">Baixadas</option>
+                  <option value="pending">Provisões</option>
+                  <option value="all">Todas</option>
+                </select>
+              </div>
             </>
           )}
 
@@ -550,6 +565,7 @@ export default function Reports() {
               dateEnd={dateEnd}
               accountFilter={accountFilter}
               typeFilter={typeFilter}
+              statusFilter={statusFilter}
             />
           )}
           {reportType === 'summary' && summaryQuery.data && <SummaryPreview report={summaryQuery.data} />}
@@ -582,12 +598,14 @@ function AccountsReportPreview({
   dateEnd,
   accountFilter,
   typeFilter,
+  statusFilter,
 }: {
   report: AccountsReport;
   dateStart: string;
   dateEnd: string;
   accountFilter: string;
   typeFilter: '' | 'income' | 'expense';
+  statusFilter: ReportStatusFilter;
 }) {
   const { isMobile } = useViewMode();
   const visibleAccounts = accountFilter ? report.accounts.filter((a) => String(a.id) === accountFilter) : report.accounts;
@@ -634,7 +652,14 @@ function AccountsReportPreview({
             </thead>
             <tbody>
               {visibleAccounts.map((a) => (
-                <AccountRowGroup key={a.id} account={a} dateStart={dateStart} dateEnd={dateEnd} typeFilter={typeFilter} />
+                <AccountRowGroup
+                  key={a.id}
+                  account={a}
+                  dateStart={dateStart}
+                  dateEnd={dateEnd}
+                  typeFilter={typeFilter}
+                  statusFilter={statusFilter}
+                />
               ))}
             </tbody>
           </table>
@@ -655,18 +680,22 @@ function AccountRowGroup({
   dateStart,
   dateEnd,
   typeFilter,
+  statusFilter,
 }: {
   account: AccountReportRow;
   dateStart: string;
   dateEnd: string;
   typeFilter: '' | 'income' | 'expense';
+  statusFilter: ReportStatusFilter;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { isMobile } = useViewMode();
   const { data, isFetching } = useQuery({
-    queryKey: ['reports', 'account-transactions', account.id, dateStart, dateEnd, typeFilter],
+    queryKey: ['reports', 'account-transactions', account.id, dateStart, dateEnd, typeFilter, statusFilter],
     queryFn: () =>
-      fetchTransactionsReport({ date_start: dateStart, date_end: dateEnd, account: account.id, type: typeFilter || undefined }),
+      fetchTransactionsReport({
+        date_start: dateStart, date_end: dateEnd, account: account.id, type: typeFilter || undefined, status: statusFilter,
+      }),
     enabled: expanded,
   });
 

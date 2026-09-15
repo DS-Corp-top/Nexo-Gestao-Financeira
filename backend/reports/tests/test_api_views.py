@@ -183,6 +183,38 @@ def test_transactions_report_type_filter_scopes_to_income_or_expense(baker):
 
 
 @pytest.mark.django_db
+def test_transactions_report_status_pending_shows_only_uncleared_movements(baker):
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, initial_balance=1000)
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="income", amount=300, date=date(2026, 2, 10), is_cleared=True, description="Salario",
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="expense", amount=Decimal("450.00"), date=date(2026, 2, 20), is_cleared=False,
+        description="Fatura a pagar",
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_transactions"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "account": account.id, "status": "pending"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    data = response.data
+    assert data["status"] == "pending"
+    assert data["total_income"] == "0.00"
+    assert data["total_expense"] == "450.00"
+    assert data["opening_balance"] == "1000.00"
+    assert data["closing_balance"] == "550.00"
+    # Extrato continua listando as duas — o filtro de status so afeta os totais/saldo.
+    assert len(data["transactions"]) == 2
+
+
+@pytest.mark.django_db
 def test_transactions_report_rejects_account_from_other_tenant(baker):
     user, tenant = _tenant_user(baker)
     other_tenant = baker.make("tenants.Tenant", document="11111111111", is_active=True)
@@ -286,6 +318,85 @@ def test_accounts_report_excludes_uncleared_transactions_from_totals(baker):
     assert row["total_expense"] == "0.00"
     assert row["opening_balance"] == "0.00"
     assert row["closing_balance"] == "0.00"
+
+
+@pytest.mark.django_db
+def test_accounts_report_status_pending_shows_only_uncleared_movements(baker):
+    """status=pending inverte o filtro: só mostra o que ainda não baixou
+    (provisões), com saldo calculado sobre o mesmo recorte — não sobre o
+    saldo real da conta."""
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, initial_balance=1000)
+
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="income", amount=300, date=date(2026, 2, 10), is_cleared=True,
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="expense", amount=Decimal("450.00"), date=date(2026, 2, 20), is_cleared=False,
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_accounts"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "status": "pending"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    data = response.data
+    assert data["status"] == "pending"
+    row = data["accounts"][0]
+    assert row["total_income"] == "0.00"
+    assert row["total_expense"] == "450.00"
+    # initial_balance da conta sempre entra no saldo — so as MOVIMENTACOES
+    # sao restritas ao recorte "pending" (receita baixada nao conta aqui).
+    assert row["opening_balance"] == "1000.00"
+    assert row["closing_balance"] == "550.00"
+
+
+@pytest.mark.django_db
+def test_accounts_report_status_all_combines_cleared_and_pending(baker):
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user, initial_balance=1000)
+
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="income", amount=300, date=date(2026, 2, 10), is_cleared=True,
+    )
+    baker.make(
+        "transactions.Transaction", tenant=tenant, account=account, user=user,
+        transaction_type="expense", amount=Decimal("450.00"), date=date(2026, 2, 20), is_cleared=False,
+    )
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_accounts"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "status": "all"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    row = response.data["accounts"][0]
+    assert row["total_income"] == "300.00"
+    assert row["total_expense"] == "450.00"
+    assert row["opening_balance"] == "1000.00"
+    assert row["closing_balance"] == "850.00"
+
+
+@pytest.mark.django_db
+def test_accounts_report_rejects_invalid_status(baker):
+    user, tenant = _tenant_user(baker)
+
+    client = _client(user)
+    response = client.get(
+        reverse("api:report_accounts"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "status": "bogus"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 400
 
 
 @pytest.mark.django_db

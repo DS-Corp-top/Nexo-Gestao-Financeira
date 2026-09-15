@@ -24,6 +24,18 @@ ZERO = Decimal("0.00")
 TWO_PLACES = Decimal("0.01")
 AMOUNT_FIELD = DecimalField(max_digits=12, decimal_places=2)
 
+# "cleared" (baixadas) e o default histórico dos relatórios — só o que já
+# foi conciliado com a conta real. "pending" (provisões) mostra só o que
+# ainda não baixou. "all" soma as duas coisas.
+STATUS_CHOICES = {"cleared", "pending", "all"}
+
+
+def _parse_status(request):
+    status = request.query_params.get("status", "cleared")
+    if status not in STATUS_CHOICES:
+        raise ValidationError({"status": "Valor inválido — use 'cleared', 'pending' ou 'all'."})
+    return status
+
 
 def _money(value):
     """Render a Decimal as a "X.XX" string for the API response.
@@ -61,13 +73,14 @@ def _parse_date_range(request):
 
 
 class TransactionsReportView(APIView):
-    """GET /api/v1/reports/transactions/?date_start&date_end&account&category&type"""
+    """GET /api/v1/reports/transactions/?date_start&date_end&account&category&type&status"""
 
     def get(self, request):
         tenant = get_user_tenant(request.user, request)
         masked = is_view_only_superuser(request.user, tenant)
         set_mask_financial_values(request, masked)
         date_start, date_end = _parse_date_range(request)
+        status = _parse_status(request)
 
         account_id = request.query_params.get("account")
         category_id = request.query_params.get("category")
@@ -89,18 +102,22 @@ class TransactionsReportView(APIView):
         qs = qs.select_related("account", "category").order_by("date", "created_at")
 
         if account is not None:
-            opening_balance = calculate_account_balance(account, cutoff_date=date_start - timedelta(days=1))
-            closing_balance = calculate_account_balance(account, cutoff_date=date_end)
+            opening_balance = calculate_account_balance(account, cutoff_date=date_start - timedelta(days=1), status=status)
+            closing_balance = calculate_account_balance(account, cutoff_date=date_end, status=status)
         else:
             opening_balance = calculate_user_balance(
-                request.user, cutoff_date=date_start - timedelta(days=1), tenant=tenant
+                request.user, cutoff_date=date_start - timedelta(days=1), tenant=tenant, status=status
             )
-            closing_balance = calculate_user_balance(request.user, cutoff_date=date_end, tenant=tenant)
+            closing_balance = calculate_user_balance(request.user, cutoff_date=date_end, tenant=tenant, status=status)
 
-        # Saldo inicial/final so conta transacoes baixadas (is_cleared=True) e
-        # nao ignoradas — os totais precisam da mesma restricao, senao uma
-        # despesa ainda pendente aparece no total sem refletir no saldo.
-        posted_qs = qs.filter(is_cleared=True, is_ignored=False)
+        # Totais do periodo usam o mesmo "status" do saldo acima — senao uma
+        # despesa provisionada aparece no total sem refletir no saldo (ou
+        # vice-versa).
+        posted_qs = qs.filter(is_ignored=False)
+        if status == "cleared":
+            posted_qs = posted_qs.filter(is_cleared=True)
+        elif status == "pending":
+            posted_qs = posted_qs.filter(is_cleared=False)
         if account is None:
             posted_qs = posted_qs.filter(
                 account__is_active=True,
@@ -128,6 +145,7 @@ class TransactionsReportView(APIView):
             "date_start": date_start.isoformat(),
             "date_end": date_end.isoformat(),
             "account": account.name if account else None,
+            "status": status,
             "opening_balance": _money(opening_balance),
             "closing_balance": _money(closing_balance),
             "total_income": _money(total_income),
@@ -137,7 +155,7 @@ class TransactionsReportView(APIView):
 
 
 class AccountsReportView(APIView):
-    """GET /api/v1/reports/accounts/?date_start&date_end
+    """GET /api/v1/reports/accounts/?date_start&date_end&status
 
     Saldo de abertura/fechamento e movimentação do período para cada conta
     ativa do tenant — como TransactionsReportView com account=<id>, mas para
@@ -149,23 +167,28 @@ class AccountsReportView(APIView):
         masked = is_view_only_superuser(request.user, tenant)
         set_mask_financial_values(request, masked)
         date_start, date_end = _parse_date_range(request)
+        status = _parse_status(request)
 
         accounts = []
         for account in Account.objects.filter(tenant=tenant, is_active=True).order_by("name"):
-            # is_cleared=True para bater com calculate_account_balance abaixo —
-            # senao uma despesa ainda pendente entra no total sem refletir no saldo.
+            # O "status" usado nos totais abaixo precisa ser o mesmo passado
+            # pro calculate_account_balance — senao uma despesa provisionada
+            # entra no total sem refletir no saldo (ou vice-versa).
             movements = Transaction.objects.filter(
                 tenant=tenant,
                 account=account,
-                is_cleared=True,
                 is_ignored=False,
                 date__gte=date_start,
                 date__lte=date_end,
             )
+            if status == "cleared":
+                movements = movements.filter(is_cleared=True)
+            elif status == "pending":
+                movements = movements.filter(is_cleared=False)
             total_income = _sum_amount(movements.filter(transaction_type=Transaction.TransactionType.INCOME))
             total_expense = _sum_amount(movements.filter(transaction_type=Transaction.TransactionType.EXPENSE))
-            opening_balance = calculate_account_balance(account, cutoff_date=date_start - timedelta(days=1))
-            closing_balance = calculate_account_balance(account, cutoff_date=date_end)
+            opening_balance = calculate_account_balance(account, cutoff_date=date_start - timedelta(days=1), status=status)
+            closing_balance = calculate_account_balance(account, cutoff_date=date_end, status=status)
 
             accounts.append({
                 "id": account.pk,
@@ -186,6 +209,7 @@ class AccountsReportView(APIView):
         return Response({
             "date_start": date_start.isoformat(),
             "date_end": date_end.isoformat(),
+            "status": status,
             "accounts": [] if masked else accounts,
             "total_opening_balance": _money(total_opening_balance),
             "total_closing_balance": _money(total_closing_balance),

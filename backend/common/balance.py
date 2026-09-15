@@ -16,23 +16,29 @@ def _sum_amount(queryset):
     return queryset.aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
 
-def calculate_account_balance(account, cutoff_date=None):
+def calculate_account_balance(account, cutoff_date=None, status="cleared"):
+    """status controla quais transacoes entram no saldo: "cleared" (default,
+    saldo real — so o que ja foi baixado), "pending" (so provisoes, ainda nao
+    baixadas) ou "all" (ambas). Ver AccountsReportView/TransactionsReportView,
+    que usam o mesmo status tanto pro saldo quanto pros totais do periodo —
+    caso contrario os totais exibidos nao batem com Saldo Inicial/Final."""
     if not account.include_in_balance and account.account_type != "card":
         return ZERO
 
     cutoff_date = cutoff_date or timezone.localdate()
 
-    posted_transactions = account.transactions.filter(
-        is_cleared=True,
-        is_ignored=False,
-        date__lte=cutoff_date,
-    )
+    posted_transactions = account.transactions.filter(is_ignored=False, date__lte=cutoff_date)
     incoming_transfers = account.incoming_transfers.filter(
         transaction_type=Transaction.TransactionType.TRANSFER,
-        is_cleared=True,
         is_ignored=False,
         date__lte=cutoff_date,
     )
+    if status == "cleared":
+        posted_transactions = posted_transactions.filter(is_cleared=True)
+        incoming_transfers = incoming_transfers.filter(is_cleared=True)
+    elif status == "pending":
+        posted_transactions = posted_transactions.filter(is_cleared=False)
+        incoming_transfers = incoming_transfers.filter(is_cleared=False)
 
     income = _sum_amount(
         posted_transactions.filter(transaction_type=Transaction.TransactionType.INCOME)
@@ -54,7 +60,7 @@ def calculate_account_balance(account, cutoff_date=None):
     )
 
 
-def calculate_user_balance(user, cutoff_date, tenant=None):
+def calculate_user_balance(user, cutoff_date, tenant=None, status="cleared"):
     tenant = resolve_tenant(tenant=tenant, user=user)
     account_model = apps.get_model("accounts", "Account")
     active_accounts = account_model.objects.filter(
@@ -65,7 +71,7 @@ def calculate_user_balance(user, cutoff_date, tenant=None):
     )
     total_balance = ZERO
     for account in active_accounts:
-        total_balance += calculate_account_balance(account, cutoff_date=cutoff_date)
+        total_balance += calculate_account_balance(account, cutoff_date=cutoff_date, status=status)
     return total_balance
 
 

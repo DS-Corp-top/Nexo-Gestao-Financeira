@@ -193,8 +193,12 @@ export default function Dashboard() {
       {/* Month Navigation + Saldo */}
       <div style={{ marginBottom: 'var(--space-lg)' }}>
         {/* Linha de navegação */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: 'var(--space-sm)', minHeight: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-sm)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: 'var(--space-sm)', minHeight: 40, gap: 'var(--space-sm)' }}>
+          <div aria-hidden="true" style={{ display: 'flex', gap: 4, flexShrink: 0, visibility: 'hidden' }}>
+            <span className="btn btn-ghost btn-icon dashboard-chart-trigger" />
+            <span className="btn btn-ghost btn-icon dashboard-icon-trigger" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-sm)', flex: 1, minWidth: 0 }}>
             <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)} aria-label="Mês anterior">
               <ChevronLeft size={20} />
             </button>
@@ -203,7 +207,7 @@ export default function Dashboard() {
               <ChevronRight size={20} />
             </button>
           </div>
-          <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             <button className="btn btn-ghost btn-icon dashboard-chart-trigger" onClick={() => setChartsOpen(true)} aria-label="Abrir gráficos" title="Gráficos">
               <span className="investment-summary-button-icon" aria-hidden="true">
                 <span />
@@ -493,7 +497,7 @@ export default function Dashboard() {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: cat.fill, flexShrink: 0 }} />
-                      <span style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
+                      <span style={{ minWidth: 0, color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cat.name}</span>
                     </div>
                     <span style={{ fontWeight: 600, marginLeft: 8, whiteSpace: 'nowrap' }}>{formatCurrency(cat.value)}</span>
                   </div>
