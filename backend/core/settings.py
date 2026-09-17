@@ -116,7 +116,6 @@ INSTALLED_APPS = [
     "todos.apps.TodosConfig",
     "tap.apps.TapConfig",
     "notes.apps.NotesConfig",
-    "drive.apps.DriveConfig",
     "notifications.apps.NotificationsConfig",
     "reports.apps.ReportsConfig",
     "telegram_bot.apps.TelegramBotConfig",
