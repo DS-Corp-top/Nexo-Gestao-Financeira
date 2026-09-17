@@ -44,6 +44,7 @@ export interface StatementSummary {
   pending_income_total: string;
   monthly_income_total: string;
   monthly_expense_total: string;
+  spendable_balance: string;
 }
 
 export interface ClosedMonth {

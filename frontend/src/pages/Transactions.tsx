@@ -29,6 +29,7 @@ const DASHBOARD_TILES = [
   { id: 'credit_card_open_total', label: 'Cartão em aberto' },
   { id: 'credit_card_limit', label: 'Limite do cartão' },
   { id: 'credit_card_month_total', label: 'Total cartão' },
+  { id: 'spendable_balance', label: 'Você ainda pode gastar' },
   { id: 'monthly_income_total', label: 'Receitas' },
   { id: 'monthly_expense_total', label: 'Despesas' },
   { id: 'month_result', label: 'Resultado' },
@@ -346,6 +347,11 @@ export default function Transactions() {
                   id: 'credit_card_month_total',
                   label: 'Total cartão',
                   node: <strong className="txn-balance-value txn-balance-value-card-total">{formatCurrency(summary?.credit_card_month_total || '0')}</strong>,
+                },
+                isTileVisible('spendable_balance') && {
+                  id: 'spendable_balance',
+                  label: 'Você ainda pode gastar',
+                  node: <strong className={`txn-balance-value ${parseFloat(summary?.spendable_balance || '0') < 0 ? 'txn-balance-value-negative' : ''}`}>{formatCurrency(summary?.spendable_balance || '0')}</strong>,
                 },
               ]
                 .filter((tile): tile is { id: string; label: string; node: ReactElement } => Boolean(tile))

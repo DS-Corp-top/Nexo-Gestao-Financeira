@@ -185,6 +185,7 @@ def test_statement_summary_masks_pending_income_and_other_amounts_for_foreign_te
     assert body["pending_income_total"] is None
     assert body["monthly_income_total"] is None
     assert body["monthly_expense_total"] is None
+    assert body["spendable_balance"] is None
 
 
 def test_superuser_browsing_foreign_tenant_cannot_see_project_content(baker):

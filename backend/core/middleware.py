@@ -25,6 +25,7 @@ class FinancialMaskingMiddleware:
         "consolidated_balance", "balance_after_pending",
         "total_gross", "total",
         "current_balance", "pending_bank_total", "pending_income_total", "monthly_income_total", "monthly_expense_total",
+        "spendable_balance",
         "opening_balance", "closing_balance", "total_income", "total_expense",
         "net_result", "total_cost", "gross_profit", "total_operating_expenses",
     })

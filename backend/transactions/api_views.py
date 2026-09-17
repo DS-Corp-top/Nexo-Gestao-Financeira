@@ -420,6 +420,10 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             transaction_type=Transaction.TransactionType.EXPENSE,
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
+        # "Você ainda pode gastar": saldo atual menos o que ja esta comprometido
+        # (despesas em aberto de conta e de cartao) mas ainda nao foi baixado.
+        spendable_balance = current_balance - pending_bank_total - credit_card_open_total
+
         return Response({
             "current_balance": _money_str(current_balance),
             "monthly_balance": _money_str(monthly_balance),
@@ -431,6 +435,7 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             "pending_income_total": _money_str(pending_income_total),
             "monthly_income_total": _money_str(monthly_income_total),
             "monthly_expense_total": _money_str(monthly_expense_total),
+            "spendable_balance": _money_str(spendable_balance),
         })
 
 class ClosedMonthViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
