@@ -420,9 +420,12 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             transaction_type=Transaction.TransactionType.EXPENSE,
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
-        # "Você ainda pode gastar": saldo atual menos o que ja esta comprometido
+        # "Você ainda pode gastar": projecao considerando o saldo atual, as
+        # receitas em aberto que ainda vao entrar e o que ja esta comprometido
         # (despesas em aberto de conta e de cartao) mas ainda nao foi baixado.
-        spendable_balance = current_balance - pending_bank_total - credit_card_open_total
+        spendable_balance = (
+            current_balance + pending_income_total - pending_bank_total - credit_card_open_total
+        )
 
         return Response({
             "current_balance": _money_str(current_balance),

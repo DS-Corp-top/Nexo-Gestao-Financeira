@@ -177,4 +177,21 @@ describe('Dashboard', () => {
     renderDashboard();
     expect(await screen.findByText('25,0%')).toHaveClass('positive');
   });
+
+  it('renders the projected balance card', async () => {
+    mockDashboard({
+      alerts: {
+        ...makeDashboardData().alerts,
+        balance_after_pending: '4200.00',
+      },
+    });
+
+    renderDashboard();
+
+    const projectedHeading = await screen.findByText('Saldo projetado');
+    const projectedCard = projectedHeading.closest('.kpi-card') as HTMLElement;
+    expect(projectedCard).not.toBeNull();
+    expect(within(projectedCard).getByText('R$ 4.200,00')).toBeInTheDocument();
+    expect(within(projectedCard).getByText('R$ 4.200,00')).toHaveClass('positive');
+  });
 });

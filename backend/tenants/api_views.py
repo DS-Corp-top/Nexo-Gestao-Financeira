@@ -304,7 +304,6 @@ class TenantResetView(APIView):
         from notes.models import NoteList, Note
         from investments.models import Investment
         from invoices.models import Invoice, Client
-        from drive.models import Folder, Document
         from categories.models import Category
         from accounts.models import Account
         
@@ -329,8 +328,6 @@ class TenantResetView(APIView):
         Note.objects.filter(tenant=tenant).delete()
         TodoItem.objects.filter(tenant=tenant).delete()
         Project.objects.filter(tenant=tenant).delete()
-        Document.objects.filter(tenant=tenant).delete()
-        Folder.objects.filter(tenant=tenant).delete()
         Category.objects.filter(tenant=tenant).delete()
         Account.objects.filter(tenant=tenant).delete()
         

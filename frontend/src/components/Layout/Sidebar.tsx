@@ -13,7 +13,6 @@ import {
   CheckSquare,
   FileSignature,
   StickyNote,
-  CloudUpload,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import BrandLogo from '../BrandLogo';
@@ -30,7 +29,6 @@ const navItemsAfterInvoices = [
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
   { to: '/tap', icon: FileSignature, label: 'TAP' },
   { to: '/notes', icon: StickyNote, label: 'Anotações' },
-  { to: '/drive', icon: CloudUpload, label: 'Drive' },
 ];
 
 interface SidebarProps {

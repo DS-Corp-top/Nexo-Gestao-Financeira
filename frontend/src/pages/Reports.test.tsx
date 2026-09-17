@@ -171,7 +171,7 @@ describe('Reports Page', () => {
     expect(screen.getAllByText(/R\$\s*1\.300,00/).length).toBeGreaterThan(0);
   });
 
-  it('expands an account row to fetch and show its transactions', async () => {
+  it('opens a modal with transactions when clicking an account row', async () => {
     (reportsApi.fetchAccountsReport as any).mockResolvedValue({
       date_start: '2026-02-01',
       date_end: '2026-02-28',
@@ -211,10 +211,15 @@ describe('Reports Page', () => {
     await waitFor(() =>
       expect(reportsApi.fetchTransactionsReport).toHaveBeenCalledWith(expect.objectContaining({ account: 1 }))
     );
+    // Transaction appears in the modal (portaled to body)
     expect(await screen.findByText('Salário')).toBeInTheDocument();
+    // Modal shows the account name in its header
+    const modal = document.querySelector('.modal-overlay') as HTMLElement;
+    expect(modal).not.toBeNull();
+    expect(within(modal).getByText('Conta Corrente')).toBeInTheDocument();
   });
 
-  it('filtering by type passes it to the expanded transaction fetch', async () => {
+  it('filtering by type passes it to the modal transaction fetch', async () => {
     (reportsApi.fetchAccountsReport as any).mockResolvedValue({
       date_start: '2026-02-01',
       date_end: '2026-02-28',
@@ -290,7 +295,7 @@ describe('Reports Page', () => {
     );
   });
 
-  it('passes the status filter to the expanded transaction fetch', async () => {
+  it('passes the status filter to the modal transaction fetch', async () => {
     (reportsApi.fetchAccountsReport as any).mockResolvedValue({
       date_start: '2026-02-01',
       date_end: '2026-02-28',

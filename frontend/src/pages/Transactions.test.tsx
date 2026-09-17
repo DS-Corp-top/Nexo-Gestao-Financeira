@@ -182,7 +182,7 @@ describe('Transactions Page', () => {
     expect(screen.queryByLabelText('Categoria')).not.toBeInTheDocument();
   });
 
-  it('shows "Você ainda pode gastar" with the value from the API, negative when overspent', async () => {
+  it('shows "Saldo projetado" with the value from the API, negative when overspent', async () => {
     (transactionsApi.fetchStatementSummary as any).mockResolvedValue({
       current_balance: '0', monthly_balance: '0', credit_card_open_total: '0',
       credit_card_month_total: '0', credit_card_limit: '0', consolidated_balance: '0',
@@ -193,7 +193,7 @@ describe('Transactions Page', () => {
     const balanceCard = () => container.querySelector('#statement-balance') as HTMLElement;
 
     await screen.findByText('Compra teste');
-    expect(balanceCard()).toHaveTextContent('Você ainda pode gastar');
+    expect(balanceCard()).toHaveTextContent('Saldo projetado');
     expect(balanceCard()).toHaveTextContent('-R$ 50,00');
     const value = screen.getByText('-R$ 50,00');
     expect(value).toHaveClass('txn-balance-value-negative');
@@ -237,20 +237,20 @@ describe('Transactions Page', () => {
     expect(balanceCard()).toHaveTextContent('Cartão em aberto');
   });
 
-  it('hides "Você ainda pode gastar" after unchecking it in Configurar and persists the choice', async () => {
+  it('hides "Saldo projetado" after unchecking it in Configurar and persists the choice', async () => {
     const { container } = renderTransactions();
     const balanceCard = () => container.querySelector('#statement-balance') as HTMLElement;
 
     await screen.findByText('Compra teste');
-    expect(balanceCard()).toHaveTextContent('Você ainda pode gastar');
+    expect(balanceCard()).toHaveTextContent('Saldo projetado');
 
     fireEvent.click(await screen.findByLabelText('Abrir mais ações'));
     fireEvent.click(await screen.findByText('Configurar'));
 
-    fireEvent.click(screen.getByLabelText('Você ainda pode gastar'));
+    fireEvent.click(screen.getByLabelText('Saldo projetado'));
     fireEvent.click(screen.getByRole('button', { name: '×' }));
 
-    expect(balanceCard()).not.toHaveTextContent('Você ainda pode gastar');
+    expect(balanceCard()).not.toHaveTextContent('Saldo projetado');
 
     const stored = JSON.parse(localStorage.getItem('nexo:transactions-tile-visibility') || '{}');
     expect(stored.spendable_balance).toBe(false);

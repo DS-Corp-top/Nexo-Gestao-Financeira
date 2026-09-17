@@ -26,7 +26,6 @@ const EXPECTED_MODULE_LINKS = [
   { to: '/todos', label: /Tarefas/ },
   { to: '/tap', label: /TAP/ },
   { to: '/notes', label: /Anotações/ },
-  { to: '/drive', label: /Drive/ },
   { to: '/settings/company', label: /Configurações/ },
   { to: '/admin', label: /Administração/ },
 ];

@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { FileBarChart, Printer, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileBarChart, Printer, Loader2, ChevronRight, Wallet } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 import { fetchAccounts } from '../api/accounts';
@@ -688,7 +689,7 @@ function AccountRowGroup({
   typeFilter: '' | 'income' | 'expense';
   statusFilter: ReportStatusFilter;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const { isMobile } = useViewMode();
   const { data, isFetching } = useQuery({
     queryKey: ['reports', 'account-transactions', account.id, dateStart, dateEnd, typeFilter, statusFilter],
@@ -696,17 +697,17 @@ function AccountRowGroup({
       fetchTransactionsReport({
         date_start: dateStart, date_end: dateEnd, account: account.id, type: typeFilter || undefined, status: statusFilter,
       }),
-    enabled: expanded,
+    enabled: modalOpen,
   });
 
   return (
     <>
       <tr
-        onClick={() => setExpanded((prev) => !prev)}
-        style={{ borderBottom: expanded ? 'none' : '1px solid var(--color-border)', cursor: 'pointer' }}
+        onClick={() => setModalOpen(true)}
+        style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
       >
         <td style={{ padding: '8px 6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <ChevronRight size={14} />
           {account.name}
         </td>
         {!isMobile && <td style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{account.account_type_display}</td>}
@@ -715,46 +716,90 @@ function AccountRowGroup({
         <td style={{ padding: '8px 6px', textAlign: 'right', color: 'var(--color-danger)' }}>− {formatCurrency(account.total_expense)}</td>
         <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(account.closing_balance)}</td>
       </tr>
-      {expanded && (
-        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <td colSpan={isMobile ? 4 : 6} style={{ padding: 0, background: 'var(--color-bg-elevated)' }}>
+      {modalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: 720, width: '100%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Wallet size={18} />
+                {account.name}
+              </h3>
+              <button className="btn btn-ghost btn-icon" onClick={() => setModalOpen(false)} aria-label="Fechar">
+                ✕
+              </button>
+            </div>
+
+            {/* Account summary KPIs */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+              <div style={{ padding: '10px 12px', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Saldo Inicial</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{formatCurrency(account.opening_balance)}</div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Receitas</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-success)' }}>{formatCurrency(account.total_income)}</div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Despesas</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-danger)' }}>− {formatCurrency(account.total_expense)}</div>
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Saldo Final</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-accent)' }}>{formatCurrency(account.closing_balance)}</div>
+              </div>
+            </div>
+
+            {/* Transactions table */}
             {isFetching ? (
-              <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Carregando transações...</div>
+              <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} />
+                <div>Carregando transações...</div>
+              </div>
             ) : data && data.transactions.length ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Data</th>
-                    <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Descrição</th>
-                    {!isMobile && <th style={{ textAlign: 'left', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Categoria</th>}
-                    <th style={{ textAlign: 'right', padding: '6px 12px', color: 'var(--color-text-secondary)' }}>Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.transactions.map((t) => (
-                    <tr key={t.id}>
-                      <td style={{ padding: '6px 12px' }}>{formatDate(t.date)}</td>
-                      <td style={{ padding: '6px 12px' }}>{t.description}</td>
-                      {!isMobile && <td style={{ padding: '6px 12px', color: 'var(--color-text-secondary)' }}>{t.category || '—'}</td>}
-                      <td
-                        style={{
-                          padding: '6px 12px',
-                          textAlign: 'right',
-                          color: t.transaction_type === 'expense' ? 'var(--color-danger)' : 'var(--color-success)',
-                        }}
-                      >
-                        {t.transaction_type === 'expense' ? '− ' : ''}
-                        {formatCurrency(t.amount)}
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--color-text-secondary)' }}>Data</th>
+                      <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--color-text-secondary)' }}>Descrição</th>
+                      {!isMobile && <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--color-text-secondary)' }}>Categoria</th>}
+                      <th style={{ textAlign: 'right', padding: '8px 10px', color: 'var(--color-text-secondary)' }}>Valor</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.transactions.map((t) => (
+                      <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '8px 10px' }}>{formatDate(t.date)}</td>
+                        <td style={{ padding: '8px 10px' }}>{t.description}</td>
+                        {!isMobile && <td style={{ padding: '8px 10px', color: 'var(--color-text-secondary)' }}>{t.category || '—'}</td>}
+                        <td
+                          style={{
+                            padding: '8px 10px',
+                            textAlign: 'right',
+                            fontWeight: 600,
+                            color: t.transaction_type === 'expense' ? 'var(--color-danger)' : 'var(--color-success)',
+                          }}
+                        >
+                          {t.transaction_type === 'expense' ? '− ' : ''}
+                          {formatCurrency(t.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Nenhuma transação no período.</div>
+              <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                Nenhuma transação no período.
+              </div>
             )}
-          </td>
-        </tr>
+          </div>
+        </div>,
+        document.body,
       )}
     </>
   );

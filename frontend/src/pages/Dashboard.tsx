@@ -385,6 +385,14 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Saldo projetado */}
+          <div className="kpi-card">
+            <div className="kpi-label">Saldo projetado</div>
+            <div className={`kpi-value ${data.alerts.balance_after_pending == null || parseFloat(data.alerts.balance_after_pending) >= 0 ? 'positive' : 'negative'}`}>
+              {formatCurrency(data.alerts.balance_after_pending)}
+            </div>
+          </div>
+
           {/* Limite do cartão */}
           <div className="kpi-card">
             <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite do cartão</div>

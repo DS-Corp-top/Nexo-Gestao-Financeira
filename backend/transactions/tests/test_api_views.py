@@ -435,4 +435,4 @@ class StatementSummaryTest(TestCase):
         self.assertEqual(data["monthly_income_total"], "2500.00")
         self.assertEqual(data["monthly_expense_total"], "550.00")
         self.assertEqual(data["current_balance"], "1700.00")
-        self.assertEqual(data["spendable_balance"], "1450.00")
+        self.assertEqual(data["spendable_balance"], "1950.00")

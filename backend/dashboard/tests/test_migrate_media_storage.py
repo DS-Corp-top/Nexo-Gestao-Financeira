@@ -71,7 +71,7 @@ class TestIterMediaFields:
 
         assert list(iter_media_fields()) == []
 
-    def test_yields_tenant_and_company_logos_and_drive_documents(self, baker):
+    def test_yields_tenant_and_company_logos(self, baker):
         tenant = baker.make(
             "tenants.Tenant",
             document="00000000000",
@@ -84,19 +84,11 @@ class TestIterMediaFields:
             tenant=tenant,
             logo=SimpleUploadedFile("company-logo.png", b"fake-image-bytes"),
         )
-        user = baker.make("auth.User")
-        document = baker.make(
-            "drive.Document",
-            tenant=tenant,
-            user=user,
-            file=SimpleUploadedFile("doc.txt", b"conteudo"),
-        )
 
         results = dict(iter_media_fields())
 
         assert results[f"Tenant#{tenant.id} ({tenant.name})"] == tenant.logo.name
         assert results[f"TenantCompany#{company.id} ({company.name})"] == company.logo.name
-        assert results[f"Document#{document.id} ({document.title})"] == document.file.name
 
 
 class TestCommandHandle:

@@ -3207,11 +3207,9 @@ input[type="date"].clear-modal-date {
 }
 
 .txn-quick-more-trigger,
-.drive-folder-trigger,
 .txn-quick-add-trigger,
 .invoice-add-trigger,
-.investment-add-trigger,
-.drive-upload-trigger {
+.investment-add-trigger {
   width: 44px;
   height: 44px;
   min-width: 44px;
@@ -3225,17 +3223,14 @@ input[type="date"].clear-modal-date {
 
 .txn-quick-add-trigger,
 .invoice-add-trigger,
-.investment-add-trigger,
-.drive-upload-trigger {
+.investment-add-trigger {
   border-color: #ffffff !important;
   background: #ffffff !important;
   color: #000000 !important;
 }
 
 .txn-quick-more-trigger:hover,
-.txn-quick-more-trigger:focus-visible,
-.drive-folder-trigger:hover,
-.drive-folder-trigger:focus-visible {
+.txn-quick-more-trigger:focus-visible {
   border-color: var(--color-border-strong, var(--color-border)) !important;
   background: rgba(255, 255, 255, 0.08) !important;
 }
@@ -3245,9 +3240,7 @@ input[type="date"].clear-modal-date {
 .invoice-add-trigger:hover,
 .invoice-add-trigger:focus-visible,
 .investment-add-trigger:hover,
-.investment-add-trigger:focus-visible,
-.drive-upload-trigger:hover,
-.drive-upload-trigger:focus-visible {
+.investment-add-trigger:focus-visible {
   border-color: rgba(255, 255, 255, 0.86) !important;
   background: rgba(255, 255, 255, 0.86) !important;
   color: #000000 !important;

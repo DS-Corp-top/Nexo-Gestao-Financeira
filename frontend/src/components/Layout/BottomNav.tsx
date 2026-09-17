@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CloudUpload, FileBarChart, FileSignature } from 'lucide-react';
+import { FileBarChart, FileSignature } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function BottomNav() {
@@ -87,10 +87,6 @@ export default function BottomNav() {
             <Link to="/notes" className={`txn-more-link ${location.pathname.startsWith('/notes') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><polyline points="15 3 15 9 21 9"/></svg></span>
               Anotações
-            </Link>
-            <Link to="/drive" className={`txn-more-link ${location.pathname.startsWith('/drive') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
-              <span className="txn-more-icon"><CloudUpload size={20} /></span>
-              Drive
             </Link>
             {canManageTenantSettings && (
               <Link to="/settings/company" className={`txn-more-link ${location.pathname.startsWith('/settings') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>

@@ -31,7 +31,6 @@ from tenants.api_views import (
 from notes.api_views import NoteListViewSet, NoteSubtaskViewSet, NoteViewSet
 from notifications.api_views import PushSubscribeView, PushUnsubscribeView, VapidPublicKeyView
 from telegram_bot.api_views import TelegramLinkCodeView, TelegramLinkStatusView, TelegramWebhookView
-from drive.api_views import DocumentViewSet, FolderViewSet
 from reports.api_views import (
     AccountsReportView,
     DREReportView,
@@ -81,8 +80,6 @@ router.register("tap", ProjectCharterViewSet, basename="tap")
 router.register("note-lists", NoteListViewSet, basename="note-list")
 router.register("notes", NoteViewSet, basename="note")
 router.register("note-subtasks", NoteSubtaskViewSet, basename="note-subtask")
-router.register("drive/folders", FolderViewSet, basename="folder")
-router.register("drive/documents", DocumentViewSet, basename="document")
 
 app_name = "api"
 

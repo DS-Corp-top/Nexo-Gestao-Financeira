@@ -21,7 +21,6 @@ import Administration from './pages/Administration';
 import Todos from './pages/Todos';
 import Tap from './pages/Tap';
 import Notes from './pages/Notes';
-import Drive from './pages/Drive';
 
 
 const queryClient = new QueryClient({
@@ -62,7 +61,6 @@ export default function App() {
               <Route path="invoices" element={<ProtectedRoute requireSuperuser requirePJ><Invoices /></ProtectedRoute>} />
               <Route path="reports" element={<Reports />} />
               <Route path="shopping" element={<Shopping />} />
-              <Route path="drive" element={<Drive />} />
               <Route path="investments" element={<Investments />} />
               <Route path="todos" element={<Todos />} />
               <Route path="tap" element={<Tap />} />

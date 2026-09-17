@@ -4,7 +4,6 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand, CommandError
 
-from drive.models import Document
 from tenants.models import Tenant, TenantCompany
 
 BACKEND_PATHS = {
@@ -74,14 +73,12 @@ def iter_media_fields():
         yield f"Tenant#{tenant.id} ({tenant.name})", tenant.logo.name
     for company in TenantCompany.objects.exclude(logo="").exclude(logo__isnull=True):
         yield f"TenantCompany#{company.id} ({company.name})", company.logo.name
-    for document in Document.objects.exclude(file=""):
-        yield f"Document#{document.id} ({document.title})", document.file.name
 
 
 class Command(BaseCommand):
     help = (
-        "Copia todos os arquivos de midia (logos de tenant/empresa, documentos do "
-        "Drive) do storage ATUALMENTE configurado (default_storage / STORAGE_PROVIDER) "
+        "Copia todos os arquivos de midia (logos de tenant/empresa) do storage "
+        "ATUALMENTE configurado (default_storage / STORAGE_PROVIDER) "
         "para um storage de destino informado via argumentos, preservando o mesmo "
         "caminho relativo. Nao altera nenhuma linha do banco — os FileField/ImageField "
         "ja guardam so o caminho relativo, que funciona igual em qualquer provider. "
