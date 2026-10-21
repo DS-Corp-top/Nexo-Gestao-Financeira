@@ -52,6 +52,15 @@ Deploy no Heroku com PostgreSQL. Stack: Django 6, Gunicorn, WhiteNoise, Tailwind
 - Suporta ~200 requisições simultâneas no dyno atual (512 MB RAM)
 - Rate limiting global compartilhado via Redis em ambiente multi-dyno
 
+### Diagnóstico Financeiro (`/diagnosis` no frontend)
+- Gráfico mês a mês de receitas, despesas e saldo; cada mês recebe uma flag: `deficit` (saldo negativo), `heavy` (despesa ≥ 15% acima da média), `surplus` (sobra ≥ média + 15% da receita média), `normal`, `empty`
+- Clicar num mês (gráfico, lista ou cards de destaque) abre o diagnóstico: veredito, comparação com a média dos meses anteriores, frases explicativas, categorias que pesaram/aliviaram, variações de receita, composição (recorrentes × parcelas × pontuais) e maiores despesas
+- Backend: regras em `reports/diagnosis.py` (limiares como constantes no topo); endpoints `reports/oscillations/` e `reports/oscillations/diagnosis/` em `reports/api_views.py`
+- Critério de receita/despesa igual ao `DashboardView`: sem transferências, sem ignoradas, receita em cartão não conta
+- Média (baseline) considera só meses com movimentação; `status` default é `all` (inclui provisões futuras)
+- Superusuário sem vínculo com o tenant recebe `masked: true` e nenhum valor (as frases contêm valores, então não dá para mascarar campo a campo)
+- Testes: `backend/reports/tests/test_diagnosis.py`, `frontend/src/pages/Diagnosis.test.tsx`
+
 ### Recuperação de senha (`/forgot-password` no frontend)
 - Fluxo em 3 passos: e-mail → código de 6 dígitos (válido 15 min) → nova senha
 - Backend: `users/password_reset.py` (`auth/password-reset/request|confirm|complete/`)

@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
+  Activity,
   LayoutDashboard,
   ArrowLeftRight,
   FileText,
@@ -25,6 +26,7 @@ const navItemsBeforeInvoices = [
 
 const navItemsAfterInvoices = [
   { to: '/reports', icon: FileBarChart, label: 'Relatórios' },
+  { to: '/diagnosis', icon: Activity, label: 'Diagnóstico' },
   { to: '/shopping', icon: ShoppingCart, label: 'Lista de Compras' },
   { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
   { to: '/tap', icon: FileSignature, label: 'TAP' },

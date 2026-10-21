@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from django.db.models import DecimalField, Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,8 +18,11 @@ from accounts.models import Account
 from categories.models import Category
 from common.api_mixins import get_user_tenant, is_view_only_superuser, set_mask_financial_values
 from common.balance import calculate_account_balance, calculate_user_balance
+from common.months import month_value_to_date
 from investments.models import Investment, InvestmentEntry
 from transactions.models import Transaction
+
+from . import diagnosis
 
 ZERO = Decimal("0.00")
 TWO_PLACES = Decimal("0.01")
@@ -395,4 +399,164 @@ class DREReportView(APIView):
             "operating_expenses": [] if masked else operating_by_category,
             "total_operating_expenses": _money(total_operating_expenses),
             "net_result": _money(net_result),
+        })
+
+
+def _parse_month(raw_value, field_name):
+    if not raw_value:
+        return timezone.localdate().replace(day=1)
+    month = month_value_to_date(raw_value)
+    if month is None:
+        raise ValidationError({field_name: "Mês inválido — use o formato YYYY-MM."})
+    return month
+
+
+def _parse_int(raw_value, field_name, default, minimum, maximum):
+    if raw_value in (None, ""):
+        return default
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        raise ValidationError({field_name: "Informe um número inteiro."})
+    if not minimum <= value <= maximum:
+        raise ValidationError({field_name: f"Use um valor entre {minimum} e {maximum}."})
+    return value
+
+
+def _parse_flow_status(request):
+    # Diferente dos outros relatórios, o default aqui é "all": o objetivo é
+    # enxergar também o que já está provisionado para os meses futuros.
+    status = request.query_params.get("status", "all")
+    if status not in STATUS_CHOICES:
+        raise ValidationError({"status": "Valor inválido — use 'cleared', 'pending' ou 'all'."})
+    return status
+
+
+def _ratio(value):
+    return None if value is None else float(round(value, 4))
+
+
+def _driver_payload(driver):
+    return {
+        "category_id": driver["category_id"],
+        "name": driver["name"],
+        "current": _money(driver["current"]),
+        "average": _money(driver["average"]),
+        "delta": _money(driver["delta"]),
+        "delta_ratio": _ratio(driver["delta_ratio"]),
+        "is_new": driver["is_new"],
+    }
+
+
+class OscillationsReportView(APIView):
+    """GET /api/v1/reports/oscillations/?end_month=YYYY-MM&months=12&status=all
+
+    Receitas, despesas e saldo mês a mês, com cada mês sinalizado como
+    "heavy" (despesa acima do normal), "surplus" (sobra acima do normal),
+    "deficit" (saldo negativo), "normal" ou "empty". Ver reports/diagnosis.py.
+    """
+
+    def get(self, request):
+        tenant = get_user_tenant(request.user, request)
+        masked = is_view_only_superuser(request.user, tenant)
+        set_mask_financial_values(request, masked)
+        end_month = _parse_month(request.query_params.get("end_month"), "end_month")
+        months = _parse_int(request.query_params.get("months"), "months", default=12, minimum=3, maximum=36)
+        status = _parse_flow_status(request)
+
+        if masked:
+            # Superusuário sem vínculo com o tenant: nada de valores.
+            return Response({"end_month": end_month.strftime("%Y-%m"), "status": status, "masked": True, "months": []})
+
+        series = diagnosis.build_monthly_series(tenant, end_month, months, status)
+        return Response({
+            "end_month": end_month.strftime("%Y-%m"),
+            "status": status,
+            "masked": False,
+            "average_income": _money(series["average_income"]),
+            "average_expense": _money(series["average_expense"]),
+            "average_net": _money(series["average_balance"]),
+            "months": [
+                {
+                    "month": row["month"].strftime("%Y-%m"),
+                    "income": _money(row["income"]),
+                    "expense": _money(row["expense"]),
+                    "net": _money(row["balance"]),
+                    "expense_vs_average": _ratio(row["expense_vs_average"]),
+                    "flag": row["flag"],
+                }
+                for row in series["months"]
+            ],
+        })
+
+
+class MonthDiagnosisReportView(APIView):
+    """GET /api/v1/reports/oscillations/diagnosis/?month=YYYY-MM&baseline_months=6&status=all
+
+    Explica um mês: compara com a média dos meses anteriores e aponta o que
+    pesou, o que aliviou, gastos pontuais, parcelamentos e pendências.
+    """
+
+    def get(self, request):
+        tenant = get_user_tenant(request.user, request)
+        masked = is_view_only_superuser(request.user, tenant)
+        set_mask_financial_values(request, masked)
+        month = _parse_month(request.query_params.get("month"), "month")
+        baseline_months = _parse_int(
+            request.query_params.get("baseline_months"), "baseline_months", default=6, minimum=1, maximum=24
+        )
+        status = _parse_flow_status(request)
+
+        if masked:
+            # O diagnóstico é feito de valores e de frases com valores — não sai nada.
+            return Response({"month": month.strftime("%Y-%m"), "status": status, "masked": True})
+
+        result = diagnosis.build_month_diagnosis(tenant, month, baseline_months, status)
+        baseline = result["baseline"]
+        return Response({
+            "month": month.strftime("%Y-%m"),
+            "status": status,
+            "masked": False,
+            "income": _money(result["income"]),
+            "expense": _money(result["expense"]),
+            "net": _money(result["balance"]),
+            "savings_rate": _ratio(result["savings_rate"]),
+            "baseline": {
+                "months": baseline["months"],
+                "requested_months": baseline["requested_months"],
+                "income": _money(baseline["income"]),
+                "expense": _money(baseline["expense"]),
+                "net": _money(baseline["balance"]),
+            },
+            "verdict": result["verdict"],
+            "insights": result["insights"],
+            "expense_increases": [_driver_payload(d) for d in result["expense_increases"]],
+            "expense_decreases": [_driver_payload(d) for d in result["expense_decreases"]],
+            "income_changes": [_driver_payload(d) for d in result["income_changes"]],
+            "composition": [
+                {
+                    "kind": c["kind"],
+                    "label": c["label"],
+                    "value": _money(c["amount"]),
+                    "count": c["count"],
+                    "share": _ratio(c["share"]),
+                }
+                for c in result["composition"]
+            ],
+            "card_expense": _money(result["card_expense"]),
+            "pending_expense": _money(result["pending_expense"]),
+            "top_expenses": [
+                {
+                    "id": t["id"],
+                    "date": t["date"].isoformat(),
+                    "description": t["description"],
+                    "category": t["category"],
+                    "account": t["account"],
+                    "value": _money(t["amount"]),
+                    "kind": t["kind"],
+                    "is_cleared": t["is_cleared"],
+                    "share": _ratio(t["share"]),
+                }
+                for t in result["top_expenses"]
+            ],
         })

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileBarChart, FileSignature } from 'lucide-react';
+import { Activity, FileBarChart, FileSignature } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function BottomNav() {
@@ -71,6 +71,10 @@ export default function BottomNav() {
             <Link to="/reports" className={`txn-more-link ${location.pathname.startsWith('/reports') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><FileBarChart size={20} /></span>
               Relatórios
+            </Link>
+            <Link to="/diagnosis" className={`txn-more-link ${location.pathname.startsWith('/diagnosis') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
+              <span className="txn-more-icon"><Activity size={20} /></span>
+              Diagnóstico
             </Link>
             <Link to="/shopping" className={`txn-more-link ${location.pathname.startsWith('/shopping') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 5h2l2.2 10h10.8l2-7H8.2"/><circle cx="10" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg></span>

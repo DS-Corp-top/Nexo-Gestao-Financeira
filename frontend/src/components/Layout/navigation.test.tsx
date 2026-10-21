@@ -21,6 +21,7 @@ const EXPECTED_MODULE_LINKS = [
   { to: '/transactions', label: /Financeiro/ },
   { to: '/investments', label: /Investimentos/ },
   { to: '/reports', label: /Relatórios/ },
+  { to: '/diagnosis', label: /Diagnóstico/ },
   { to: '/invoices', label: /Fatura de Serviços/ },
   { to: '/shopping', label: /Lista de Compras/ },
   { to: '/todos', label: /Tarefas/ },

@@ -651,3 +651,82 @@ def test_dre_excludes_transactions_outside_period(baker):
 
     assert response.status_code == 200
     assert response.data["total_income"] == "0.00"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("field, value", [("date_start", "2026-02-30"), ("date_end", "amanha")])
+def test_report_rejects_malformed_dates(baker, field, value):
+    user, tenant = _tenant_user(baker)
+    params = {"date_start": "2026-02-01", "date_end": "2026-02-28", field: value}
+
+    response = _client(user).get(reverse("api:report_transactions"), params, HTTP_X_TENANT_ID=str(tenant.id))
+
+    assert response.status_code == 400
+    assert field in response.data
+
+
+@pytest.mark.django_db
+def test_transactions_report_category_filter(baker):
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user)
+    rent = baker.make("categories.Category", tenant=tenant, category_type="expense", name="Aluguel")
+    food = baker.make("categories.Category", tenant=tenant, category_type="expense", name="Mercado")
+    for category, amount in ((rent, 1200), (food, 300)):
+        baker.make(
+            "transactions.Transaction", tenant=tenant, account=account, user=user, category=category,
+            transaction_type="expense", amount=amount, date=date(2026, 2, 10), is_cleared=True,
+        )
+
+    response = _client(user).get(
+        reverse("api:report_transactions"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "category": rent.id},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    assert [t["category"] for t in response.data["transactions"]] == ["Aluguel"]
+    assert response.data["total_expense"] == "1200.00"
+
+
+@pytest.mark.django_db
+def test_transactions_report_status_all_combines_cleared_and_pending(baker):
+    user, tenant = _tenant_user(baker)
+    account = baker.make("accounts.Account", tenant=tenant, user=user)
+    for amount, cleared in ((100, True), (40, False)):
+        baker.make(
+            "transactions.Transaction", tenant=tenant, account=account, user=user,
+            transaction_type="expense", amount=amount, date=date(2026, 2, 10), is_cleared=cleared,
+        )
+
+    response = _client(user).get(
+        reverse("api:report_transactions"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "status": "all"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    assert response.data["total_expense"] == "140.00"
+
+
+@pytest.mark.django_db
+def test_investments_report_type_filter(baker):
+    user, tenant = _tenant_user(baker)
+    stocks = baker.make("investments.Investment", tenant=tenant, user=user, name="Ações", investment_type="stocks")
+    bonds = baker.make(
+        "investments.Investment", tenant=tenant, user=user, name="CDB", investment_type="fixed_income",
+    )
+    for investment in (stocks, bonds):
+        baker.make(
+            "investments.InvestmentEntry", tenant=tenant, user=user, investment=investment,
+            entry_type=InvestmentEntry.EntryType.DEPOSIT, amount=500, date=date(2026, 2, 5),
+        )
+
+    response = _client(user).get(
+        reverse("api:report_investments"),
+        {"date_start": "2026-02-01", "date_end": "2026-02-28", "investment_type": "fixed_income"},
+        HTTP_X_TENANT_ID=str(tenant.id),
+    )
+
+    assert response.status_code == 200
+    assert [i["name"] for i in response.data["investments"]] == ["CDB"]
+    assert response.data["total_invested"] == "500.00"

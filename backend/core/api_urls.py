@@ -35,6 +35,8 @@ from reports.api_views import (
     AccountsReportView,
     DREReportView,
     InvestmentsReportView,
+    MonthDiagnosisReportView,
+    OscillationsReportView,
     SummaryReportView,
     TransactionsReportView,
 )
@@ -149,6 +151,12 @@ urlpatterns = [
     path("reports/summary/", SummaryReportView.as_view(), name="report_summary"),
     path("reports/investments/", InvestmentsReportView.as_view(), name="report_investments"),
     path("reports/dre/", DREReportView.as_view(), name="report_dre"),
+    path("reports/oscillations/", OscillationsReportView.as_view(), name="report_oscillations"),
+    path(
+        "reports/oscillations/diagnosis/",
+        MonthDiagnosisReportView.as_view(),
+        name="report_month_diagnosis",
+    ),
 
     # Router-registered viewsets
     path("", include(router.urls)),

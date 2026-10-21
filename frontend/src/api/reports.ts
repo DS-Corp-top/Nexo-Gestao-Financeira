@@ -138,3 +138,88 @@ export async function fetchDREReport(params: DateRangeParams): Promise<DREReport
   const { data } = await api.get<DREReport>('/reports/dre/', { params });
   return data;
 }
+
+// Diagnóstico financeiro (backend/reports/diagnosis.py). Default de status é
+// "all" — inclui o que já está provisionado para os meses futuros.
+export type MonthFlag = 'heavy' | 'surplus' | 'deficit' | 'normal' | 'empty';
+
+export interface OscillationMonth {
+  month: string; // YYYY-MM
+  income: string;
+  expense: string;
+  net: string;
+  expense_vs_average: number | null;
+  flag: MonthFlag;
+}
+
+export interface OscillationsReport {
+  end_month: string;
+  status: ReportStatusFilter;
+  masked: boolean;
+  average_income?: string;
+  average_expense?: string;
+  average_net?: string;
+  months: OscillationMonth[];
+}
+
+export async function fetchOscillationsReport(params: {
+  end_month?: string;
+  months?: number;
+  status?: ReportStatusFilter;
+}): Promise<OscillationsReport> {
+  const { data } = await api.get<OscillationsReport>('/reports/oscillations/', { params });
+  return data;
+}
+
+export type VerdictLevel = 'critical' | 'attention' | 'good' | 'excellent' | 'empty';
+export type InsightTone = 'negative' | 'positive' | 'neutral';
+export type ExpenseKind = 'recurring' | 'installment' | 'one_off';
+
+export interface DiagnosisDriver {
+  category_id: number | null;
+  name: string;
+  current: string;
+  average: string;
+  delta: string;
+  delta_ratio: number | null;
+  is_new: boolean;
+}
+
+export interface MonthDiagnosis {
+  month: string;
+  status: ReportStatusFilter;
+  masked: boolean;
+  income: string;
+  expense: string;
+  net: string;
+  savings_rate: number | null;
+  baseline: { months: number; requested_months: number; income: string; expense: string; net: string };
+  verdict: { level: VerdictLevel; title: string; summary: string };
+  insights: { tone: InsightTone; text: string }[];
+  expense_increases: DiagnosisDriver[];
+  expense_decreases: DiagnosisDriver[];
+  income_changes: DiagnosisDriver[];
+  composition: { kind: ExpenseKind; label: string; value: string; count: number; share: number | null }[];
+  card_expense: string;
+  pending_expense: string;
+  top_expenses: {
+    id: number;
+    date: string;
+    description: string;
+    category: string | null;
+    account: string;
+    value: string;
+    kind: ExpenseKind;
+    is_cleared: boolean;
+    share: number | null;
+  }[];
+}
+
+export async function fetchMonthDiagnosis(params: {
+  month: string;
+  baseline_months?: number;
+  status?: ReportStatusFilter;
+}): Promise<MonthDiagnosis> {
+  const { data } = await api.get<MonthDiagnosis>('/reports/oscillations/diagnosis/', { params });
+  return data;
+}

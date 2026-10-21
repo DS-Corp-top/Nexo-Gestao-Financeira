@@ -17,6 +17,7 @@ import Shopping from './pages/Shopping';
 import Investments from './pages/Investments';
 import Invoices from './pages/Invoices';
 import Reports from './pages/Reports';
+import Diagnosis from './pages/Diagnosis';
 import Administration from './pages/Administration';
 import Todos from './pages/Todos';
 import Tap from './pages/Tap';
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="categories" element={<Categories />} />
               <Route path="invoices" element={<ProtectedRoute requireSuperuser requirePJ><Invoices /></ProtectedRoute>} />
               <Route path="reports" element={<Reports />} />
+              <Route path="diagnosis" element={<Diagnosis />} />
               <Route path="shopping" element={<Shopping />} />
               <Route path="investments" element={<Investments />} />
               <Route path="todos" element={<Todos />} />
