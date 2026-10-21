@@ -8,7 +8,8 @@ interface InvestmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (payload: CreateInvestmentPayload) => Promise<void>;
-  onDelete?: (id: number) => Promise<void>;
+  // Só pede a exclusão — a confirmação e a chamada à API ficam com a página.
+  onDelete?: (id: number) => void;
 }
 
 function normalizeSearch(value: string): string {
@@ -237,7 +238,7 @@ export default function InvestmentModal({ investment, isOpen, onClose, onSave, o
                 type="button"
                 className="btn btn-ghost"
                 style={{ color: 'var(--color-danger)' }}
-                onClick={() => { if(window.confirm('Excluir investimento?')) onDelete(investment.id); }}
+                onClick={() => onDelete(investment.id)}
                 disabled={loading}
               >
                 Excluir

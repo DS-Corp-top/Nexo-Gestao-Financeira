@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -16,6 +16,8 @@ vi.mock('../api/investments', async () => {
     fetchInvestmentEntries: vi.fn(),
     fetchInvestmentExchangeRates: vi.fn(),
     deleteInvestmentEntry: vi.fn(),
+    updateInvestment: vi.fn(),
+    deleteInvestment: vi.fn(),
   };
 });
 
@@ -134,5 +136,112 @@ describe('Investments Page', () => {
     expect(await screen.findByText('IR semestral')).toBeInTheDocument();
     expect(screen.getAllByText('Imposto / IR/IOF').length).toBeGreaterThan(0);
     expect(screen.getByText((_, element) => element?.textContent?.replace(/\s/g, '') === '-R$2,53')).toBeInTheDocument();
+  });
+
+  describe('editing and deleting an investment', () => {
+    const CDB = {
+      id: 7, name: 'CDB + LIMITE', investment_type: 'fixed_income', currency: 'BRL',
+      broker: 'Banco Inter', is_active: true, total_invested: '5818.80', total_withdrawn: '5579.90',
+      total_earnings: '58.95', total_taxes: '0.00', net_invested: '238.90', total_balance: '297.85',
+      entries: [],
+    };
+
+    beforeEach(() => {
+      (investmentsApi.fetchInvestments as any).mockResolvedValue([CDB]);
+      (investmentsApi.fetchInvestment as any).mockResolvedValue(CDB);
+      (investmentsApi.updateInvestment as any).mockResolvedValue({ ...CDB, name: 'CDB Liquidez' });
+      (investmentsApi.deleteInvestment as any).mockResolvedValue(undefined);
+    });
+
+    it('edits straight from the card without opening the detail', async () => {
+      renderInvestments();
+      fireEvent.click(await screen.findByRole('button', { name: 'Editar CDB + LIMITE' }));
+
+      expect(await screen.findByText('Editar Investimento')).toBeInTheDocument();
+      // O clique no lápis não pode abrir o detalhe do card.
+      expect(investmentsApi.fetchInvestment).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByDisplayValue('CDB + LIMITE'), { target: { value: 'CDB Liquidez' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      await waitFor(() => expect(investmentsApi.updateInvestment).toHaveBeenCalled());
+      expect((investmentsApi.updateInvestment as any).mock.calls[0][0]).toBe(7);
+      expect((investmentsApi.updateInvestment as any).mock.calls[0][1]).toMatchObject({
+        name: 'CDB Liquidez', investment_type: 'fixed_income', broker: 'Banco Inter',
+      });
+    });
+
+    it('deletes from the card after an in-app confirmation that warns about the entries', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm');
+      const { container } = renderInvestments();
+      fireEvent.click(await screen.findByRole('button', { name: 'Excluir CDB + LIMITE' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'Excluir investimento' });
+      expectPortaledToBody(dialog, container);
+      expect(dialog).toHaveTextContent('apaga também todos os aportes, resgates, rendimentos e impostos');
+      expect(investmentsApi.fetchInvestment).not.toHaveBeenCalled();
+      expect(investmentsApi.deleteInvestment).not.toHaveBeenCalled();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }));
+
+      await waitFor(() => expect(investmentsApi.deleteInvestment).toHaveBeenCalled());
+      expect((investmentsApi.deleteInvestment as any).mock.calls[0][0]).toBe(7);
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Excluir investimento' })).not.toBeInTheDocument());
+      expect(confirmSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not delete when the confirmation is cancelled', async () => {
+      renderInvestments();
+      fireEvent.click(await screen.findByRole('button', { name: 'Excluir CDB + LIMITE' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Excluir investimento' });
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Excluir investimento' })).not.toBeInTheDocument());
+      expect(investmentsApi.deleteInvestment).not.toHaveBeenCalled();
+    });
+
+    it('keeps the confirmation open with an error when the delete fails', async () => {
+      (investmentsApi.deleteInvestment as any).mockRejectedValue(new Error('boom'));
+      renderInvestments();
+      fireEvent.click(await screen.findByRole('button', { name: 'Excluir CDB + LIMITE' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Excluir investimento' });
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }));
+
+      expect(await within(dialog).findByText('Não foi possível excluir. Tente novamente.')).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Excluir investimento' })).toBeInTheDocument();
+    });
+
+    it('offers edit and delete in the detail header and returns to the list after deleting', async () => {
+      renderInvestments();
+      fireEvent.click(await screen.findByText('CDB + LIMITE'));
+      await screen.findByText('Aportes (Total)');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Editar investimento' }));
+      expect(await screen.findByText('Editar Investimento')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Excluir investimento' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Excluir investimento' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Excluir' }));
+
+      await waitFor(() => expect(investmentsApi.deleteInvestment).toHaveBeenCalled());
+      await waitFor(() => expect(screen.queryByText('Aportes (Total)')).not.toBeInTheDocument());
+    });
+
+    it('routes the Excluir button of the edit form to the same confirmation', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm');
+      renderInvestments();
+      fireEvent.click(await screen.findByRole('button', { name: 'Editar CDB + LIMITE' }));
+      await screen.findByText('Editar Investimento');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+
+      expect(await screen.findByRole('dialog', { name: 'Excluir investimento' })).toBeInTheDocument();
+      expect(screen.queryByText('Editar Investimento')).not.toBeInTheDocument();
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(investmentsApi.deleteInvestment).not.toHaveBeenCalled();
+    });
   });
 });

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Plus, ArrowLeft, TrendingUp, Edit2, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -112,6 +112,7 @@ export default function Investments() {
   const [entryAmount, setEntryAmount] = useState('');
   const [entryHistoryOpen, setEntryHistoryOpen] = useState(false);
   const [deletingEntryId, setDeletingEntryId] = useState<number | null>(null);
+  const [deletingInv, setDeletingInv] = useState<Investment | null>(null);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<Investment['investment_type'] | ''>('');
   const [filterCurrency, setFilterCurrency] = useState('');
@@ -151,9 +152,10 @@ export default function Investments() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteInvestment,
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey: ['investments'] }); 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investments'] });
       setSelectedInvId(null);
+      setDeletingInv(null);
     },
   });
 
@@ -192,6 +194,61 @@ export default function Investments() {
       await createMutation.mutateAsync(payload);
     }
   };
+
+  // Excluir pede confirmação num modal do app (não window.confirm), vindo do
+  // card, do cabeçalho do detalhe ou do botão Excluir do formulário.
+  const handleRequestDelete = (inv: Investment, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setModalOpen(false);
+    deleteMutation.reset();
+    setDeletingInv(inv);
+  };
+
+  const deleteInvestmentDialog = deletingInv && createPortal(
+    <div
+      onClick={() => !deleteMutation.isPending && setDeletingInv(null)}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999, padding: '1rem',
+      }}
+    >
+      <div
+        className="card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Excluir investimento"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 400, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+      >
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Excluir investimento</h3>
+        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+          Excluir <strong style={{ color: 'var(--color-text-primary)' }}>{deletingInv.name}</strong> apaga também todos os
+          aportes, resgates, rendimentos e impostos lançados nele. Esta ação não pode ser desfeita.
+        </p>
+        {deleteMutation.isError && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-danger)', margin: 0 }}>
+            Não foi possível excluir. Tente novamente.
+          </p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <button type="button" className="btn" onClick={() => setDeletingInv(null)} disabled={deleteMutation.isPending}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate(deletingInv.id)}
+          >
+            {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 
   const handleCreateEntry = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -446,9 +503,6 @@ export default function Investments() {
             <div>
               <h2 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {currentInv?.name}
-                <button className="btn-ghost btn-icon" style={{ width: 24, height: 24, padding: 4 }} onClick={() => handleOpenEdit(currentInv!)}>
-                  <Edit2 size={14} />
-                </button>
                 <span className="badge" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
                   {currentCurrency}
                 </span>
@@ -458,6 +512,29 @@ export default function Investments() {
               </div>
             </div>
           </div>
+          {currentInv && (
+            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                aria-label="Editar investimento"
+                onClick={() => handleOpenEdit(currentInv)}
+              >
+                <Edit2 size={16} />
+                Editar
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ color: 'var(--color-danger)' }}
+                aria-label="Excluir investimento"
+                onClick={() => handleRequestDelete(currentInv)}
+              >
+                <Trash2 size={16} />
+                Excluir
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="kpi-grid" style={{ marginBottom: 'var(--space-lg)' }}>
@@ -604,9 +681,11 @@ export default function Investments() {
             isOpen={modalOpen}
             onClose={() => setModalOpen(false)}
             onSave={handleSave}
-            onDelete={(id) => deleteMutation.mutateAsync(id)}
+            onDelete={() => editingInv && handleRequestDelete(editingInv)}
           />
         )}
+
+        {deleteInvestmentDialog}
 
         {deletingEntryId !== null && createPortal(
           <div
@@ -919,11 +998,28 @@ export default function Investments() {
                     {[inv.broker, typeLabels[inv.investment_type]].filter(Boolean).join(' - ')}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="badge" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span className="badge" style={{ background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)', marginRight: 4 }}>
                     {invCurrency}
                   </span>
-                  <PiggyBank style={{ color: 'var(--color-accent)', opacity: 0.5 }} />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-icon"
+                    onClick={(e) => handleOpenEdit(inv, e)}
+                    aria-label={`Editar ${inv.name}`}
+                    title="Editar"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-icon"
+                    onClick={(e) => handleRequestDelete(inv, e)}
+                    aria-label={`Excluir ${inv.name}`}
+                    title="Excluir"
+                  >
+                    <Trash2 size={16} style={{ color: 'var(--color-danger)' }} />
+                  </button>
                 </div>
               </div>
               
@@ -961,8 +1057,11 @@ export default function Investments() {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
+          onDelete={() => editingInv && handleRequestDelete(editingInv)}
         />
       )}
+
+      {deleteInvestmentDialog}
     </div>
   );
 }
