@@ -215,9 +215,25 @@ a:hover {
 
 input[type="date"].input,
 input[type="datetime-local"].input,
-input[type="time"].input {
+input[type="time"].input,
+input[type="month"].input {
   -webkit-appearance: none;
   appearance: none;
+}
+
+/* iOS Safari: o campo de mês usa altura própria e centraliza o valor;
+   aqui ele fica com a mesma altura e alinhamento dos demais campos. */
+input[type="month"].input {
+  display: block;
+  min-height: calc(1.25em + 22px);
+  line-height: 1.25;
+}
+
+input[type="date"].input::-webkit-date-and-time-value,
+input[type="datetime-local"].input::-webkit-date-and-time-value,
+input[type="month"].input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
 }
 
 input[type="date"].input::-webkit-calendar-picker-indicator,
