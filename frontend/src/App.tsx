@@ -15,6 +15,7 @@ import Transactions from './pages/Transactions';
 import TransactionForm from './pages/TransactionForm';
 import Shopping from './pages/Shopping';
 import Investments from './pages/Investments';
+import Cattle from './pages/Cattle';
 import Invoices from './pages/Invoices';
 import Reports from './pages/Reports';
 import Diagnosis from './pages/Diagnosis';
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="diagnosis" element={<Diagnosis />} />
               <Route path="shopping" element={<Shopping />} />
               <Route path="investments" element={<Investments />} />
+              <Route path="cattle" element={<Cattle />} />
               <Route path="todos" element={<Todos />} />
               <Route path="tap" element={<Tap />} />
               <Route path="notes" element={<Notes />} />

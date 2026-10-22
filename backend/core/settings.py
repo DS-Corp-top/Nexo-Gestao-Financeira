@@ -112,6 +112,7 @@ INSTALLED_APPS = [
     "dashboard",
     "shopping",
     "investments.apps.InvestmentsConfig",
+    "livestock.apps.LivestockConfig",
     "invoices.apps.InvoicesConfig",
     "todos.apps.TodosConfig",
     "tap.apps.TapConfig",

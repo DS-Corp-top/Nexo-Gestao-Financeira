@@ -61,6 +61,17 @@ Deploy no Heroku com PostgreSQL. Stack: Django 6, Gunicorn, WhiteNoise, Tailwind
 - Superusuário sem vínculo com o tenant recebe `masked: true` e nenhum valor (as frases contêm valores, então não dá para mascarar campo a campo)
 - Testes: `backend/reports/tests/test_diagnosis.py`, `frontend/src/pages/Diagnosis.test.tsx`
 
+### Confinamento (`/cattle` no frontend)
+- Controle de lotes de gado em **confinamento** ou **semiconfinamento** (app `livestock`)
+- Lote (`CattleLot`): nome, sistema, status (em andamento/encerrado), local/curral, datas de entrada e saída, observações
+- Lançamentos (`CattleLotEntry`): **aquisição**, **trato/alimentação**, **remédio**, **vacina**, **frete**, **outros custos** (mão de obra, energia…) e **venda** — valor total, data, descrição; aquisição e venda exigem nº de cabeças e aceitam peso total (kg)
+- Indicadores calculados no modelo (nenhum valor é armazenado no lote): custo de aquisição/trato/remédios/vacinas/frete/outros, custo total, receita, lucro, **margem de lucro** (lucro ÷ receita), custo por cabeça, trato por cabeça/dia, cabeças compradas/vendidas/em estoque, peso médio de entrada e saída, dias de cocho (até a saída ou hoje)
+- Regras: valor > 0; o estoque do lote nunca fica negativo — vale para criar/editar venda, reduzir ou trocar o tipo de uma aquisição e excluir aquisição já vendida (400 com mensagem); os tipos de custo (exceto aquisição) descartam cabeças e peso; data de saída ≥ entrada; lote de outro tenant é rejeitado no serializer e no modelo
+- Lucro/margem consideram todo o custo do lote mesmo com venda parcial — o lote só mostra o resultado final quando todos os animais forem vendidos
+- Endpoints: `cattle-lots/` (lista sem lançamentos; detalhe com `entries`) e `cattle-lot-entries/`; listagem usa `prefetch_related` e soma em Python (sem N+1)
+- Novos campos monetários registrados em `FinancialMaskingMiddleware.MASKED_FIELDS`
+- Testes: `backend/livestock/tests/test_api_views.py`, `frontend/src/pages/Cattle.test.tsx`
+
 ### Recuperação de senha (`/forgot-password` no frontend)
 - Fluxo em 3 passos: e-mail → código de 6 dígitos (válido 15 min) → nova senha
 - Backend: `users/password_reset.py` (`auth/password-reset/request|confirm|complete/`)

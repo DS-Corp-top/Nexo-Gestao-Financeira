@@ -239,7 +239,7 @@ export default function Diagnosis() {
                 Oscilação mensal
               </h3>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                Clique em um mês para ver o diagnóstico
+                {isMobile ? 'Toque' : 'Clique'} em um mês para ver o diagnóstico
               </span>
             </div>
             {activeMonths.length ? (
@@ -482,7 +482,7 @@ function DiagnosisBody({ diagnosis }: { diagnosis: MonthDiagnosis }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 'var(--space-sm)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-sm)' }}>
         <ComparisonTile label="Receitas" value={diagnosis.income} average={diagnosis.baseline.income} hasBaseline={hasBaseline} higherIsGood />
         <ComparisonTile label="Despesas" value={diagnosis.expense} average={diagnosis.baseline.expense} hasBaseline={hasBaseline} higherIsGood={false} />
         <ComparisonTile label="Saldo do mês" value={diagnosis.net} average={diagnosis.baseline.net} hasBaseline={hasBaseline} higherIsGood />
@@ -513,7 +513,7 @@ function DiagnosisBody({ diagnosis }: { diagnosis: MonthDiagnosis }) {
       )}
 
       {(diagnosis.expense_increases.length > 0 || diagnosis.expense_decreases.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'var(--space-md)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-md)' }}>
           <DriverList
             title="O que pesou"
             emptyLabel="Nenhuma categoria acima do normal."
@@ -546,7 +546,7 @@ function DiagnosisBody({ diagnosis }: { diagnosis: MonthDiagnosis }) {
                 <div key={c.kind} style={{ width: `${(c.share ?? 0) * 100}%`, background: KIND_COLOR[c.kind] }} />
               ))}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 8, marginTop: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 10 }}>
             {diagnosis.composition.map((c) => (
               <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: KIND_COLOR[c.kind], flexShrink: 0 }} />
@@ -576,13 +576,20 @@ function DiagnosisBody({ diagnosis }: { diagnosis: MonthDiagnosis }) {
               >
                 <span style={{ color: 'var(--color-text-muted)', width: 40, flexShrink: 0 }}>{formatDay(t.date)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.description}</div>
+                  <div
+                    title={t.description}
+                    style={isMobile
+                      ? { fontWeight: 600, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }
+                      : { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {t.description}
+                  </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
                     {[t.category || 'Sem categoria', KIND_LABEL[t.kind], t.is_cleared ? null : 'a pagar'].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--color-danger)' }}>− {formatCurrency(t.value)}</div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--color-danger)', whiteSpace: 'nowrap' }}>− {formatCurrency(t.value)}</div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{formatPercent(t.share)} do mês</div>
                 </div>
               </div>
@@ -654,6 +661,7 @@ function DriverList({
   drivers: DiagnosisDriver[];
   direction: 'up' | 'down' | 'mixed';
 }) {
+  const { isMobile } = useViewMode();
   const maxDelta = Math.max(...drivers.map((d) => Math.abs(parseFloat(d.delta) || 0)), 1);
 
   return (
@@ -669,16 +677,23 @@ function DriverList({
             const color = bad ? 'var(--color-danger)' : 'var(--color-success)';
             return (
               <div key={`${d.category_id}-${d.name}`} style={{ fontSize: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {d.name}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span
+                      title={d.name}
+                      style={isMobile
+                        ? { fontWeight: 600, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere', minWidth: 0 }
+                        : { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
+                    >
+                      {d.name}
+                    </span>
                     {d.is_new && (
-                      <span style={{ marginLeft: 6 }}>
+                      <span style={{ flexShrink: 0 }}>
                         <Chip color="var(--color-info)" background="var(--color-info-muted)">novo</Chip>
                       </span>
                     )}
                   </span>
-                  <span style={{ fontWeight: 700, color, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontWeight: 700, color, whiteSpace: 'nowrap', flexShrink: 0 }}>
                     {delta >= 0 ? '+' : '−'} {formatCurrency(Math.abs(delta))}
                   </span>
                 </div>

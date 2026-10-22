@@ -28,6 +28,9 @@ class FinancialMaskingMiddleware:
         "spendable_balance",
         "opening_balance", "closing_balance", "total_income", "total_expense",
         "net_result", "total_cost", "gross_profit", "total_operating_expenses",
+        "acquisition_cost", "feed_cost", "medicine_cost", "vaccine_cost", "freight_cost",
+        "other_costs", "sales_revenue", "profit",
+        "margin_percent", "cost_per_head", "feed_cost_per_head_day",
     })
 
     def __init__(self, get_response):

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, FileBarChart, FileSignature } from 'lucide-react';
+import { Activity, Beef, FileBarChart, FileSignature } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function BottomNav() {
@@ -61,6 +61,10 @@ export default function BottomNav() {
             <Link to="/investments" className={`txn-more-link ${location.pathname.startsWith('/investments') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
               <span className="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 14l4-5 4 3 4-6"/></svg></span>
               Investimentos
+            </Link>
+            <Link to="/cattle" className={`txn-more-link ${location.pathname.startsWith('/cattle') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>
+              <span className="txn-more-icon"><Beef size={20} /></span>
+              Confinamento
             </Link>
             {canManageSystem && isPJTenant && (
               <Link to="/invoices" className={`txn-more-link ${location.pathname.startsWith('/invoices') ? 'txn-more-active' : ''}`} onClick={() => setIsMoreMenuOpen(false)}>

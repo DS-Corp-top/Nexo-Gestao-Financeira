@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   Activity,
+  Beef,
   LayoutDashboard,
   ArrowLeftRight,
   FileText,
@@ -22,6 +23,7 @@ const navItemsBeforeInvoices = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Financeiro' },
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
+  { to: '/cattle', icon: Beef, label: 'Confinamento' },
 ];
 
 const navItemsAfterInvoices = [

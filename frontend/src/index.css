@@ -3348,3 +3348,135 @@ input[type="date"].clear-modal-date {
   color: var(--mono-text) !important;
 }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ============================================
+   Confinamento (pages/Cattle.tsx)
+   Desktop: formulário em linha e histórico em tabela.
+   Mobile (≤768px ou pré-visualização): campos em grade de 2 colunas
+   e histórico em cartões, para o valor ficar visível sem rolagem lateral.
+   ============================================ */
+
+.cattle-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: var(--space-md);
+}
+
+.cattle-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.cattle-filters .select {
+  width: 200px;
+}
+
+.cattle-entry-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.cattle-entry-form .cattle-field-type { width: 190px; }
+.cattle-entry-form .cattle-field-date { width: 150px; }
+.cattle-entry-form .cattle-field-amount { width: 160px; }
+.cattle-entry-form .cattle-field-heads { width: 110px; }
+.cattle-entry-form .cattle-field-weight { width: 150px; }
+.cattle-entry-form .cattle-field-desc { flex: 1; min-width: 200px; }
+
+.cattle-history-list {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cattle-history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cattle-history-item:last-child {
+  border-bottom: none;
+}
+
+.cattle-history-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cattle-history-item-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cattle-history-item .badge {
+  white-space: nowrap;
+}
+
+/* Sem quebra depois do sinal: "-R$ 1.568.500,00" virava "-" sozinho numa linha. */
+.cattle-history-table .badge,
+.cattle-history-table .cattle-amount {
+  white-space: nowrap;
+}
+
+@media (min-width: 769px) {
+  .cattle-page .kpi-value {
+    white-space: nowrap;
+  }
+}
+
+.cattle-history-item-date {
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+}
+
+.cattle-history-item-details {
+  margin-top: 4px;
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.cattle-history-item-amount {
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .cattle-page .card { padding: 0.9rem; }
+  .cattle-page .kpi-label { font-size: 0.62rem; }
+  .cattle-page .kpi-value { font-size: 0.95rem; }
+  .cattle-page .cattle-list-grid { grid-template-columns: minmax(0, 1fr); }
+  .cattle-page .cattle-filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+  .cattle-page .cattle-filters .select { width: 100%; min-width: 0; }
+  .cattle-page .cattle-entry-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+  .cattle-page .cattle-entry-form > * { width: 100%; min-width: 0; }
+  .cattle-page .cattle-entry-form .cattle-field-type,
+  .cattle-page .cattle-entry-form .cattle-field-desc,
+  .cattle-page .cattle-entry-form .cattle-field-submit { grid-column: 1 / -1; }
+  .cattle-page .cattle-history-table { display: none; }
+  .cattle-page .cattle-history-list { display: block; }
+}
+
+.mobile-preview .cattle-page .card { padding: 0.9rem; }
+.mobile-preview .cattle-page .kpi-label { font-size: 0.62rem; }
+.mobile-preview .cattle-page .kpi-value { font-size: 0.95rem; }
+.mobile-preview .cattle-page .cattle-list-grid { grid-template-columns: minmax(0, 1fr); }
+.mobile-preview .cattle-page .cattle-filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+.mobile-preview .cattle-page .cattle-filters .select { width: 100%; min-width: 0; }
+.mobile-preview .cattle-page .cattle-entry-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+.mobile-preview .cattle-page .cattle-entry-form > * { width: 100%; min-width: 0; }
+.mobile-preview .cattle-page .cattle-entry-form .cattle-field-type,
+.mobile-preview .cattle-page .cattle-entry-form .cattle-field-desc,
+.mobile-preview .cattle-page .cattle-entry-form .cattle-field-submit { grid-column: 1 / -1; }
+.mobile-preview .cattle-page .cattle-history-table { display: none; }
+.mobile-preview .cattle-page .cattle-history-list { display: block; }

@@ -19,6 +19,7 @@ from categories.api_views import CategoryViewSet
 from dashboard.api_views import DashboardView
 from investments.api_views import BacenBanksView, InvestmentEntryViewSet, InvestmentExchangeRatesView, InvestmentViewSet
 from invoices.api_views import ClientViewSet, InvoiceViewSet
+from livestock.api_views import CattleLotEntryViewSet, CattleLotViewSet
 from shopping.api_views import ShoppingItemViewSet, ShoppingListViewSet
 from tenants.api_views import (
     CepLookupView,
@@ -73,6 +74,8 @@ router.register("shopping-lists", ShoppingListViewSet)
 router.register("shopping-items", ShoppingItemViewSet)
 router.register("investments", InvestmentViewSet)
 router.register("investment-entries", InvestmentEntryViewSet)
+router.register("cattle-lots", CattleLotViewSet)
+router.register("cattle-lot-entries", CattleLotEntryViewSet)
 router.register("tenant-memberships", TenantMembershipViewSet, basename="tenant-membership")
 router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-company")
 router.register("todo-projects", ProjectViewSet, basename="todo-project")

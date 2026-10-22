@@ -430,5 +430,44 @@ describe('Diagnosis Page', () => {
       expect(await within(dialog).findByText('O que pesou')).toBeInTheDocument();
       expect(within(dialog).getByText('Passagens')).toBeInTheDocument();
     });
+
+    it('talks about tapping instead of clicking on the chart', async () => {
+      renderDiagnosis({ isMobile: true });
+
+      expect(await screen.findByText('Toque em um mês para ver o diagnóstico')).toBeInTheDocument();
+      expect(screen.queryByText(/Clique em um mês/)).not.toBeInTheDocument();
+    });
+
+    it('wraps long names instead of truncating them, and never shrinks the amount', async () => {
+      // Regressão: a coluna `1fr` com nome em nowrap estourava a largura do modal
+      // no celular e cortava o valor ("+ R$ 10" em vez de "+ R$ 10.350,00").
+      renderDiagnosis({ isMobile: true });
+      const dialog = await openDiagnosis();
+      await within(dialog).findByText('O que pesou');
+
+      const name = within(dialog).getByText('Viagem', { selector: '[title]' });
+      expect(name).toHaveAttribute('title', 'Viagem');
+      expect(name).not.toHaveStyle({ whiteSpace: 'nowrap' });
+      expect(name.parentElement).toHaveTextContent('novo');
+      expect(within(dialog).getByText('+ R$ 3.000,00')).toHaveStyle({ flexShrink: '0', whiteSpace: 'nowrap' });
+
+      const description = within(dialog).getByText('Passagens');
+      expect(description).toHaveAttribute('title', 'Passagens');
+      expect(description).not.toHaveStyle({ whiteSpace: 'nowrap' });
+    });
+  });
+
+  describe('desktop layout', () => {
+    it('keeps names on a single line with the full text available on hover', async () => {
+      renderDiagnosis();
+
+      expect(await screen.findByText('Clique em um mês para ver o diagnóstico')).toBeInTheDocument();
+      const dialog = await openDiagnosis();
+      await within(dialog).findByText('O que pesou');
+
+      const name = within(dialog).getByText('Viagem', { selector: '[title]' });
+      expect(name).toHaveStyle({ whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
+      expect(within(dialog).getByText('Passagens')).toHaveStyle({ whiteSpace: 'nowrap' });
+    });
   });
 });

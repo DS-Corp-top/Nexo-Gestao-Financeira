@@ -20,6 +20,7 @@ vi.mock('../../contexts/AuthContext', async () => {
 const EXPECTED_MODULE_LINKS = [
   { to: '/transactions', label: /Financeiro/ },
   { to: '/investments', label: /Investimentos/ },
+  { to: '/cattle', label: /Confinamento/ },
   { to: '/reports', label: /Relatórios/ },
   { to: '/diagnosis', label: /Diagnóstico/ },
   { to: '/invoices', label: /Fatura de Serviços/ },
